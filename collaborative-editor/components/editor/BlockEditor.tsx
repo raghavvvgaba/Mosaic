@@ -1,8 +1,8 @@
 'use client';
 
 import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/mantine";
-import "@blocknote/mantine/style.css";
+import { BlockNoteView } from "@blocknote/shadcn";
+import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { useCallback, useEffect } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
@@ -10,7 +10,7 @@ import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-uploa
 import { useTheme } from 'next-themes';
 
 interface BlockEditorProps {
-  documentId: string;
+  documentId?: string;
   initialContent?: string;
   onSave: (content: string) => void;
 }
@@ -55,11 +55,9 @@ export function BlockEditor({
   }, [editor, handleChange]);
 
   return (
-    <div className="editor-wrapper">
-      <BlockNoteView 
-        editor={editor}
-        theme={theme === 'dark' ? 'dark' : 'light'}
-      />
-    </div>
+    <BlockNoteView 
+      editor={editor}
+      theme={theme === 'dark' ? 'dark' : 'light'}
+    />
   );
 }

@@ -6,7 +6,9 @@ export interface Document {
   coverImage?: string;
   createdAt: Date;
   updatedAt: Date;
+  lastOpenedAt?: Date;
   isDeleted: boolean;
+  isFavorite?: boolean;
   parentId?: string;
 }
 

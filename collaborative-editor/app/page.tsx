@@ -1,41 +1,38 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, FileText, Trash2, Search } from 'lucide-react';
+import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getAllDocuments, createDocument, deleteDocument } from '@/lib/db/documents';
+import { Checkbox } from '@/components/ui/checkbox';
+import { getAllDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
-import { SearchBar } from '@/components/sidebar/SearchBar';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
+import { useTabs } from '@/contexts/TabsContext';
 
 export default function Home() {
-  const router = useRouter();
+  const { openDocument, ensureTabExists } = useTabs();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
+    // Register this page as a tab
+    ensureTabExists('/', 'Home', 'page', 'home');
     loadDocuments();
-  }, []);
 
-  useEffect(() => {
+    // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-        e.preventDefault();
-        handleCreateDocument();
+      if (e.key === 'Escape' && selectionMode) {
+        setSelectionMode(false);
+        setSelectedIds(new Set());
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [selectionMode, ensureTabExists]);
 
   async function loadDocuments() {
     const docs = await getAllDocuments();
@@ -43,21 +40,57 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function handleCreateDocument() {
-    const doc = await createDocument();
-    router.push(`/documents/${doc.id}`);
-  }
-
-  async function handleDeleteDocument(id: string, e: React.MouseEvent) {
+  async function handleDeleteDocument(id: string, title: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this document?')) {
+    if (confirm(`Move "${title || 'Untitled'}" to trash?`)) {
       await deleteDocument(id);
       loadDocuments();
+      window.dispatchEvent(new Event('documentsChanged'));
     }
   }
 
-  function handleSearchResultClick(doc: Document) {
-    router.push(`/documents/${doc.id}`);
+  async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
+    e.stopPropagation();
+    await toggleFavorite(docId);
+    loadDocuments();
+    window.dispatchEvent(new Event('documentsChanged'));
+  }
+
+  function handleSelectDocument(docId: string, checked: boolean) {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(docId);
+    } else {
+      newSelected.delete(docId);
+    }
+    setSelectedIds(newSelected);
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    
+    if (confirm(`Move ${selectedIds.size} document(s) to trash?`)) {
+      await Promise.all(Array.from(selectedIds).map(id => deleteDocument(id)));
+      setSelectedIds(new Set());
+      loadDocuments();
+      window.dispatchEvent(new Event('documentsChanged'));
+    }
+  }
+
+  function handleClearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function handleToggleSelectionMode() {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      // Clear selections when exiting selection mode
+      setSelectedIds(new Set());
+    }
+  }
+
+  function handleSelectAll() {
+    setSelectedIds(new Set(documents.map(doc => doc.id)));
   }
 
   if (loading) {
@@ -69,22 +102,41 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-5xl p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">My Documents</h1>
-          <div className="flex gap-3 items-center">
-            <ThemeToggle />
-            <Button onClick={() => setSearchOpen(true)} variant="outline" size="lg">
-              <Search className="w-5 h-5 mr-2" />
-              Search
-              <kbd className="ml-3 px-2 py-1 text-xs bg-muted rounded border">⌘K</kbd>
-            </Button>
-            <Button onClick={handleCreateDocument} size="lg">
-              <Plus className="w-5 h-5 mr-2" />
-              New Document
-              <kbd className="ml-3 px-2 py-1 text-xs bg-muted rounded border">⌘N</kbd>
-            </Button>
+    <div className="min-h-screen bg-background p-8">
+      <div className="container mx-auto max-w-5xl">
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold">All Documents</h1>
+              <p className="text-muted-foreground mt-2">
+                {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+              </p>
+            </div>
+            {documents.length > 0 && (
+              <div className="flex items-center gap-2">
+                {selectionMode && selectedIds.size > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                )}
+                {selectionMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAll}
+                  >
+                    Select All
+                  </Button>
+                )}
+                <Button
+                  variant={selectionMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={handleToggleSelectionMode}
+                >
+                  {selectionMode ? 'Cancel' : 'Select'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -92,54 +144,82 @@ export default function Home() {
           <div className="text-center py-16">
             <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 mb-4">No documents yet</p>
-            <Button onClick={handleCreateDocument} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first document
-            </Button>
+            <p className="text-sm text-muted-foreground">
+              Click &quot;New Document&quot; in the sidebar to get started
+            </p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {documents.map(doc => (
               <div
                 key={doc.id}
-                onClick={() => router.push(`/documents/${doc.id}`)}
-                className="bg-card p-6 rounded-lg border hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
+                className="relative bg-card rounded-xl border hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold mb-2 group-hover:text-blue-600 transition-colors">
-                      {doc.title || 'Untitled'}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      Updated {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleDeleteDocument(doc.id, e)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                {selectionMode && (
+                  <div 
+                    className="absolute top-3 left-3 z-10"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
+                    <Checkbox
+                      checked={selectedIds.has(doc.id)}
+                      onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                    />
+                  </div>
+                )}
+                
+                <div 
+                  className="p-6 h-40 flex flex-col justify-between"
+                  onClick={() => openDocument(doc.id, doc.title)}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                        {doc.title || 'Untitled'}
+                      </h3>
+                      {doc.isFavorite && (
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                    </p>
+                    
+                    {!selectionMode && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleToggleFavorite(e, doc.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Star className={`w-3.5 h-3.5 ${doc.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeleteDocument(doc.id, doc.title, e)}
+                          className="h-8 w-8 p-0 text-red-500"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Search Documents</DialogTitle>
-          </DialogHeader>
-          <SearchBar 
-            onResultClick={handleSearchResultClick}
-            onClose={() => setSearchOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      
+      <BulkActionsToolbar
+        selectedCount={selectedIds.size}
+        onClear={handleClearSelection}
+        onDelete={handleBulkDelete}
+      />
     </div>
   );
 }
