@@ -1,27 +1,26 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Download, MoreVertical, Copy, Star } from 'lucide-react';
+import { MoreVertical, Copy, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite } from '@/lib/db/documents';
+import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument } from '@/lib/db/documents';
 import type { Document } from '@/lib/db/types';
 import { BlockEditor } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
-import { exportDocumentAsMarkdown } from '@/lib/export/markdown';
 import { useTabs } from '@/contexts/TabsContext';
+import { ExportButton } from '@/components/export/ExportButton';
 
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params.id as string;
-  const { updateTabTitle, ensureTabExists } = useTabs();
+  const { updateTabTitle, ensureTabExists, openTab, openPage } = useTabs();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,41 +120,80 @@ export default function DocumentPage() {
     }
   }
 
-  async function handleExportMarkdown() {
-    try {
-      await exportDocumentAsMarkdown(documentId);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export document');
-    }
-  }
-
-  async function handleDuplicate() {
+  const handleDuplicate = useCallback(async () => {
     try {
       const duplicate = await duplicateDocument(documentId);
-      // Notify sidebar to refresh
       window.dispatchEvent(new Event('documentsChanged'));
-      // Open duplicate in new tab
       openTab(duplicate.id, duplicate.title);
     } catch (error) {
       console.error('Duplicate failed:', error);
       alert('Failed to duplicate document');
     }
-  }
+  }, [documentId, openTab]);
 
-  async function handleToggleFavorite() {
+  const handleToggleFavorite = useCallback(async () => {
     try {
       await toggleFavorite(documentId);
-      if (document) {
-        setDocument({ ...document, isFavorite: !document.isFavorite });
-        documentRef.current = { ...document, isFavorite: !document.isFavorite };
-      }
-      // Notify sidebar to refresh
+      setDocument((current) => {
+        if (!current) return current;
+        const updated = { ...current, isFavorite: !current.isFavorite };
+        documentRef.current = updated;
+        return updated;
+      });
       window.dispatchEvent(new Event('documentsChanged'));
     } catch (error) {
       console.error('Toggle favorite failed:', error);
     }
-  }
+  }, [documentId]);
+
+  const handleMoveToTrash = useCallback(async () => {
+    if (!window.confirm('Move this document to trash?')) {
+      return;
+    }
+
+    try {
+      await deleteDocument(documentId);
+      window.dispatchEvent(new Event('documentsChanged'));
+      openPage('/', 'Home', 'home');
+    } catch (error) {
+      console.error('Failed to move document to trash:', error);
+      alert('Failed to move document to trash');
+    }
+  }, [documentId, openPage]);
+
+  // Handle keyboard shortcut events
+  useEffect(() => {
+    function handleDuplicateDocument() {
+      void handleDuplicate();
+    }
+
+    function handleExportDocument() {
+      const exportButton = window.document.querySelector('[data-export-button]') as HTMLButtonElement;
+      if (exportButton) {
+        exportButton.click();
+      }
+    }
+
+    function handleToggleFavoriteEvent() {
+      void handleToggleFavorite();
+    }
+
+    function handleMoveToTrashEvent() {
+      void handleMoveToTrash();
+    }
+
+    window.addEventListener('duplicate-document', handleDuplicateDocument);
+    window.addEventListener('export-document', handleExportDocument);
+    window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
+    window.addEventListener('move-to-trash', handleMoveToTrashEvent);
+
+    return () => {
+      window.removeEventListener('duplicate-document', handleDuplicateDocument);
+      window.removeEventListener('export-document', handleExportDocument);
+      window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
+      window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
+    };
+  }, [handleDuplicate, handleToggleFavorite, handleMoveToTrash]);
 
   function getWordCount(): number {
     if (!document) return 0;
@@ -234,6 +272,8 @@ export default function DocumentPage() {
             ) : null}
           </div>
 
+          <ExportButton document={document} />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -244,11 +284,6 @@ export default function DocumentPage() {
               <DropdownMenuItem onClick={handleDuplicate}>
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleExportMarkdown}>
-                <Download className="w-4 h-4 mr-2" />
-                Export as Markdown
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
