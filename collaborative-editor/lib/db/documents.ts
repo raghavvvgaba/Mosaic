@@ -1,16 +1,39 @@
 import { nanoid } from 'nanoid';
 import { getDB } from './index';
+import { DEFAULT_WORKSPACE_ID } from './constants';
 import type { Document, DocumentNode } from './types';
 
+type DocumentQueryOptions = {
+  includeDeleted?: boolean;
+};
+
+const DEFAULT_QUERY_OPTIONS: DocumentQueryOptions = {
+  includeDeleted: false,
+};
+
+function sortByUpdatedDescending(documents: Document[]): Document[] {
+  return [...documents].sort((a, b) => {
+    const aTime = new Date(a.updatedAt).getTime();
+    const bTime = new Date(b.updatedAt).getTime();
+    return bTime - aTime;
+  });
+}
+
+function resolveWorkspaceId(workspaceId?: string): string {
+  return workspaceId ?? DEFAULT_WORKSPACE_ID;
+}
+
 export async function createDocument(
-  title: string = 'Untitled'
+  title: string = 'Untitled',
+  workspaceId: string = DEFAULT_WORKSPACE_ID
 ): Promise<Document> {
   const db = await getDB();
-  
+
   const doc: Document = {
     id: nanoid(),
     title,
     content: JSON.stringify([{ type: 'paragraph', content: '' }]),
+    workspaceId,
     createdAt: new Date(),
     updatedAt: new Date(),
     isDeleted: false,
@@ -31,10 +54,10 @@ export async function updateDocument(
 ): Promise<void> {
   const db = await getDB();
   const doc = await db.get('documents', id);
-  
+
   if (!doc) throw new Error('Document not found');
 
-  const updated = {
+  const updated: Document = {
     ...doc,
     ...updates,
     updatedAt: new Date(),
@@ -52,43 +75,47 @@ export async function permanentlyDeleteDocument(id: string): Promise<void> {
   await db.delete('documents', id);
 }
 
-export async function getAllDocuments(): Promise<Document[]> {
-  const db = await getDB();
-  const all = await db.getAllFromIndex('documents', 'by-updated');
-  return all.filter(doc => !doc.isDeleted).reverse();
-}
-
-export async function getDeletedDocuments(): Promise<Document[]> {
-  const db = await getDB();
-  const all = await db.getAll('documents');
-  return all.filter(doc => doc.isDeleted);
-}
-
 export async function restoreDocument(id: string): Promise<void> {
   await updateDocument(id, { isDeleted: false });
 }
 
-export async function searchDocuments(query: string): Promise<Document[]> {
-  const all = await getAllDocuments();
+export async function getAllDocuments(
+  workspaceId?: string,
+  options: DocumentQueryOptions = DEFAULT_QUERY_OPTIONS
+): Promise<Document[]> {
+  const db = await getDB();
+  const id = resolveWorkspaceId(workspaceId);
+  const documents = await db.getAllFromIndex('documents', 'by-workspace', id);
+  const filtered = options.includeDeleted ? documents : documents.filter((doc) => !doc.isDeleted);
+  return sortByUpdatedDescending(filtered);
+}
+
+export async function getDeletedDocuments(workspaceId?: string): Promise<Document[]> {
+  const all = await getAllDocuments(workspaceId, { includeDeleted: true });
+  return all.filter((doc) => doc.isDeleted);
+}
+
+export async function searchDocuments(workspaceId: string | undefined, query: string): Promise<Document[]> {
+  const all = await getAllDocuments(workspaceId);
   const lowerQuery = query.toLowerCase();
-  
-  return all.filter(doc => 
+
+  return all.filter((doc) =>
     doc.title.toLowerCase().includes(lowerQuery) ||
     doc.content.toLowerCase().includes(lowerQuery)
   );
 }
 
-export async function getDocumentTree(): Promise<DocumentNode[]> {
-  const all = await getAllDocuments();
-  const rootDocs = all.filter(doc => !doc.parentId);
-  
-  return rootDocs.map(doc => buildTree(doc, all));
+export async function getDocumentTree(workspaceId?: string): Promise<DocumentNode[]> {
+  const all = await getAllDocuments(workspaceId);
+  const rootDocs = all.filter((doc) => !doc.parentId);
+
+  return rootDocs.map((doc) => buildTree(doc, all));
 }
 
 function buildTree(doc: Document, allDocs: Document[]): DocumentNode {
   const children = allDocs
-    .filter(d => d.parentId === doc.id)
-    .map(child => buildTree(child, allDocs));
+    .filter((d) => d.parentId === doc.id)
+    .map((child) => buildTree(child, allDocs));
 
   return {
     ...doc,
@@ -105,7 +132,7 @@ export async function getDocumentPath(documentId: string): Promise<Document[]> {
 
   while (currentDoc.parentId) {
     const parent = await getDocument(currentDoc.parentId);
-    if (!parent) break;
+    if (!parent || parent.workspaceId !== doc.workspaceId) break;
     path.unshift(parent);
     currentDoc = parent;
   }
@@ -114,12 +141,15 @@ export async function getDocumentPath(documentId: string): Promise<Document[]> {
 }
 
 export async function getDescendants(documentId: string): Promise<Document[]> {
-  const all = await getAllDocuments();
+  const doc = await getDocument(documentId);
+  if (!doc) return [];
+
+  const all = await getAllDocuments(doc.workspaceId, { includeDeleted: true });
   const descendants: Document[] = [];
 
   function collectDescendants(parentId: string) {
-    const children = all.filter(doc => doc.parentId === parentId);
-    children.forEach(child => {
+    const children = all.filter((child) => child.parentId === parentId);
+    children.forEach((child) => {
       descendants.push(child);
       collectDescendants(child.id);
     });
@@ -133,16 +163,19 @@ export async function canMoveDocument(
   documentId: string,
   newParentId: string | null
 ): Promise<boolean> {
-  // Can't move to itself
   if (documentId === newParentId) return false;
 
-  // If no parent, it's moving to root - always allowed
+  const doc = await getDocument(documentId);
+  if (!doc) return false;
+
   if (!newParentId) return true;
 
-  // Check if newParent would create a circular reference
-  // by seeing if documentId is an ancestor of newParentId
+  const parent = await getDocument(newParentId);
+  if (!parent) return false;
+  if (parent.workspaceId !== doc.workspaceId) return false;
+
   const descendants = await getDescendants(documentId);
-  const descendantIds = descendants.map(d => d.id);
+  const descendantIds = descendants.map((d) => d.id);
 
   return !descendantIds.includes(newParentId);
 }
@@ -162,8 +195,10 @@ export async function moveDocument(
 }
 
 export async function getChildren(parentId: string): Promise<Document[]> {
-  const all = await getAllDocuments();
-  return all.filter(doc => doc.parentId === parentId);
+  const parent = await getDocument(parentId);
+  if (!parent) return [];
+  const all = await getAllDocuments(parent.workspaceId);
+  return all.filter((doc) => doc.parentId === parentId);
 }
 
 export async function updateLastOpened(documentId: string): Promise<void> {
@@ -172,19 +207,20 @@ export async function updateLastOpened(documentId: string): Promise<void> {
   });
 }
 
-export async function getRecentDocuments(limit: number = 10): Promise<Document[]> {
-  const all = await getAllDocuments();
-  
-  // Filter documents that have been opened
-  const opened = all.filter(doc => doc.lastOpenedAt);
-  
-  // Sort by lastOpenedAt descending
+export async function getRecentDocuments(
+  workspaceId?: string,
+  limit: number = 10
+): Promise<Document[]> {
+  const all = await getAllDocuments(workspaceId);
+
+  const opened = all.filter((doc) => doc.lastOpenedAt);
+
   opened.sort((a, b) => {
     const dateA = a.lastOpenedAt ? new Date(a.lastOpenedAt).getTime() : 0;
     const dateB = b.lastOpenedAt ? new Date(b.lastOpenedAt).getTime() : 0;
     return dateB - dateA;
   });
-  
+
   return opened.slice(0, limit);
 }
 
@@ -193,11 +229,12 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
   if (!original) throw new Error('Document not found');
 
   const db = await getDB();
-  
+
   const duplicate: Document = {
     id: nanoid(),
     title: `${original.title} (Copy)`,
     content: original.content,
+    workspaceId: original.workspaceId,
     icon: original.icon,
     coverImage: original.coverImage,
     createdAt: new Date(),
@@ -213,13 +250,13 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
 export async function toggleFavorite(documentId: string): Promise<void> {
   const doc = await getDocument(documentId);
   if (!doc) throw new Error('Document not found');
-  
+
   await updateDocument(documentId, {
     isFavorite: !doc.isFavorite,
   });
 }
 
-export async function getFavoriteDocuments(): Promise<Document[]> {
-  const all = await getAllDocuments();
-  return all.filter(doc => doc.isFavorite);
+export async function getFavoriteDocuments(workspaceId?: string): Promise<Document[]> {
+  const all = await getAllDocuments(workspaceId);
+  return all.filter((doc) => doc.isFavorite);
 }

@@ -9,6 +9,7 @@ import { getAllDocuments, createDocument } from '@/lib/db/documents';
 import { useTabs } from '@/contexts/TabsContext';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface TabSwitcherModalProps {
   open: boolean;
@@ -19,23 +20,25 @@ export function TabSwitcherModal({ open, onOpenChange }: TabSwitcherModalProps) 
   const [query, setQuery] = useState('');
   const [documents, setDocuments] = useState<Document[]>([]);
   const { openTab } = useTabs();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
 
   useEffect(() => {
-    if (open) {
-      loadDocuments();
+    if (open && activeWorkspaceId) {
+      loadDocuments(activeWorkspaceId);
       setQuery(''); // Reset search when opening
     }
-  }, [open]);
+  }, [open, activeWorkspaceId]);
 
-  async function loadDocuments() {
-    const docs = await getAllDocuments();
+  async function loadDocuments(workspaceId: string) {
+    const docs = await getAllDocuments(workspaceId);
     setDocuments(docs);
   }
 
   async function handleCreateNew() {
-    const doc = await createDocument();
+    if (!activeWorkspaceId) return;
+    const doc = await createDocument(undefined, activeWorkspaceId);
     openTab(doc.id, doc.title);
-    window.dispatchEvent(new Event('documentsChanged'));
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     onOpenChange(false);
   }
 
@@ -55,6 +58,9 @@ export function TabSwitcherModal({ open, onOpenChange }: TabSwitcherModalProps) 
       <DialogContent className="max-w-2xl max-h-[600px] p-0">
         <DialogHeader className="p-4 pb-0">
           <DialogTitle>Open in New Tab</DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Workspace: {activeWorkspace?.name ?? 'Loading...'}
+          </p>
         </DialogHeader>
 
         {/* Create new note button */}
@@ -63,6 +69,7 @@ export function TabSwitcherModal({ open, onOpenChange }: TabSwitcherModalProps) 
             onClick={handleCreateNew}
             className="w-full justify-start"
             variant="outline"
+            disabled={!activeWorkspaceId}
           >
             <Plus className="w-4 h-4 mr-2" />
             Create new note
@@ -87,7 +94,9 @@ export function TabSwitcherModal({ open, onOpenChange }: TabSwitcherModalProps) 
         <div className="overflow-y-auto max-h-[400px] px-2 pb-4">
           {filteredDocs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {query.length > 0 ? 'No documents found' : 'No documents yet'}
+              {query.length > 0
+                ? 'No documents match your search in this workspace'
+                : 'No documents in this workspace yet'}
             </div>
           ) : (
             <div className="space-y-1">

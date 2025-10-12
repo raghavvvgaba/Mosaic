@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useTabs } from '@/contexts/TabsContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Shortcut, ShortcutCategory } from '@/lib/shortcuts/shortcutConfig';
 import { matchesShortcut, isMac } from '@/lib/shortcuts/shortcutConfig';
 import { createDocument } from '@/lib/db/documents';
@@ -14,6 +15,7 @@ interface UseKeyboardShortcutsOptions {
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) {
   const { enabled = true, context = 'global' } = options;
   const { activeTabId, openTab, openDocument } = useTabs();
+  const { activeWorkspaceId } = useWorkspace();
   const shortcutsRef = useRef<Shortcut[]>([]);
 
   // Toast notification function (simple implementation for now)
@@ -33,9 +35,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
   }, []);
 
   const createDocumentAndOpen = useCallback(async (openInNewTab: boolean) => {
+    if (!activeWorkspaceId) {
+      showToast('Workspace is loading...');
+      return;
+    }
     try {
-      const doc = await createDocument();
-      window.dispatchEvent(new Event('documentsChanged'));
+      const doc = await createDocument(undefined, activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
       if (openInNewTab) {
         openTab(doc.id, doc.title);
         showToast('New document opened in a tab');
@@ -47,7 +53,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       console.error('Failed to create document:', error);
       showToast('Failed to create document');
     }
-  }, [openDocument, openTab, showToast]);
+  }, [activeWorkspaceId, openDocument, openTab, showToast]);
 
   const handleCreateDocument = useCallback(() => {
     void createDocumentAndOpen(false);
@@ -62,7 +68,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       showToast('Open a document to duplicate it');
       return;
     }
-    window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId: activeTabId } }));
+      window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId: activeTabId } }));
   }, [activeTabId, showToast]);
 
   const exportCurrentDocument = useCallback(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,39 +8,55 @@ import { getRecentDocuments, deleteDocument, toggleFavorite } from '@/lib/db/doc
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export default function RecentPage() {
   const router = useRouter();
   const { openDocument, ensureTabExists } = useTabs();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Register this page as a tab
-    ensureTabExists('/recent', 'Recent', 'page', 'recent');
-    loadDocuments();
-  }, [ensureTabExists]);
-
-  async function loadDocuments() {
-    const docs = await getRecentDocuments(20); // Show more on dedicated page
+  const loadDocuments = useCallback(async (workspaceId: string) => {
+    const docs = await getRecentDocuments(workspaceId, 20);
     setDocuments(docs);
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    ensureTabExists('/recent', 'Recent', 'page', 'recent');
+    setLoading(true);
+    loadDocuments(activeWorkspaceId);
+
+    const handleDocumentsChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
+        loadDocuments(activeWorkspaceId);
+      }
+    };
+
+    window.addEventListener('documentsChanged', handleDocumentsChanged);
+    return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
+  }, [ensureTabExists, activeWorkspaceId, loadDocuments]);
 
   async function handleDeleteDocument(id: string, title: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     if (confirm(`Move "${title || 'Untitled'}" to trash?`)) {
       await deleteDocument(id);
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
   async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     await toggleFavorite(docId);
-    loadDocuments();
-    window.dispatchEvent(new Event('documentsChanged'));
+    loadDocuments(activeWorkspaceId);
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
   if (loading) {
@@ -58,6 +74,9 @@ export default function RecentPage() {
           <h1 className="text-4xl font-bold">Recent Documents</h1>
           <p className="text-muted-foreground mt-2">
             Documents you&apos;ve opened recently
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Workspace: {activeWorkspace?.name ?? 'Loading...'}
           </p>
         </div>
 

@@ -17,6 +17,7 @@ import { updateDocument, deleteDocument } from '@/lib/db/documents';
 import { useTabs } from '@/contexts/TabsContext';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface SidebarDocumentListProps {
   documents: Document[];
@@ -25,6 +26,7 @@ interface SidebarDocumentListProps {
 export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument, openTab } = useTabs();
+  const { activeWorkspaceId } = useWorkspace();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -32,13 +34,15 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const handleRename = async (newTitle: string) => {
     if (!selectedDoc) return;
     await updateDocument(selectedDoc.id, { title: newTitle });
-    window.dispatchEvent(new Event('documentsChanged'));
+    const workspaceId = selectedDoc.workspaceId || activeWorkspaceId;
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
   };
 
   const handleDelete = async () => {
     if (!selectedDoc) return;
     await deleteDocument(selectedDoc.id);
-    window.dispatchEvent(new Event('documentsChanged'));
+    const workspaceId = selectedDoc.workspaceId || activeWorkspaceId;
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
     setDeleteDialogOpen(false);
   };
 

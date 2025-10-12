@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { RotateCcw, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,19 +9,31 @@ import { getDeletedDocuments, restoreDocument, permanentlyDeleteDocument } from 
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export default function TrashPage() {
   const router = useRouter();
   const { ensureTabExists } = useTabs();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
+  const loadDocuments = useCallback(async (workspaceId: string) => {
+    const docs = await getDeletedDocuments(workspaceId);
+    setDocuments(docs);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    // Register this page as a tab
+    if (!activeWorkspaceId) return;
+
     ensureTabExists('/trash', 'Trash', 'page', 'trash');
-    loadDocuments();
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setLoading(true);
+    loadDocuments(activeWorkspaceId);
 
     // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
@@ -31,49 +43,58 @@ export default function TrashPage() {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectionMode, ensureTabExists]);
+    const handleDocumentsChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
+        loadDocuments(activeWorkspaceId);
+      }
+    };
 
-  async function loadDocuments() {
-    const docs = await getDeletedDocuments();
-    setDocuments(docs);
-    setLoading(false);
-  }
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('documentsChanged', handleDocumentsChanged);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('documentsChanged', handleDocumentsChanged);
+    };
+  }, [selectionMode, ensureTabExists, activeWorkspaceId, loadDocuments]);
 
   async function handleRestore(id: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     await restoreDocument(id);
-    loadDocuments();
-    window.dispatchEvent(new Event('documentsChanged'));
+    loadDocuments(activeWorkspaceId);
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
   async function handlePermanentDelete(id: string, title: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     if (confirm(`Permanently delete "${title || 'Untitled'}"? This cannot be undone.`)) {
       await permanentlyDeleteDocument(id);
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
   async function handleEmptyTrash() {
     if (documents.length === 0) return;
+    if (!activeWorkspaceId) return;
     
     if (confirm(`Permanently delete all ${documents.length} documents? This cannot be undone.`)) {
       await Promise.all(documents.map(doc => permanentlyDeleteDocument(doc.id)));
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
   async function handleRestoreAll() {
     if (documents.length === 0) return;
+    if (!activeWorkspaceId) return;
     
     if (confirm(`Restore all ${documents.length} document(s) from trash?`)) {
       await Promise.all(documents.map(doc => restoreDocument(doc.id)));
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
@@ -104,25 +125,27 @@ export default function TrashPage() {
 
   async function handleBulkRestore() {
     if (selectedIds.size === 0) return;
+    if (!activeWorkspaceId) return;
     
     if (confirm(`Restore ${selectedIds.size} document(s) from trash?`)) {
       await Promise.all(Array.from(selectedIds).map(id => restoreDocument(id)));
       setSelectedIds(new Set());
       setSelectionMode(false);
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
+    if (!activeWorkspaceId) return;
     
     if (confirm(`Permanently delete ${selectedIds.size} document(s)? This cannot be undone.`)) {
       await Promise.all(Array.from(selectedIds).map(id => permanentlyDeleteDocument(id)));
       setSelectedIds(new Set());
       setSelectionMode(false);
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
@@ -142,6 +165,9 @@ export default function TrashPage() {
             <h1 className="text-4xl font-bold">Trash</h1>
             <p className="text-muted-foreground mt-2">
               {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Workspace: {activeWorkspace?.name ?? 'Loading...'}
             </p>
           </div>
           {documents.length > 0 && (

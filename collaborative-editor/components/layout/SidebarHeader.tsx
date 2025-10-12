@@ -2,6 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 interface SidebarHeaderProps {
   onSearch: () => void;
@@ -9,7 +10,8 @@ interface SidebarHeaderProps {
 
 export function SidebarHeader({ onSearch }: SidebarHeaderProps) {
   return (
-    <div className="p-4 border-b">
+    <div className="p-4 border-b space-y-3">
+      <WorkspaceSwitcher />
       <Button 
         onClick={onSearch} 
         variant="outline" 

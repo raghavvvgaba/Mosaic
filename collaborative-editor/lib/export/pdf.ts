@@ -1,15 +1,38 @@
 import { getDocument } from '../db/documents';
 
+interface BlockProps {
+  level?: number;
+  checked?: boolean;
+  language?: string;
+  name?: string;
+  url?: string;
+  caption?: string;
+}
+
+interface InlineStyles {
+  bold?: boolean;
+  italic?: boolean;
+  code?: boolean;
+  strike?: boolean;
+}
+
+type InlineNode = string | { text?: string; styles?: InlineStyles };
+
+type TableContent = { rows?: unknown };
+
+type BlockContent = string | InlineNode[] | TableContent | null | undefined;
+
 interface Block {
   id: string;
   type: string;
-  props?: Record<string, any>;
-  content?: any;
+  props?: BlockProps;
+  content?: BlockContent;
   children?: Block[];
 }
 
 export function generatePrintHTML(content: string, title: string): string {
-  const blocks = JSON.parse(content);
+  const parsed = JSON.parse(content) as unknown;
+  const blocks = Array.isArray(parsed) ? (parsed as Block[]) : [];
   const htmlContent = blocksToHTML(blocks);
   
   return `
@@ -229,9 +252,9 @@ function blockToHTML(block: Block): string {
       return `<ul><li class="${checked}">${block.props?.checked ? '☑' : '☐'} ${getTextContentHTML(block.content)}</li></ul>`;
     
     case 'codeBlock':
-      const language = block.props?.language || '';
       const code = getTextContentHTML(block.content);
-      return `<pre><code>${escapeHtml(code.replace(/<[^>]*>/g, ''))}</code></pre>`;
+      const languageAttr = block.props?.language ? ` data-language="${escapeHtml(block.props.language)}"` : '';
+      return `<pre><code${languageAttr}>${escapeHtml(code.replace(/<[^>]*>/g, ''))}</code></pre>`;
     
     case 'table':
       return tableToHTML(block);
@@ -247,7 +270,7 @@ function blockToHTML(block: Block): string {
   }
 }
 
-function getTextContentHTML(content: any): string {
+function getTextContentHTML(content: BlockContent): string {
   if (!content) return '';
   
   if (typeof content === 'string') {
@@ -255,47 +278,58 @@ function getTextContentHTML(content: any): string {
   }
   
   if (Array.isArray(content)) {
-    return content.map(item => {
-      if (typeof item === 'string') return escapeHtml(item);
-      if (item.text) {
-        let text = escapeHtml(item.text);
-        
-        if (item.styles) {
-          if (item.styles.bold) text = `<strong>${text}</strong>`;
-          if (item.styles.italic) text = `<em>${text}</em>`;
-          if (item.styles.code) text = `<code>${text}</code>`;
-          if (item.styles.strike) text = `<del>${text}</del>`;
+    return content
+      .map((item) => {
+        if (typeof item === 'string') return escapeHtml(item);
+        if (item && typeof item === 'object' && 'text' in item) {
+          const { text, styles } = item as { text?: unknown; styles?: InlineStyles };
+          if (typeof text !== 'string') {
+            return '';
+          }
+
+          let decorated = escapeHtml(text);
+
+          if (styles?.bold) decorated = `<strong>${decorated}</strong>`;
+          if (styles?.italic) decorated = `<em>${decorated}</em>`;
+          if (styles?.code) decorated = `<code>${decorated}</code>`;
+          if (styles?.strike) decorated = `<del>${decorated}</del>`;
+
+          return decorated;
         }
-        
-        return text;
-      }
-      return '';
-    }).join('');
+        return '';
+      })
+      .join('');
   }
   
   return '';
 }
 
 function tableToHTML(block: Block): string {
-  if (!block.content?.rows) return '';
-  
-  const rows = block.content.rows;
-  if (rows.length === 0) return '';
-  
+  const content = block.content;
+  if (!content || typeof content !== 'object' || Array.isArray(content)) {
+    return '';
+  }
+
+  const { rows } = content as TableContent & { rows?: unknown };
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return '';
+  }
+
   let html = '<table>\n';
-  
-  rows.forEach((row: any[], index: number) => {
+
+  rows.forEach((row, index) => {
+    if (!Array.isArray(row)) return;
     const isHeader = index === 0;
     const tag = isHeader ? 'th' : 'td';
     html += '<tr>\n';
-    
-    row.forEach((cell: any) => {
-      html += `<${tag}>${escapeHtml(String(cell || ''))}</${tag}>\n`;
+
+    row.forEach((cell) => {
+      html += `<${tag}>${escapeHtml(String(cell ?? ''))}</${tag}>\n`;
     });
-    
+
     html += '</tr>\n';
   });
-  
+
   html += '</table>';
   return html;
 }

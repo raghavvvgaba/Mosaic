@@ -2,6 +2,7 @@ export interface Document {
   id: string;
   title: string;
   content: string; // JSON string of BlockNote content
+  workspaceId: string;
   icon?: string;
   coverImage?: string;
   createdAt: Date;
@@ -18,5 +19,15 @@ export interface DocumentNode extends Document {
 
 export interface Settings {
   key: string;
-  value: any;
+  value: unknown;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isDefault?: boolean;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,18 +9,37 @@ import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useTabs } from '@/contexts/TabsContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export default function Home() {
   const { openDocument, ensureTabExists } = useTabs();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
+  const loadDocuments = useCallback(async (workspaceId: string) => {
+    const docs = await getAllDocuments(workspaceId);
+    setDocuments(docs);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    // Register this page as a tab
+    if (!activeWorkspaceId) return;
+
     ensureTabExists('/', 'Home', 'page', 'home');
-    loadDocuments();
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setLoading(true);
+    loadDocuments(activeWorkspaceId);
+
+    const handleDocumentsChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
+        loadDocuments(activeWorkspaceId);
+      }
+    };
 
     // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
@@ -31,29 +50,30 @@ export default function Home() {
     }
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectionMode, ensureTabExists]);
+    window.addEventListener('documentsChanged', handleDocumentsChanged);
 
-  async function loadDocuments() {
-    const docs = await getAllDocuments();
-    setDocuments(docs);
-    setLoading(false);
-  }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('documentsChanged', handleDocumentsChanged);
+    };
+  }, [selectionMode, ensureTabExists, activeWorkspaceId, loadDocuments]);
 
   async function handleDeleteDocument(id: string, title: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     if (confirm(`Move "${title || 'Untitled'}" to trash?`)) {
       await deleteDocument(id);
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
   async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
     e.stopPropagation();
+    if (!activeWorkspaceId) return;
     await toggleFavorite(docId);
-    loadDocuments();
-    window.dispatchEvent(new Event('documentsChanged'));
+    loadDocuments(activeWorkspaceId);
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
   function handleSelectDocument(docId: string, checked: boolean) {
@@ -68,12 +88,13 @@ export default function Home() {
 
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
+    if (!activeWorkspaceId) return;
     
     if (confirm(`Move ${selectedIds.size} document(s) to trash?`)) {
       await Promise.all(Array.from(selectedIds).map(id => deleteDocument(id)));
       setSelectedIds(new Set());
-      loadDocuments();
-      window.dispatchEvent(new Event('documentsChanged'));
+      loadDocuments(activeWorkspaceId);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     }
   }
 
@@ -110,6 +131,9 @@ export default function Home() {
               <h1 className="text-4xl font-bold">All Documents</h1>
               <p className="text-muted-foreground mt-2">
                 {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Workspace: {activeWorkspace?.name ?? 'Loading...'}
               </p>
             </div>
             {documents.length > 0 && (

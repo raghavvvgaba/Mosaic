@@ -15,12 +15,14 @@ import type { Document } from '@/lib/db/types';
 import { BlockEditor } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportButton } from '@/components/export/ExportButton';
 
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params.id as string;
   const { updateTabTitle, ensureTabExists, openTab, openPage } = useTabs();
+  const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,9 @@ export default function DocumentPage() {
       setDocument(doc);
       documentRef.current = doc;
       setLastSaved(doc.updatedAt);
+      if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
+        setActiveWorkspace(doc.workspaceId, { navigate: false });
+      }
     }
     setLoading(false);
   }
@@ -123,7 +128,7 @@ export default function DocumentPage() {
   const handleDuplicate = useCallback(async () => {
     try {
       const duplicate = await duplicateDocument(documentId);
-      window.dispatchEvent(new Event('documentsChanged'));
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: duplicate.workspaceId } }));
       openTab(duplicate.id, duplicate.title);
     } catch (error) {
       console.error('Duplicate failed:', error);
@@ -140,7 +145,9 @@ export default function DocumentPage() {
         documentRef.current = updated;
         return updated;
       });
-      window.dispatchEvent(new Event('documentsChanged'));
+      if (documentRef.current) {
+        window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
+      }
     } catch (error) {
       console.error('Toggle favorite failed:', error);
     }
@@ -153,7 +160,9 @@ export default function DocumentPage() {
 
     try {
       await deleteDocument(documentId);
-      window.dispatchEvent(new Event('documentsChanged'));
+      if (documentRef.current) {
+        window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
+      }
       openPage('/', 'Home', 'home');
     } catch (error) {
       console.error('Failed to move document to trash:', error);
@@ -198,18 +207,27 @@ export default function DocumentPage() {
   function getWordCount(): number {
     if (!document) return 0;
     try {
-      const blocks = JSON.parse(document.content);
+      const parsed = JSON.parse(document.content) as unknown;
+      if (!Array.isArray(parsed)) {
+        return 0;
+      }
       let text = '';
-      blocks.forEach((block: any) => {
-        if (block.content) {
-          if (Array.isArray(block.content)) {
-            block.content.forEach((item: any) => {
-              if (typeof item === 'string') text += item + ' ';
-              else if (item.text) text += item.text + ' ';
-            });
-          } else if (typeof block.content === 'string') {
-            text += block.content + ' ';
-          }
+      parsed.forEach((block) => {
+        if (!block || typeof block !== 'object') return;
+        const blockContent = (block as { content?: unknown }).content;
+        if (Array.isArray(blockContent)) {
+          blockContent.forEach((item) => {
+            if (typeof item === 'string') {
+              text += `${item} `;
+            } else if (item && typeof item === 'object' && 'text' in item) {
+              const { text: innerText } = item as { text?: unknown };
+              if (typeof innerText === 'string') {
+                text += `${innerText} `;
+              }
+            }
+          });
+        } else if (typeof blockContent === 'string') {
+          text += `${blockContent} `;
         }
       });
       return text.trim().split(/\s+/).filter(word => word.length > 0).length;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Menu, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
 import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument } from '@/lib/db/documents';
 import type { Document } from '@/lib/db/types';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface SidebarProps {
   onSearchOpen: () => void;
@@ -18,42 +19,60 @@ interface SidebarProps {
 
 export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const router = useRouter();
+  const { activeWorkspaceId } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
   const [favoriteDocuments, setFavoriteDocuments] = useState<Document[]>([]);
   const [trashedDocuments, setTrashedDocuments] = useState<Document[]>([]);
 
-  useEffect(() => {
-    loadDocuments();
-    
-    // Listen for document changes
-    const handleDocumentsChanged = () => {
-      loadDocuments();
-    };
-    
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
-    return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, []);
-
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async (workspaceId: string) => {
     const [all, recent, favorites, trashed] = await Promise.all([
-      getAllDocuments(),
-      getRecentDocuments(),
-      getFavoriteDocuments(),
-      getDeletedDocuments(),
+      getAllDocuments(workspaceId),
+      getRecentDocuments(workspaceId),
+      getFavoriteDocuments(workspaceId),
+      getDeletedDocuments(workspaceId),
     ]);
     setDocuments(all);
     setRecentDocuments(recent);
     setFavoriteDocuments(favorites);
     setTrashedDocuments(trashed);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    loadDocuments(activeWorkspaceId);
+
+    const handleDocumentsChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
+        loadDocuments(activeWorkspaceId);
+      }
+    };
+
+    const handleWorkspaceChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
+        loadDocuments(activeWorkspaceId);
+      }
+    };
+
+    window.addEventListener('documentsChanged', handleDocumentsChanged);
+    window.addEventListener('activeWorkspaceChanged', handleWorkspaceChanged);
+
+    return () => {
+      window.removeEventListener('documentsChanged', handleDocumentsChanged);
+      window.removeEventListener('activeWorkspaceChanged', handleWorkspaceChanged);
+    };
+  }, [activeWorkspaceId, loadDocuments]);
 
   async function handleNewDocument() {
-    const doc = await createDocument();
+    if (!activeWorkspaceId) return;
+    const doc = await createDocument('Untitled', activeWorkspaceId);
     router.push(`/documents/${doc.id}`);
-    loadDocuments();
-    window.dispatchEvent(new Event('documentsChanged'));
+    loadDocuments(activeWorkspaceId);
+    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
   return (
