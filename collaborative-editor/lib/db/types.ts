@@ -1,3 +1,5 @@
+export type DocumentFont = 'sans' | 'serif' | 'mono';
+
 export interface Document {
   id: string;
   title: string;
@@ -11,6 +13,7 @@ export interface Document {
   isDeleted: boolean;
   isFavorite?: boolean;
   parentId?: string;
+  font?: DocumentFont;
 }
 
 export interface DocumentNode extends Document {

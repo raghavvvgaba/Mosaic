@@ -71,6 +71,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId: activeTabId } }));
   }, [activeTabId, showToast]);
 
+  const createSubpageForCurrentDocument = useCallback(() => {
+    if (!activeTabId || activeTabId.startsWith('/')) {
+      showToast('Open a document to create a subpage');
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('create-subpage', { detail: { documentId: activeTabId } }));
+    showToast('Creating subpage...');
+  }, [activeTabId, showToast]);
+
   const exportCurrentDocument = useCallback(() => {
     if (!activeTabId || activeTabId.startsWith('/')) {
       showToast('Open a document to export it');
@@ -149,6 +158,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       description: 'Create document in new tab',
       category: 'general',
       action: handleCreateDocumentInNewTab,
+      global: true,
+      context: 'global'
+    },
+    {
+      id: 'new-subpage',
+      keys: isMac ? ['meta', 'alt', 'n'] : ['ctrl', 'alt', 'n'],
+      description: 'Create subpage under current document',
+      category: 'general',
+      action: createSubpageForCurrentDocument,
       global: true,
       context: 'global'
     },

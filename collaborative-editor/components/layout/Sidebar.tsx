@@ -8,8 +8,8 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarNav } from './SidebarNav';
 import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
-import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree } from '@/lib/db/documents';
+import type { Document, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface SidebarProps {
@@ -22,21 +22,24 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const { activeWorkspaceId } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [documentTree, setDocumentTree] = useState<DocumentNode[]>([]);
   const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
   const [favoriteDocuments, setFavoriteDocuments] = useState<Document[]>([]);
   const [trashedDocuments, setTrashedDocuments] = useState<Document[]>([]);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
-    const [all, recent, favorites, trashed] = await Promise.all([
+    const [all, recent, favorites, trashed, tree] = await Promise.all([
       getAllDocuments(workspaceId),
       getRecentDocuments(workspaceId),
       getFavoriteDocuments(workspaceId),
       getDeletedDocuments(workspaceId),
+      getDocumentTree(workspaceId),
     ]);
     setDocuments(all);
     setRecentDocuments(recent);
     setFavoriteDocuments(favorites);
     setTrashedDocuments(trashed);
+    setDocumentTree(tree);
   }, []);
 
   useEffect(() => {
@@ -125,7 +128,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
           </Button>
         </div>
 
-        <SidebarDocumentList documents={documents} />
+        <SidebarDocumentList documents={documentTree} />
 
         <div className="flex-1" />
 

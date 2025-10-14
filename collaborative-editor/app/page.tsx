@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,6 +10,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function Home() {
   const { openDocument, ensureTabExists } = useTabs();
@@ -18,12 +20,25 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const selectionModeRef = useRef(selectionMode);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+    action: () => Promise<void> | void;
+  } | null>(null);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
     const docs = await getAllDocuments(workspaceId);
     setDocuments(docs);
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    selectionModeRef.current = selectionMode;
+  }, [selectionMode]);
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -43,7 +58,7 @@ export default function Home() {
 
     // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && selectionMode) {
+      if (e.key === 'Escape' && selectionModeRef.current) {
         setSelectionMode(false);
         setSelectedIds(new Set());
       }
@@ -56,17 +71,44 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('documentsChanged', handleDocumentsChanged);
     };
-  }, [selectionMode, ensureTabExists, activeWorkspaceId, loadDocuments]);
+  }, [ensureTabExists, activeWorkspaceId, loadDocuments]);
 
-  async function handleDeleteDocument(id: string, title: string, e: React.MouseEvent) {
+  const handleConfirmAction = useCallback(async () => {
+    if (!confirmConfig) return;
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmConfig(null);
+    }
+  }, [confirmConfig]);
+
+  const requestDeleteDocument = useCallback((doc: Document, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeWorkspaceId) return;
-    if (confirm(`Move "${title || 'Untitled'}" to trash?`)) {
-      await deleteDocument(id);
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+    const workspaceId = activeWorkspaceId;
+    setConfirmConfig({
+      title: 'Move to Trash',
+      description: `Move "${doc.title || 'Untitled'}" to trash?`,
+      confirmText: 'Move to Trash',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await deleteDocument(doc.id);
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(doc.id);
+            return next;
+          });
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to move document to trash:', error);
+          alert('Failed to move document to trash');
+        }
+      },
+    });
+  }, [activeWorkspaceId, loadDocuments]);
 
   async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
     e.stopPropagation();
@@ -86,17 +128,29 @@ export default function Home() {
     setSelectedIds(newSelected);
   }
 
-  async function handleBulkDelete() {
-    if (selectedIds.size === 0) return;
-    if (!activeWorkspaceId) return;
-    
-    if (confirm(`Move ${selectedIds.size} document(s) to trash?`)) {
-      await Promise.all(Array.from(selectedIds).map(id => deleteDocument(id)));
-      setSelectedIds(new Set());
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0 || !activeWorkspaceId) return;
+    const workspaceId = activeWorkspaceId;
+    const idsToDelete = Array.from(selectedIds);
+    setConfirmConfig({
+      title: 'Move to Trash',
+      description: `Move ${idsToDelete.length} document(s) to trash?`,
+      confirmText: 'Move to Trash',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await Promise.all(idsToDelete.map((id) => deleteDocument(id)));
+          setSelectedIds(new Set());
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to move documents to trash:', error);
+          alert('Failed to move documents to trash');
+        }
+      },
+    });
+  }, [activeWorkspaceId, selectedIds, loadDocuments]);
 
   function handleClearSelection() {
     setSelectedIds(new Set());
@@ -123,7 +177,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-full bg-background p-8">
       <div className="container mx-auto max-w-5xl">
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -174,67 +228,79 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {documents.map(doc => (
+            {documents.map(doc => {
+              const isSelected = selectionMode && selectedIds.has(doc.id);
+              return (
               <div
                 key={doc.id}
-                className="relative bg-card rounded-xl border hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
-              >
-                {selectionMode && (
-                  <div 
-                    className="absolute top-3 left-3 z-10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedIds.has(doc.id)}
-                      onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
-                    />
-                  </div>
+                className={cn(
+                  'relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden',
+                  selectionMode ? 'hover:border-primary/40' : 'hover:border-primary/50 hover:shadow-lg',
+                  isSelected && 'border-primary ring-2 ring-primary/30'
                 )}
-                
-                <div 
-                  className="p-6 h-40 flex flex-col justify-between"
-                  onClick={() => openDocument(doc.id, doc.title)}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-2 mb-2">
+              >
+                <div className="p-6 h-40 flex flex-col" onClick={() => openDocument(doc.id, doc.title)}>
+                  <div className="flex-1 relative">
+                    {selectionMode && (
+                      <div 
+                        className="absolute -top-2 -right-2 z-10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                          className={cn(
+                            'size-6 rounded-full border-2 transition-colors shadow-sm bg-background',
+                            isSelected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-border/70'
+                          )}
+                        />
+                      </div>
+                    )}
+                    <div className="pr-6">
                       <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
                         {doc.title || 'Untitled'}
                       </h3>
-                      {doc.isFavorite && (
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
-                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                    </p>
-                    
-                    {!selectionMode && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                  <div className="mt-auto">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                      </p>
+
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={(e) => handleToggleFavorite(e, doc.id)}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Star className={`w-3.5 h-3.5 ${doc.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => handleDeleteDocument(doc.id, doc.title, e)}
-                          className="h-8 w-8 p-0 text-red-500"
+                          onClick={(e) => requestDeleteDocument(doc, e)}
+                          className="h-8 w-8 p-0 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
+                      </div>
+                    </div>
+
+                    {doc.isFavorite && (
+                      <div className="mt-2 flex justify-end">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -243,6 +309,19 @@ export default function Home() {
         selectedCount={selectedIds.size}
         onClear={handleClearSelection}
         onDelete={handleBulkDelete}
+      />
+
+      <ConfirmDialog
+        open={!!confirmConfig}
+        onOpenChange={(open) => {
+          if (!open) setConfirmConfig(null);
+        }}
+        title={confirmConfig?.title ?? ''}
+        description={confirmConfig?.description ?? ''}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        variant={confirmConfig?.variant ?? 'default'}
+        onConfirm={handleConfirmAction}
       />
     </div>
   );

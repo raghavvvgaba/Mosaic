@@ -10,6 +10,7 @@ import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function TrashPage() {
   const router = useRouter();
@@ -19,12 +20,29 @@ export default function TrashPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+    action: () => Promise<void> | void;
+  } | null>(null);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
     const docs = await getDeletedDocuments(workspaceId);
     setDocuments(docs);
     setLoading(false);
   }, []);
+
+  const handleConfirmAction = useCallback(async () => {
+    if (!confirmConfig) return;
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmConfig(null);
+    }
+  }, [confirmConfig]);
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -66,37 +84,74 @@ export default function TrashPage() {
     window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
-  async function handlePermanentDelete(id: string, title: string, e: React.MouseEvent) {
+  const handlePermanentDelete = useCallback((id: string, title: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeWorkspaceId) return;
-    if (confirm(`Permanently delete "${title || 'Untitled'}"? This cannot be undone.`)) {
-      await permanentlyDeleteDocument(id);
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+    const workspaceId = activeWorkspaceId;
+    setConfirmConfig({
+      title: 'Delete Forever',
+      description: `Permanently delete "${title || 'Untitled'}"? This cannot be undone.`,
+      confirmText: 'Delete Forever',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await permanentlyDeleteDocument(id);
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to delete document permanently:', error);
+          alert('Failed to delete document permanently');
+        }
+      },
+    });
+  }, [activeWorkspaceId, loadDocuments]);
 
-  async function handleEmptyTrash() {
-    if (documents.length === 0) return;
-    if (!activeWorkspaceId) return;
-    
-    if (confirm(`Permanently delete all ${documents.length} documents? This cannot be undone.`)) {
-      await Promise.all(documents.map(doc => permanentlyDeleteDocument(doc.id)));
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+  const handleEmptyTrash = useCallback(() => {
+    if (documents.length === 0 || !activeWorkspaceId) return;
+    const workspaceId = activeWorkspaceId;
+    const ids = documents.map((doc) => doc.id);
+    setConfirmConfig({
+      title: 'Empty Trash',
+      description: `Permanently delete all ${ids.length} documents? This cannot be undone.`,
+      confirmText: 'Empty Trash',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => permanentlyDeleteDocument(id)));
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to empty trash:', error);
+          alert('Failed to empty trash');
+        }
+      },
+    });
+  }, [documents, activeWorkspaceId, loadDocuments]);
 
-  async function handleRestoreAll() {
-    if (documents.length === 0) return;
-    if (!activeWorkspaceId) return;
-    
-    if (confirm(`Restore all ${documents.length} document(s) from trash?`)) {
-      await Promise.all(documents.map(doc => restoreDocument(doc.id)));
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+  const handleRestoreAll = useCallback(() => {
+    if (documents.length === 0 || !activeWorkspaceId) return;
+    const workspaceId = activeWorkspaceId;
+    const ids = documents.map((doc) => doc.id);
+    setConfirmConfig({
+      title: 'Restore All',
+      description: `Restore all ${ids.length} document(s) from trash?`,
+      confirmText: 'Restore All',
+      cancelText: 'Cancel',
+      variant: 'default',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => restoreDocument(id)));
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to restore documents:', error);
+          alert('Failed to restore documents');
+        }
+      },
+    });
+  }, [documents, activeWorkspaceId, loadDocuments]);
 
   function handleSelectDocument(docId: string, checked: boolean) {
     const newSelected = new Set(selectedIds);
@@ -123,31 +178,54 @@ export default function TrashPage() {
     setSelectedIds(new Set());
   }
 
-  async function handleBulkRestore() {
-    if (selectedIds.size === 0) return;
-    if (!activeWorkspaceId) return;
-    
-    if (confirm(`Restore ${selectedIds.size} document(s) from trash?`)) {
-      await Promise.all(Array.from(selectedIds).map(id => restoreDocument(id)));
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+  const handleBulkRestore = useCallback(() => {
+    if (selectedIds.size === 0 || !activeWorkspaceId) return;
+    const workspaceId = activeWorkspaceId;
+    const ids = Array.from(selectedIds);
+    setConfirmConfig({
+      title: 'Restore Documents',
+      description: `Restore ${ids.length} document(s) from trash?`,
+      confirmText: 'Restore',
+      cancelText: 'Cancel',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => restoreDocument(id)));
+          setSelectedIds(new Set());
+          setSelectionMode(false);
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to restore selected documents:', error);
+          alert('Failed to restore selected documents');
+        }
+      },
+    });
+  }, [activeWorkspaceId, selectedIds, loadDocuments]);
 
-  async function handleBulkDelete() {
-    if (selectedIds.size === 0) return;
-    if (!activeWorkspaceId) return;
-    
-    if (confirm(`Permanently delete ${selectedIds.size} document(s)? This cannot be undone.`)) {
-      await Promise.all(Array.from(selectedIds).map(id => permanentlyDeleteDocument(id)));
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0 || !activeWorkspaceId) return;
+    const workspaceId = activeWorkspaceId;
+    const ids = Array.from(selectedIds);
+    setConfirmConfig({
+      title: 'Delete Forever',
+      description: `Permanently delete ${ids.length} document(s)? This cannot be undone.`,
+      confirmText: 'Delete Forever',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => permanentlyDeleteDocument(id)));
+          setSelectedIds(new Set());
+          setSelectionMode(false);
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to delete selected documents permanently:', error);
+          alert('Failed to delete selected documents');
+        }
+      },
+    });
+  }, [activeWorkspaceId, selectedIds, loadDocuments]);
 
   if (loading) {
     return (
@@ -320,6 +398,19 @@ export default function TrashPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmConfig}
+        onOpenChange={(open) => {
+          if (!open) setConfirmConfig(null);
+        }}
+        title={confirmConfig?.title ?? ''}
+        description={confirmConfig?.description ?? ''}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        variant={confirmConfig?.variant ?? 'default'}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }

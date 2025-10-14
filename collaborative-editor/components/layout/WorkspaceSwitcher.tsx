@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ChevronsUpDown, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { DEFAULT_WORKSPACE_ID } from '@/lib/db/constants';
+import { ConfirmDialog } from '@/components/AlertDialog';
 
 export function WorkspaceSwitcher() {
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
@@ -96,6 +97,14 @@ function WorkspaceManagerDialog({
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+    action: () => Promise<void> | void;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -105,8 +114,18 @@ function WorkspaceManagerDialog({
       setCreating(false);
       setRenaming(false);
       setDeletingId(null);
+      setConfirmConfig(null);
     }
   }, [open]);
+
+  const handleConfirmAction = useCallback(async () => {
+    if (!confirmConfig) return;
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmConfig(null);
+    }
+  }, [confirmConfig]);
 
   const handleCreateWorkspace = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -147,23 +166,30 @@ function WorkspaceManagerDialog({
     }
   };
 
-  const handleDeleteWorkspace = async (workspaceId: string) => {
+  const handleDeleteWorkspace = (workspaceId: string) => {
     if (workspaceId === DEFAULT_WORKSPACE_ID) {
       alert('The default workspace cannot be deleted');
       return;
     }
-    if (!window.confirm('Delete this workspace? Documents must be moved or deleted before removal.')) {
-      return;
-    }
-    try {
-      setDeletingId(workspaceId);
-      await deleteWorkspace(workspaceId);
-    } catch (error) {
-      console.error(error);
-      alert((error as Error).message || 'Failed to delete workspace');
-    } finally {
-      setDeletingId(null);
-    }
+    const target = workspaces.find((workspace) => workspace.id === workspaceId);
+    setConfirmConfig({
+      title: 'Delete Workspace',
+      description: `Delete "${target?.name ?? 'this workspace'}"? Documents must be moved or deleted before removal.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          setDeletingId(workspaceId);
+          await deleteWorkspace(workspaceId);
+        } catch (error) {
+          console.error(error);
+          alert((error as Error).message || 'Failed to delete workspace');
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   return (
@@ -275,6 +301,19 @@ function WorkspaceManagerDialog({
             })}
           </div>
         </div>
+
+        <ConfirmDialog
+          open={!!confirmConfig}
+          onOpenChange={(dialogOpen) => {
+            if (!dialogOpen) setConfirmConfig(null);
+          }}
+          title={confirmConfig?.title ?? ''}
+          description={confirmConfig?.description ?? ''}
+          confirmText={confirmConfig?.confirmText}
+          cancelText={confirmConfig?.cancelText}
+          variant={confirmConfig?.variant ?? 'default'}
+          onConfirm={handleConfirmAction}
+        />
       </DialogContent>
     </Dialog>
   );

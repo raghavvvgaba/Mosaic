@@ -2,40 +2,71 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
+import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportButton } from '@/components/export/ExportButton';
+import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params.id as string;
-  const { updateTabTitle, ensureTabExists, openTab, openPage } = useTabs();
+  const { updateTabTitle, ensureTabExists, openTab, openPage, openDocument } = useTabs();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [documentPath, setDocumentPath] = useState<Document[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+    action: () => Promise<void> | void;
+  } | null>(null);
   const documentRef = useRef<Document | null>(null);
+
+  const loadDocumentPath = useCallback(async (id: string) => {
+    const path = await getDocumentPath(id);
+    setDocumentPath(path);
+  }, []);
+
+  const loadDocument = useCallback(async () => {
+    const doc = await getDocument(documentId);
+    if (doc) {
+      setDocument(doc);
+      documentRef.current = doc;
+      setLastSaved(doc.updatedAt);
+      if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
+        setActiveWorkspace(doc.workspaceId, { navigate: false });
+      }
+      await loadDocumentPath(doc.id);
+    }
+    setLoading(false);
+  }, [documentId, activeWorkspaceId, setActiveWorkspace, loadDocumentPath]);
 
   useEffect(() => {
     loadDocument();
-    
+
     // Track that this document was opened
     updateLastOpened(documentId);
-    
+
     // Cleanup: delete empty documents when leaving the page
     return () => {
       const checkAndDeleteEmpty = async () => {
@@ -49,8 +80,7 @@ export default function DocumentPage() {
       };
       checkAndDeleteEmpty();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId]);
+  }, [documentId, loadDocument]);
 
   // Ensure tab exists and update title when document loads
   useEffect(() => {
@@ -59,19 +89,6 @@ export default function DocumentPage() {
       updateTabTitle(documentId, document.title);
     }
   }, [document, documentId, updateTabTitle, ensureTabExists]);
-
-  async function loadDocument() {
-    const doc = await getDocument(documentId);
-    if (doc) {
-      setDocument(doc);
-      documentRef.current = doc;
-      setLastSaved(doc.updatedAt);
-      if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
-        setActiveWorkspace(doc.workspaceId, { navigate: false });
-      }
-    }
-    setLoading(false);
-  }
 
 
 
@@ -102,6 +119,7 @@ export default function DocumentPage() {
       setDocument(updatedDoc);
       documentRef.current = updatedDoc;
       await handleSave({ title: newTitle });
+      void loadDocumentPath(documentId);
     }
   }
 
@@ -153,22 +171,84 @@ export default function DocumentPage() {
     }
   }, [documentId]);
 
-  const handleMoveToTrash = useCallback(async () => {
-    if (!window.confirm('Move this document to trash?')) {
-      return;
-    }
+  const handleFontChange = useCallback(async (font: DocumentFont) => {
+    const current = documentRef.current;
+    if (!current) return;
+
+    const updatedDoc: Document = { ...current, font };
+    setDocument(updatedDoc);
+    documentRef.current = updatedDoc;
 
     try {
-      await deleteDocument(documentId);
-      if (documentRef.current) {
-        window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
-      }
-      openPage('/', 'Home', 'home');
+      await updateDocument(current.id, { font });
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
     } catch (error) {
-      console.error('Failed to move document to trash:', error);
-      alert('Failed to move document to trash');
+      console.error('Failed to update font:', error);
+      alert('Failed to update font');
     }
+  }, []);
+
+  const handleConfirmAction = useCallback(async () => {
+    if (!confirmConfig) return;
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmConfig(null);
+    }
+  }, [confirmConfig]);
+
+  const requestMoveToTrash = useCallback(() => {
+    const current = documentRef.current;
+    if (!current) return;
+    setConfirmConfig({
+      title: 'Move to Trash',
+      description: 'Move this document to trash?',
+      confirmText: 'Move to Trash',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await deleteDocument(documentId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
+          openPage('/', 'Home', 'home');
+        } catch (error) {
+          console.error('Failed to move document to trash:', error);
+          alert('Failed to move document to trash');
+        }
+      },
+    });
   }, [documentId, openPage]);
+
+  const handleCreateSubpage = useCallback(async () => {
+    if (!document) return;
+    try {
+      const newDoc = await createDocument('Untitled', document.workspaceId, document.id);
+      openDocument(newDoc.id, newDoc.title);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: document.workspaceId } }));
+    } catch (error) {
+      console.error('Failed to create subpage:', error);
+      alert('Failed to create subpage');
+    }
+  }, [document, openDocument]);
+
+  const handleBreadcrumbNavigate = useCallback((target: Document) => {
+    if (target.id === documentId) return;
+    openDocument(target.id, target.title);
+  }, [documentId, openDocument]);
+
+  useEffect(() => {
+    function handleDocumentsChanged(event: Event) {
+      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      const current = documentRef.current;
+      if (!current) return;
+      if (!detail || !detail.workspaceId || detail.workspaceId === current.workspaceId) {
+        void loadDocument();
+      }
+    }
+
+    window.addEventListener('documentsChanged', handleDocumentsChanged);
+    return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
+  }, [loadDocument]);
 
   // Handle keyboard shortcut events
   useEffect(() => {
@@ -188,21 +268,31 @@ export default function DocumentPage() {
     }
 
     function handleMoveToTrashEvent() {
-      void handleMoveToTrash();
+      requestMoveToTrash();
+    }
+
+    function handleCreateSubpageEvent(event: Event) {
+      const detail = (event as CustomEvent).detail as { documentId?: string } | undefined;
+      if (detail?.documentId && detail.documentId !== documentId) {
+        return;
+      }
+      void handleCreateSubpage();
     }
 
     window.addEventListener('duplicate-document', handleDuplicateDocument);
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
+    window.addEventListener('create-subpage', handleCreateSubpageEvent);
 
     return () => {
       window.removeEventListener('duplicate-document', handleDuplicateDocument);
       window.removeEventListener('export-document', handleExportDocument);
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
+      window.removeEventListener('create-subpage', handleCreateSubpageEvent);
     };
-  }, [handleDuplicate, handleToggleFavorite, handleMoveToTrash]);
+  }, [documentId, handleCreateSubpage, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
 
   function getWordCount(): number {
     if (!document) return 0;
@@ -260,51 +350,127 @@ export default function DocumentPage() {
   const wordCount = getWordCount();
   const readingTime = getReadingTime();
 
+  const FONT_CLASS_MAP: Record<DocumentFont, string> = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  };
+
+  const documentFont = document?.font ?? 'sans';
+  const fontOptions: Array<{ id: DocumentFont; label: string; description: string; sampleClass: string }> = [
+    { id: 'sans', label: 'Ag', description: 'Default', sampleClass: 'font-sans' },
+    { id: 'serif', label: 'Ag', description: 'Serif', sampleClass: 'font-serif' },
+    { id: 'mono', label: 'Ag', description: 'Mono', sampleClass: 'font-mono' },
+  ];
+
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className={`h-screen flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
-        {/* Title bar */}
-        <div className="p-4 flex items-center gap-4">
-          <input
-            type="text"
-            value={document.title}
-            onChange={handleTitleChange}
-            className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
-            placeholder="Untitled"
-          />
+        <div className="p-4 space-y-3">
+          {documentPath.length > 0 && (
+            <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {documentPath.map((node, index) => (
+                <div key={node.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleBreadcrumbNavigate(node)}
+                    className={`hover:text-foreground transition-colors ${node.id === documentId ? 'font-medium text-foreground' : ''}`}
+                  >
+                    {node.title || 'Untitled'}
+                  </button>
+                  {index < documentPath.length - 1 && <span className="text-muted-foreground">/</span>}
+                </div>
+              ))}
+            </nav>
+          )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToggleFavorite}
-            className={document.isFavorite ? 'text-yellow-500' : ''}
-          >
-            <Star className={`w-4 h-4 ${document.isFavorite ? 'fill-yellow-500' : ''}`} />
-          </Button>
+          {/* Title bar */}
+          <div className="flex items-center gap-4">
+            <input
+              type="text"
+              value={document.title}
+              onChange={handleTitleChange}
+              className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
+              placeholder="Untitled"
+            />
 
-          <div className="text-sm text-muted-foreground whitespace-nowrap">
-            {saving ? (
-              'Saving...'
-            ) : lastSaved ? (
-              `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
-            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCreateSubpage}
+              className="flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              New subpage
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleFavorite}
+              className={document.isFavorite ? 'text-yellow-500' : ''}
+            >
+              <Star className={`w-4 h-4 ${document.isFavorite ? 'fill-yellow-500' : ''}`} />
+            </Button>
+
+            <div className="text-sm text-muted-foreground whitespace-nowrap">
+              {saving ? (
+                'Saving...'
+              ) : lastSaved ? (
+                `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+              ) : null}
+            </div>
+
+            <ExportButton document={document} />
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
+                <div className="px-1 py-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {fontOptions.map((option) => {
+                      const isActive = documentFont === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => handleFontChange(option.id)}
+                          className={`rounded-md border px-2 py-2 text-center transition-colors ${
+                            isActive
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-transparent bg-muted/40 hover:bg-muted'
+                          }`}
+                        >
+                          <div className={`text-lg leading-none ${option.sampleClass}`}>{option.label}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{option.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDuplicate}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(event) => {
+                    event.preventDefault();
+                    requestMoveToTrash();
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Move to Trash
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-
-          <ExportButton document={document} />
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDuplicate}>
-                <Copy className="w-4 h-4 mr-2" />
-                Duplicate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         
         {/* Stats bar */}
@@ -324,6 +490,19 @@ export default function DocumentPage() {
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmConfig}
+        onOpenChange={(open) => {
+          if (!open) setConfirmConfig(null);
+        }}
+        title={confirmConfig?.title ?? ''}
+        description={confirmConfig?.description ?? ''}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        variant={confirmConfig?.variant ?? 'default'}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }

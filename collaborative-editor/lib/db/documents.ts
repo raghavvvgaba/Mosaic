@@ -23,9 +23,23 @@ function resolveWorkspaceId(workspaceId?: string): string {
   return workspaceId ?? DEFAULT_WORKSPACE_ID;
 }
 
+function sortDocumentsForTree(documents: Document[]): Document[] {
+  return [...documents].sort((a, b) => {
+    const titleA = (a.title || 'Untitled').toLowerCase();
+    const titleB = (b.title || 'Untitled').toLowerCase();
+    if (titleA !== titleB) {
+      return titleA.localeCompare(titleB);
+    }
+    const updatedA = new Date(a.updatedAt).getTime();
+    const updatedB = new Date(b.updatedAt).getTime();
+    return updatedB - updatedA;
+  });
+}
+
 export async function createDocument(
   title: string = 'Untitled',
-  workspaceId: string = DEFAULT_WORKSPACE_ID
+  workspaceId: string = DEFAULT_WORKSPACE_ID,
+  parentId?: string
 ): Promise<Document> {
   const db = await getDB();
 
@@ -37,6 +51,8 @@ export async function createDocument(
     createdAt: new Date(),
     updatedAt: new Date(),
     isDeleted: false,
+    parentId,
+    font: 'sans',
   };
 
   await db.add('documents', doc);
@@ -48,35 +64,80 @@ export async function getDocument(id: string): Promise<Document | undefined> {
   return db.get('documents', id);
 }
 
+async function getDocumentHierarchy(documentId: string): Promise<Document[]> {
+  const root = await getDocument(documentId);
+  if (!root) return [];
+
+  const descendants = await getDescendants(documentId);
+  return [root, ...descendants];
+}
+
 export async function updateDocument(
   id: string,
-  updates: Partial<Document>
+  updates: Partial<Document>,
+  options: { touchUpdatedAt?: boolean } = {}
 ): Promise<void> {
   const db = await getDB();
   const doc = await db.get('documents', id);
 
   if (!doc) throw new Error('Document not found');
 
+  const { touchUpdatedAt = true } = options;
+
   const updated: Document = {
     ...doc,
     ...updates,
-    updatedAt: new Date(),
+    updatedAt: touchUpdatedAt ? new Date() : doc.updatedAt,
   };
 
   await db.put('documents', updated);
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  await updateDocument(id, { isDeleted: true });
+  const docs = await getDocumentHierarchy(id);
+  if (docs.length === 0) return;
+
+  const db = await getDB();
+  const tx = db.transaction('documents', 'readwrite');
+  const store = tx.objectStore('documents');
+
+  for (const doc of docs) {
+    if (doc.isDeleted) continue;
+    await store.put({ ...doc, isDeleted: true });
+  }
+
+  await tx.done;
 }
 
 export async function permanentlyDeleteDocument(id: string): Promise<void> {
+  const docs = await getDocumentHierarchy(id);
+  if (docs.length === 0) return;
+
   const db = await getDB();
-  await db.delete('documents', id);
+  const tx = db.transaction('documents', 'readwrite');
+  const store = tx.objectStore('documents');
+
+  for (const doc of docs.reverse()) {
+    await store.delete(doc.id);
+  }
+
+  await tx.done;
 }
 
 export async function restoreDocument(id: string): Promise<void> {
-  await updateDocument(id, { isDeleted: false });
+  const docs = await getDocumentHierarchy(id);
+  if (docs.length === 0) return;
+
+  const db = await getDB();
+  const tx = db.transaction('documents', 'readwrite');
+  const store = tx.objectStore('documents');
+
+  for (const doc of docs) {
+    if (!doc.isDeleted) continue;
+    await store.put({ ...doc, isDeleted: false });
+  }
+
+  await tx.done;
 }
 
 export async function getAllDocuments(
@@ -107,15 +168,15 @@ export async function searchDocuments(workspaceId: string | undefined, query: st
 
 export async function getDocumentTree(workspaceId?: string): Promise<DocumentNode[]> {
   const all = await getAllDocuments(workspaceId);
-  const rootDocs = all.filter((doc) => !doc.parentId);
+  const rootDocs = sortDocumentsForTree(all.filter((doc) => !doc.parentId));
 
   return rootDocs.map((doc) => buildTree(doc, all));
 }
 
 function buildTree(doc: Document, allDocs: Document[]): DocumentNode {
-  const children = allDocs
-    .filter((d) => d.parentId === doc.id)
-    .map((child) => buildTree(child, allDocs));
+  const children = sortDocumentsForTree(
+    allDocs.filter((d) => d.parentId === doc.id)
+  ).map((child) => buildTree(child, allDocs));
 
   return {
     ...doc,
@@ -202,9 +263,16 @@ export async function getChildren(parentId: string): Promise<Document[]> {
 }
 
 export async function updateLastOpened(documentId: string): Promise<void> {
-  await updateDocument(documentId, {
+  const db = await getDB();
+  const doc = await db.get('documents', documentId);
+  if (!doc) return;
+
+  const updated: Document = {
+    ...doc,
     lastOpenedAt: new Date(),
-  });
+  };
+
+  await db.put('documents', updated);
 }
 
 export async function getRecentDocuments(
@@ -241,6 +309,7 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
     updatedAt: new Date(),
     isDeleted: false,
     parentId: original.parentId,
+    font: original.font ?? 'sans',
   };
 
   await db.add('documents', duplicate);

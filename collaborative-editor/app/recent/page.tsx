@@ -9,6 +9,7 @@ import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function RecentPage() {
   const router = useRouter();
@@ -16,6 +17,14 @@ export default function RecentPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+    action: () => Promise<void> | void;
+  } | null>(null);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
     const docs = await getRecentDocuments(workspaceId, 20);
@@ -41,15 +50,37 @@ export default function RecentPage() {
     return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
   }, [ensureTabExists, activeWorkspaceId, loadDocuments]);
 
-  async function handleDeleteDocument(id: string, title: string, e: React.MouseEvent) {
+  const handleConfirmAction = useCallback(async () => {
+    if (!confirmConfig) return;
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmConfig(null);
+    }
+  }, [confirmConfig]);
+
+  const requestDeleteDocument = useCallback((doc: Document, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeWorkspaceId) return;
-    if (confirm(`Move "${title || 'Untitled'}" to trash?`)) {
-      await deleteDocument(id);
-      loadDocuments(activeWorkspaceId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-    }
-  }
+    const workspaceId = activeWorkspaceId;
+    setConfirmConfig({
+      title: 'Move to Trash',
+      description: `Move "${doc.title || 'Untitled'}" to trash?`,
+      confirmText: 'Move to Trash',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      action: async () => {
+        try {
+          await deleteDocument(doc.id);
+          await loadDocuments(workspaceId);
+          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+        } catch (error) {
+          console.error('Failed to move document to trash:', error);
+          alert('Failed to move document to trash');
+        }
+      },
+    });
+  }, [activeWorkspaceId, loadDocuments]);
 
   async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
     e.stopPropagation();
@@ -129,7 +160,7 @@ export default function RecentPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => handleDeleteDocument(doc.id, doc.title, e)}
+                      onClick={(e) => requestDeleteDocument(doc, e)}
                       className="opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
@@ -141,6 +172,18 @@ export default function RecentPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!confirmConfig}
+        onOpenChange={(open) => {
+          if (!open) setConfirmConfig(null);
+        }}
+        title={confirmConfig?.title ?? ''}
+        description={confirmConfig?.description ?? ''}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        variant={confirmConfig?.variant ?? 'default'}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }

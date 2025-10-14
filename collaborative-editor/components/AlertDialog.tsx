@@ -18,7 +18,7 @@ interface ConfirmDialogProps {
   description: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   variant?: 'default' | 'destructive';
 }
 
@@ -42,7 +42,14 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={() => {
+              const result = onConfirm();
+              if (result && typeof (result as Promise<void>).then === 'function') {
+                (result as Promise<void>).catch((error) => {
+                  console.error('Confirm dialog action failed:', error);
+                });
+              }
+            }}
             className={variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90' : ''}
           >
             {confirmText}

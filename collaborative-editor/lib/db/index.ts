@@ -70,3 +70,17 @@ export async function getDB() {
 
   return dbInstance;
 }
+
+export async function resetDB() {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase('editor-db');
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error('Failed to delete database'));
+    request.onblocked = () => resolve();
+  });
+}
