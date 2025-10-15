@@ -6,11 +6,12 @@ import { RotateCcw, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getDeletedDocuments, restoreDocument, permanentlyDeleteDocument } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
+import { cn } from '@/lib/utils';
 
 export default function TrashPage() {
   const router = useRouter();
@@ -28,6 +29,12 @@ export default function TrashPage() {
     variant?: 'default' | 'destructive';
     action: () => Promise<void> | void;
   } | null>(null);
+
+  const FONT_CLASS_MAP: Record<DocumentFont, string> = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  };
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
     const docs = await getDeletedDocuments(workspaceId);
@@ -319,11 +326,11 @@ export default function TrashPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-5 h-5 text-muted-foreground" />
-                        <h2 className="text-xl font-semibold">
+                        <h2 className={cn('text-xl font-semibold', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
                           {doc.title || 'Untitled'}
                         </h2>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      <p className={cn('text-sm text-gray-500', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
                         Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
                       </p>
                     </div>

@@ -5,13 +5,18 @@ import { useRouter } from 'next/navigation';
 import { Clock, FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getRecentDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function RecentPage() {
+  const FONT_CLASS_MAP: Record<DocumentFont, string> = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  };
   const router = useRouter();
   const { openDocument, ensureTabExists } = useTabs();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
@@ -131,10 +136,15 @@ export default function RecentPage() {
                 className="bg-card p-6 rounded-lg border hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
               >
                 <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-muted-foreground" />
-                      <h2 className="text-xl font-semibold group-hover:text-blue-600 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-5 h-5 text-muted-foreground" />
+                        <h2
+                          className={cn(
+                            'text-xl font-semibold group-hover:text-blue-600 transition-colors',
+                            FONT_CLASS_MAP[doc.font ?? 'sans']
+                          )}
+                        >
                         {doc.title || 'Untitled'}
                       </h2>
                     </div>
@@ -143,7 +153,7 @@ export default function RecentPage() {
                         Opened {formatDistanceToNow(new Date(doc.lastOpenedAt!), { addSuffix: true })}
                       </span>
                       <span className="text-muted-foreground">•</span>
-                      <span>
+                      <span className={FONT_CLASS_MAP[doc.font ?? 'sans']}>
                         Updated {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
                       </span>
                     </div>

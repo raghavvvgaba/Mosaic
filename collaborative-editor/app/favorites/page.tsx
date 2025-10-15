@@ -4,10 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { FileText, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFavoriteDocuments, toggleFavorite } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { cn } from '@/lib/utils';
 
 export default function FavoritesPage() {
   const { openDocument, ensureTabExists } = useTabs();
@@ -49,6 +50,12 @@ export default function FavoritesPage() {
     openDocument(doc.id, doc.title);
   }
 
+  const FONT_CLASS_MAP: Record<DocumentFont, string> = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  };
+
   if (documents.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-8">
@@ -87,8 +94,10 @@ export default function FavoritesPage() {
           >
             <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{doc.title || 'Untitled'}</div>
-              <div className="text-sm text-muted-foreground">
+              <div className={cn('font-medium truncate', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
+                {doc.title || 'Untitled'}
+              </div>
+              <div className={cn('text-sm text-muted-foreground', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
                 Updated {formatDistanceToNow(doc.updatedAt, { addSuffix: true })}
               </div>
             </div>

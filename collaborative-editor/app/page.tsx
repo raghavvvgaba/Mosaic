@@ -5,7 +5,7 @@ import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getAllDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
-import type { Document } from '@/lib/db/types';
+import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useTabs } from '@/contexts/TabsContext';
@@ -168,6 +168,12 @@ export default function Home() {
     setSelectedIds(new Set(documents.map(doc => doc.id)));
   }
 
+  const FONT_CLASS_MAP: Record<DocumentFont, string> = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -236,7 +242,8 @@ export default function Home() {
                 className={cn(
                   'relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden',
                   selectionMode ? 'hover:border-primary/40' : 'hover:border-primary/50 hover:shadow-lg',
-                  isSelected && 'border-primary ring-2 ring-primary/30'
+                  isSelected && 'border-primary ring-2 ring-primary/30',
+                  FONT_CLASS_MAP[doc.font ?? 'sans']
                 )}
               >
                 <div className="p-6 h-40 flex flex-col" onClick={() => openDocument(doc.id, doc.title)}>
@@ -259,7 +266,12 @@ export default function Home() {
                       </div>
                     )}
                     <div className="pr-6">
-                      <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3
+                        className={cn(
+                          'font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors',
+                          FONT_CLASS_MAP[doc.font ?? 'sans']
+                        )}
+                      >
                         {doc.title || 'Untitled'}
                       </h3>
                     </div>

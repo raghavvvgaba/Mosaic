@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { createDocument, deleteDocument, getDocument, permanentlyDeleteDocument, restoreDocument } from './documents';
+import { createDocument, deleteDocument, getDocument, moveDocument, permanentlyDeleteDocument, restoreDocument } from './documents';
 import { resetDB } from './index';
 
 describe('document cascade behaviour', () => {
@@ -57,5 +57,33 @@ describe('document cascade behaviour', () => {
 
     expect(await getDocument(parent.id)).toBeUndefined();
     expect(await getDocument(child.id)).toBeUndefined();
+  });
+
+  it('moves a document to a new parent', async () => {
+    const parentA = await createDocument('Parent A');
+    const parentB = await createDocument('Parent B');
+    const child = await createDocument('Child', parentA.workspaceId, parentA.id);
+
+    await moveDocument(child.id, parentB.id);
+
+    const movedChild = await getDocument(child.id);
+    expect(movedChild?.parentId).toBe(parentB.id);
+  });
+
+  it('moves a document to the root level', async () => {
+    const parent = await createDocument('Parent');
+    const child = await createDocument('Child', parent.workspaceId, parent.id);
+
+    await moveDocument(child.id, null);
+
+    const movedChild = await getDocument(child.id);
+    expect(movedChild?.parentId).toBeUndefined();
+  });
+
+  it('prevents moving a document into its descendant', async () => {
+    const parent = await createDocument('Parent');
+    const child = await createDocument('Child', parent.workspaceId, parent.id);
+
+    await expect(moveDocument(parent.id, child.id)).rejects.toThrow();
   });
 });

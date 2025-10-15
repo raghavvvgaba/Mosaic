@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2 } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -20,6 +20,7 @@ import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
+import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 
 export default function DocumentPage() {
   const params = useParams();
@@ -32,6 +33,7 @@ export default function DocumentPage() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [documentPath, setDocumentPath] = useState<Document[]>([]);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
     description: string;
@@ -454,6 +456,11 @@ export default function DocumentPage() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
+                  <FolderPlus className="w-4 h-4 mr-2" />
+                  Move to…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <Copy className="w-4 h-4 mr-2" />
                   Duplicate
@@ -487,6 +494,8 @@ export default function DocumentPage() {
             documentId={documentId}
             initialContent={document.content}
             onSave={handleContentSave}
+            className={FONT_CLASS_MAP[documentFont]}
+            font={documentFont}
           />
         </div>
       </div>
@@ -503,6 +512,27 @@ export default function DocumentPage() {
         variant={confirmConfig?.variant ?? 'default'}
         onConfirm={handleConfirmAction}
       />
+
+      {document && (
+        <MoveDocumentDialog
+          open={moveDialogOpen}
+          onOpenChange={setMoveDialogOpen}
+          documentId={document.id}
+          documentTitle={document.title}
+          currentParentId={document.parentId}
+          workspaceId={document.workspaceId}
+          onMoved={(newParentId) => {
+            setMoveDialogOpen(false);
+            setDocument((current) => {
+              if (!current) return current;
+              const updated = { ...current, parentId: newParentId ?? undefined };
+              documentRef.current = updated;
+              return updated;
+            });
+            void loadDocument();
+          }}
+        />
+      )}
     </div>
   );
 }
