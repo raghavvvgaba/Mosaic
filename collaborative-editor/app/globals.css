@@ -120,3 +120,108 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* BlockNote suggestion menu styling for proper keyboard navigation */
+/* Target BlockNote shadcn suggestion menu */
+.bn-shadcn [role="menu"] {
+  max-height: 400px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.bn-shadcn [role="menuitem"] {
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  scroll-margin: 8px;
+}
+
+/* Highlighted menu item - using oklch for proper color support */
+.bn-shadcn [role="menuitem"][data-highlighted],
+.bn-shadcn [role="menuitem"]:hover,
+.bn-shadcn [role="menuitem"][data-selected],
+.bn-shadcn [data-hovered="true"] {
+  background-color: var(--accent) !important;
+  opacity: 1 !important;
+}
+
+/* Additional specific selectors for BlockNote menu items */
+.bn-shadcn .bn-suggestion-menu-item[data-hovered="true"],
+.bn-shadcn .bn-suggestion-menu-item:hover,
+.bn-shadcn .bn-suggestion-menu-item[data-selected="true"],
+div[data-suggestion-menu] [data-hovered="true"],
+div[data-suggestion-menu] button[data-hovered="true"],
+div[data-suggestion-menu] button[data-selected="true"],
+.bn-shadcn button[data-selected="true"],
+.bn-shadcn button[aria-selected="true"],
+.bn-shadcn div[data-selected="true"],
+.bn-shadcn div[aria-selected="true"] {
+  background-color: var(--accent) !important;
+}
+
+/* For better visibility in dark mode */
+.dark .bn-shadcn [role="menuitem"][data-highlighted],
+.dark .bn-shadcn [role="menuitem"]:hover,
+.dark .bn-shadcn [data-hovered="true"],
+.dark .bn-shadcn [data-selected="true"],
+.dark div[data-suggestion-menu] [data-hovered="true"] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Catch-all for any BlockNote menu items that might have focus/selection */
+.bn-shadcn [data-suggestion-menu-item] button:hover,
+.bn-shadcn [data-suggestion-menu-item] button:focus,
+.bn-shadcn [data-suggestion-menu-item] button[data-state="open"],
+.bn-shadcn [data-radix-collection-item]:hover,
+.bn-shadcn [data-radix-collection-item][data-highlighted],
+.bn-shadcn [cmdk-item][data-selected="true"],
+.bn-shadcn [cmdk-item]:hover {
+  background-color: var(--accent) !important;
+}
+
+/* Very specific targeting for shadcn Dropdown/Popover menu items */
+[data-radix-popper-content-wrapper] button:hover,
+[data-radix-popper-content-wrapper] button:focus,
+[data-radix-popper-content-wrapper] [role="menuitem"]:hover,
+[data-radix-popper-content-wrapper] [role="menuitem"][data-highlighted],
+[data-radix-popper-content-wrapper] [data-highlighted="true"] {
+  background-color: var(--accent) !important;
+}
+
+/* Ensure highlighting is visible with a semi-transparent overlay if accent isn't showing */
+.bn-shadcn button:hover,
+.bn-shadcn button:focus-visible {
+  background-color: var(--accent) !important;
+}
+
+/* Make sure Radix UI elements within BlockNote have visible hover states */
+.bn-shadcn [data-radix-collection-item] {
+  transition: background-color 0.15s ease;
+}
+
+.bn-shadcn [data-radix-collection-item]:hover,
+.bn-shadcn [data-radix-collection-item][data-state="highlighted"] {
+  background-color: var(--accent) !important;
+}
+
+/* Ensure keyboard focus is visible */
+.bn-shadcn [role="menuitem"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Alternative selectors for suggestion menu items */
+.bn-suggestion-menu-item,
+.bn-combobox-item {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  scroll-margin: 8px;
+}
+
+.bn-suggestion-menu-item[data-selected="true"],
+.bn-suggestion-menu-item[aria-selected="true"],
+.bn-combobox-item[data-selected="true"],
+.bn-combobox-item[aria-selected="true"],
+.bn-combobox-item[data-hovered="true"] {
+  background-color: var(--accent) !important;
+}

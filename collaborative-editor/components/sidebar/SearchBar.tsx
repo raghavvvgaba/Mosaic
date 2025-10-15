@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { searchDocuments } from '@/lib/db/documents';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface SearchBarProps {
   onResultClick: (doc: Document) => void;
@@ -16,11 +17,18 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Document[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { activeWorkspaceId } = useWorkspace();
 
   useEffect(() => {
-    async function performSearch() {
+    if (!activeWorkspaceId) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    async function performSearch(workspaceId: string) {
       if (query.length > 1) {
-        const docs = await searchDocuments(query);
+        const docs = await searchDocuments(workspaceId, query);
         setResults(docs);
         setIsOpen(true);
       } else {
@@ -28,8 +36,8 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
         setIsOpen(false);
       }
     }
-    performSearch();
-  }, [query]);
+    performSearch(activeWorkspaceId);
+  }, [query, activeWorkspaceId]);
 
   function handleResultClick(doc: Document) {
     onResultClick(doc);
@@ -88,7 +96,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
 
       {isOpen && results.length === 0 && query.length > 1 && (
         <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-lg p-4 text-center text-gray-500 z-50">
-          No documents found for "{query}"
+          No documents found for “{query}”
         </div>
       )}
     </div>
@@ -100,15 +108,27 @@ function getContentPreview(content: string): string {
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) {
       const firstBlock = parsed[0];
-      if (firstBlock.content) {
-        if (Array.isArray(firstBlock.content)) {
-          return firstBlock.content
-            .map((item: any) => item.text || '')
-            .join('')
-            .slice(0, 100);
-        }
-        return String(firstBlock.content).slice(0, 100);
+      if (!firstBlock || typeof firstBlock !== 'object') {
+        return 'Empty document';
       }
+      const contentValue = (firstBlock as { content?: unknown }).content;
+      if (Array.isArray(contentValue)) {
+        return contentValue
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object' && 'text' in item) {
+              const { text } = item as { text?: unknown };
+              return typeof text === 'string' ? text : '';
+            }
+            return '';
+          })
+          .join('')
+          .slice(0, 100);
+      }
+      if (typeof contentValue === 'string') {
+        return contentValue.slice(0, 100);
+      }
+      return 'Empty document';
     }
     return 'Empty document';
   } catch {
