@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
+import { cn } from '@/lib/utils';
 
 export default function RecentPage() {
   const FONT_CLASS_MAP: Record<DocumentFont, string> = {

@@ -1,4 +1,4 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, DBSchema, IDBPDatabase, type IDBPObjectStore } from 'idb';
 import type { Document, Settings, Workspace } from './types';
 import { createDefaultWorkspace } from './constants';
 
@@ -26,7 +26,7 @@ export async function getDB() {
 
   dbInstance = await openDB<EditorDB>('editor-db', 2, {
     async upgrade(db, oldVersion, _newVersion, transaction) {
-      let docStore: IDBObjectStore | undefined;
+      let docStore: IDBPObjectStore<EditorDB, ['documents', 'settings', 'workspaces'], 'documents', 'versionchange'> | undefined;
 
       if (oldVersion < 1) {
         docStore = db.createObjectStore('documents', {

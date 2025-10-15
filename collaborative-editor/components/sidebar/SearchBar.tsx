@@ -26,9 +26,9 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       return;
     }
 
-    async function performSearch() {
+    async function performSearch(workspaceId: string) {
       if (query.length > 1) {
-        const docs = await searchDocuments(activeWorkspaceId, query);
+        const docs = await searchDocuments(workspaceId, query);
         setResults(docs);
         setIsOpen(true);
       } else {
@@ -36,7 +36,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
         setIsOpen(false);
       }
     }
-    performSearch();
+    performSearch(activeWorkspaceId);
   }, [query, activeWorkspaceId]);
 
   function handleResultClick(doc: Document) {
