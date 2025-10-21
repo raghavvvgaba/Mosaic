@@ -280,6 +280,17 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
 
     // Don't trigger shortcuts when typing in input fields
     const target = event.target as HTMLElement;
+
+    // Check if we're in a BlockNote suggestion menu (slash commands)
+    const isInSuggestionMenu = target.closest('[role="menu"]') !== null ||
+                              target.closest('[data-suggestion-menu]') !== null ||
+                              target.closest('.bn-suggestion-menu-item') !== null;
+
+    // Allow arrow key navigation in suggestion menus
+    if (isInSuggestionMenu && (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter' || event.key === 'Escape')) {
+      return; // Let the menu handle these keys
+    }
+
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
       // Only allow escape and specific shortcuts in input fields
       if (event.key !== 'Escape') return;

@@ -225,3 +225,22 @@ div[data-suggestion-menu] button[data-selected="true"],
 .bn-combobox-item[data-hovered="true"] {
   background-color: var(--accent) !important;
 }
+
+/* BlockNote editor canvas: remove grey backgrounds and borders for a uniform canvas */
+.bn-shadcn .bn-root,
+.bn-shadcn .bn-editor,
+.bn-shadcn .bn-container,
+.bn-shadcn .bn-content,
+.bn-shadcn .bn-page,
+.bn-shadcn .bn-block-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Hide built-in per-line placeholders; we will render a single overlay when the note is empty */
+.bn-shadcn .bn-editor [data-placeholder]::before,
+.bn-shadcn .ProseMirror p.is-editor-empty:first-child::before,
+.bn-shadcn .ProseMirror p.is-empty:first-child::before {
+  content: none !important;
+}

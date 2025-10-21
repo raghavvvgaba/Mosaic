@@ -18,6 +18,7 @@ export default function Home() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [greeting, setGreeting] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const selectionModeRef = useRef(selectionMode);
@@ -39,6 +40,18 @@ export default function Home() {
   useEffect(() => {
     selectionModeRef.current = selectionMode;
   }, [selectionMode]);
+
+  useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour < 18) {
+      setGreeting('Good afternoon');
+    } else {
+      setGreeting('Good evening');
+    }
+  }, []);
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -188,6 +201,11 @@ export default function Home() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
+              {greeting && (
+                <p className="text-3xl font-semibold text-foreground mb-4">
+                  {greeting}
+                </p>
+              )}
               <h1 className="text-4xl font-bold">All Documents</h1>
               <p className="text-muted-foreground mt-2">
                 {documents.length} {documents.length === 1 ? 'document' : 'documents'}

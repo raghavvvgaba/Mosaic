@@ -4,7 +4,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-upload';
 import { useTheme } from 'next-themes';
@@ -27,6 +27,7 @@ export function BlockEditor({
 }: BlockEditorProps) {
   const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [isEmpty, setIsEmpty] = useState<boolean>(true);
   const fontKey = font ?? 'sans';
   const fontFamilies = useMemo<Record<DocumentFont, string>>(
     () => ({
@@ -62,13 +63,41 @@ export function BlockEditor({
   );
 
   const handleChange = useCallback(() => {
-    const content = JSON.stringify(editor.document);
+    const jsonDoc = editor.document as unknown as Array<any>;
+    const content = JSON.stringify(jsonDoc);
     debouncedSave(content);
+
+    try {
+      const empty =
+        !jsonDoc ||
+        jsonDoc.length === 0 ||
+        (jsonDoc.length === 1 &&
+          jsonDoc[0] &&
+          jsonDoc[0].type === 'paragraph' &&
+          (!jsonDoc[0].content ||
+            (Array.isArray(jsonDoc[0].content) && jsonDoc[0].content.length === 0)));
+      setIsEmpty(empty);
+    } catch {
+      setIsEmpty(false);
+    }
   }, [editor, debouncedSave]);
 
   useEffect(() => {
     return editor.onChange(handleChange);
   }, [editor, handleChange]);
+
+  // Initialize empty state on mount
+  useEffect(() => {
+    const jsonDoc = editor.document as unknown as Array<any>;
+    const empty =
+      !jsonDoc ||
+      jsonDoc.length === 0 ||
+      (jsonDoc.length === 1 &&
+        jsonDoc[0] &&
+        jsonDoc[0].type === 'paragraph' &&
+        (!jsonDoc[0].content || (Array.isArray(jsonDoc[0].content) && jsonDoc[0].content.length === 0)));
+    setIsEmpty(empty);
+  }, [editor]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -84,10 +113,17 @@ export function BlockEditor({
 
   return (
     <div ref={wrapperRef} className={className}>
-      <BlockNoteView 
-        editor={editor}
-        theme={theme === 'dark' ? 'dark' : 'light'}
-      />
+      <div className="relative">
+        {isEmpty && (
+          <div className="pointer-events-none absolute top-2 left-3 z-10 text-muted-foreground select-none">
+            Enter text or type / for commands
+          </div>
+        )}
+        <BlockNoteView
+          editor={editor}
+          theme={theme === 'dark' ? 'dark' : 'light'}
+        />
+      </div>
     </div>
   );
 }
