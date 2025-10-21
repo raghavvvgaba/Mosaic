@@ -396,15 +396,7 @@ export default function DocumentPage() {
               placeholder="Untitled"
             />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCreateSubpage}
-              className="flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" />
-              New subpage
-            </Button>
+            {/* Moved New subpage into dropdown */}
 
             <Button
               variant="ghost"
@@ -455,6 +447,15 @@ export default function DocumentPage() {
                     })}
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    void handleCreateSubpage();
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New subpage
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
                   <FolderPlus className="w-4 h-4 mr-2" />

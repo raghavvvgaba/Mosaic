@@ -25,7 +25,7 @@ import {
   ChevronDown,
   Plus,
   FolderPlus,
-  GripVertical,
+  Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,10 +37,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { RenameDialog } from '@/components/RenameDialog';
-import { updateDocument, deleteDocument, createDocument, moveDocument } from '@/lib/db/documents';
+import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument } from '@/lib/db/documents';
 import { useTabs } from '@/contexts/TabsContext';
 import type { DocumentFont, DocumentNode } from '@/lib/db/types';
-import { formatDistanceToNow } from 'date-fns';
+// import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
@@ -83,6 +83,17 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
     },
     [openTab]
   );
+
+  const handleDuplicate = useCallback(async (doc: DocumentNode) => {
+    try {
+      const dup = await duplicateDocument(doc.id);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: dup.workspaceId } }));
+      openTab(dup.id, dup.title);
+    } catch (err) {
+      console.error('Failed to duplicate document:', err);
+      alert('Failed to duplicate document');
+    }
+  }, [openTab]);
 
   const expandedStorageKey = useMemo(() => {
     if (!activeWorkspaceId) return null;
@@ -554,9 +565,6 @@ function SidebarNode({
             <div className={cn('font-medium text-sm truncate', fontClassMap[doc.font ?? 'sans'])}>
               {doc.title || 'Untitled'}
             </div>
-            <div className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-            </div>
           </div>
         </button>
         <div className="flex items-center gap-1 pr-2">
@@ -572,7 +580,6 @@ function SidebarNode({
           >
             <Plus className="w-4 h-4" />
           </Button>
-          <GripVertical className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -594,6 +601,15 @@ function SidebarNode({
               >
                 <Edit2 className="w-4 h-4 mr-2" />
                 Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDuplicate(doc);
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -622,6 +638,18 @@ function SidebarNode({
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open in New Tab
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const url = `${window.location.origin}/documents/${doc.id}`;
+                  navigator.clipboard.writeText(url).catch(() => {
+                    console.error('Clipboard write failed');
+                  });
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy link
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

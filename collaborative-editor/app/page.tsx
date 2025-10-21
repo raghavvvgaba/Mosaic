@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getAllDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
-import { formatDistanceToNow } from 'date-fns';
+// import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -297,18 +297,16 @@ export default function Home() {
 
                   <div className="mt-auto">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                      </p>
+                      <div />
 
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={(e) => handleToggleFavorite(e, doc.id)}
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className={`${doc.isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} h-8 w-8 p-0 transition-opacity ${doc.isFavorite ? 'text-yellow-500' : ''}`}
                         >
-                          <Star className={`w-3.5 h-3.5 ${doc.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                          <Star className={`w-3.5 h-3.5 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
                         </Button>
                         <Button
                           variant="ghost"
@@ -320,12 +318,7 @@ export default function Home() {
                         </Button>
                       </div>
                     </div>
-
-                    {doc.isFavorite && (
-                      <div className="mt-2 flex justify-end">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      </div>
-                    )}
+                    
                   </div>
                 </div>
               </div>

@@ -129,37 +129,33 @@ export default function RecentPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {documents.map(doc => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {documents.map((doc) => (
               <div
                 key={doc.id}
                 onClick={() => openDocument(doc.id, doc.title)}
-                className="bg-card p-6 rounded-lg border hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
+                className="relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden hover:border-primary/50 hover:shadow-lg"
               >
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-5 h-5 text-muted-foreground" />
-                        <h2
-                          className={cn(
-                            'text-xl font-semibold group-hover:text-blue-600 transition-colors',
-                            FONT_CLASS_MAP[doc.font ?? 'sans']
-                          )}
-                        >
+                <div className="p-6 h-40 flex flex-col">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-5 h-5 text-muted-foreground" />
+                      <h2
+                        className={cn(
+                          'text-xl font-semibold group-hover:text-primary transition-colors',
+                          FONT_CLASS_MAP[doc.font ?? 'sans']
+                        )}
+                      >
                         {doc.title || 'Untitled'}
                       </h2>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>
                         Opened {formatDistanceToNow(new Date(doc.lastOpenedAt!), { addSuffix: true })}
                       </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className={FONT_CLASS_MAP[doc.font ?? 'sans']}>
-                        Updated {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="mt-auto flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
