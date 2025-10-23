@@ -105,6 +105,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     window.dispatchEvent(new CustomEvent('move-to-trash', { detail: { documentId: activeTabId } }));
   }, [activeTabId, showToast]);
 
+  const openAIDraft = useCallback(() => {
+    if (!activeTabId || activeTabId.startsWith('/')) {
+      showToast('Open a document to use AI Draft');
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('ai-draft-open', { detail: { documentId: activeTabId } }));
+  }, [activeTabId, showToast]);
+
   // Search and navigation
   const openSearch = useCallback(() => {
     showToast('Opening search...');
@@ -205,6 +213,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       description: 'Duplicate document',
       category: 'document',
       action: duplicateCurrentDocument,
+      global: true,
+      context: 'global'
+    },
+    {
+      id: 'ai-draft-open',
+      keys: isMac ? ['meta', 'shift', 'g'] : ['ctrl', 'shift', 'g'],
+      description: 'Open AI Draft',
+      category: 'document',
+      action: openAIDraft,
       global: true,
       context: 'global'
     },

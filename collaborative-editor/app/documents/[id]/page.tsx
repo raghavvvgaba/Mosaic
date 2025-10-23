@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -14,13 +14,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
-import { BlockEditor } from '@/components/editor/BlockEditor';
+import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
+import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 
 export default function DocumentPage() {
   const params = useParams();
@@ -43,6 +44,8 @@ export default function DocumentPage() {
     action: () => Promise<void> | void;
   } | null>(null);
   const documentRef = useRef<Document | null>(null);
+  const editorRef = useRef<BlockEditorHandle | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const loadDocumentPath = useCallback(async (id: string) => {
     const path = await getDocumentPath(id);
@@ -281,11 +284,16 @@ export default function DocumentPage() {
       void handleCreateSubpage();
     }
 
+    function handleAIDraftOpen() {
+      setAiOpen(true);
+    }
+
     window.addEventListener('duplicate-document', handleDuplicateDocument);
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
     window.addEventListener('create-subpage', handleCreateSubpageEvent);
+    window.addEventListener('ai-draft-open', handleAIDraftOpen);
 
     return () => {
       window.removeEventListener('duplicate-document', handleDuplicateDocument);
@@ -293,6 +301,7 @@ export default function DocumentPage() {
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
       window.removeEventListener('create-subpage', handleCreateSubpageEvent);
+      window.removeEventListener('ai-draft-open', handleAIDraftOpen);
     };
   }, [documentId, handleCreateSubpage, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
 
@@ -415,6 +424,16 @@ export default function DocumentPage() {
               ) : null}
             </div>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiOpen(true)}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Draft
+            </Button>
+
             <ExportButton document={document} />
             
             <DropdownMenu>
@@ -424,6 +443,12 @@ export default function DocumentPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">AI</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setAiOpen(true)}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Draft…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
                 <div className="px-1 py-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -492,11 +517,13 @@ export default function DocumentPage() {
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto p-8">
           <BlockEditor
+            ref={editorRef}
             documentId={documentId}
             initialContent={document.content}
             onSave={handleContentSave}
             className={FONT_CLASS_MAP[documentFont]}
             font={documentFont}
+            onOpenAIDraft={() => setAiOpen(true)}
           />
         </div>
       </div>
@@ -534,6 +561,19 @@ export default function DocumentPage() {
           }}
         />
       )}
+
+      <AIDraftDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        getContext={() => {
+          const title = documentRef.current?.title || 'Untitled';
+          const around = editorRef.current?.getContextWindow?.({ around: 2, maxChars: 1400 }) || '';
+          return [`Title: ${title}`, around ? `Context:\n${around}` : ''].filter(Boolean).join('\n');
+        }}
+        onInsert={(text) => {
+          editorRef.current?.insertTextAtCursor(text)
+        }}
+      />
     </div>
   );
 }
