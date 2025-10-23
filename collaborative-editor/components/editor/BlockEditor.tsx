@@ -1,14 +1,16 @@
 'use client';
 
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
+import { filterSuggestionItems } from "@blocknote/core";
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-upload';
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
+import { Sparkles } from 'lucide-react';
 
 export interface BlockEditorProps {
   documentId?: string;
@@ -171,36 +173,17 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     },
   }), [editor]);
 
-  // Handle Enter on a slash command like "/ai" to open AI Draft (without auto-opening while typing)
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Enter') return;
-      try {
-        const cursor = (editor as any).getTextCursorPosition?.();
-        const block = cursor?.block;
-        const contentArr = block?.content;
-        const plain = Array.isArray(contentArr)
-          ? contentArr.map((n: any) => (typeof n?.text === 'string' ? n.text : '')).join('')
-          : typeof contentArr === 'string'
-          ? contentArr
-          : '';
-        const norm = (plain || '').trim().toLowerCase();
-        if (norm === '/ai' || norm === '/ai draft' || norm === '/aidraft') {
-          e.preventDefault();
-          e.stopPropagation();
-          onOpenAIDraft?.();
-          try {
-            const emptyBlock = { type: 'paragraph', content: [] } as any;
-            (editor as any).updateBlock?.(block, emptyBlock);
-          } catch {}
-        }
-      } catch {
-        // ignore
-      }
-    }
-    document.addEventListener('keydown', onKeyDown, true);
-    return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [editor, onOpenAIDraft]);
+  // Custom Slash Menu item to open AI Draft dialog
+  const getAiSlashItem = useCallback(() => ({
+    title: "AI Draft",
+    onItemClick: () => {
+      onOpenAIDraft?.();
+    },
+    aliases: ["ai", "aidraft", "ai draft"],
+    group: "AI",
+    subtext: "Generate content with AI assistance",
+    icon: <Sparkles size={16} />,
+  }), [onOpenAIDraft]);
 
   return (
     <div ref={wrapperRef} className={className}>
@@ -222,7 +205,22 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         <BlockNoteView
           editor={editor}
           theme={theme === 'dark' ? 'dark' : 'light'}
-        />
+          slashMenu={false
+          }
+        >
+          <SuggestionMenuController
+            triggerCharacter={"/"}
+            getItems={async (query) =>
+              filterSuggestionItems(
+                [
+                  ...getDefaultReactSlashMenuItems(editor as any),
+                  getAiSlashItem() as unknown as DefaultReactSuggestionItem,
+                ],
+                query,
+              )
+            }
+          />
+        </BlockNoteView>
       </div>
     </div>
   );
