@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useAiDraft } from '@/hooks/useAiDraft';
+import { useAiDraft, type AiOptions } from '@/hooks/useAiDraft';
 
 interface Props {
   open: boolean;
@@ -53,7 +53,7 @@ export function AIDraftDialog({ open, onOpenChange, getContext, onInsert }: Prop
               <select
                 className="w-full rounded-md border bg-transparent p-2 text-sm"
                 value={ui.options.tone}
-                onChange={(e) => ui.setOptions({ ...ui.options, tone: e.target.value as any })}
+                onChange={(e) => ui.setOptions({ ...ui.options, tone: e.target.value as AiOptions['tone'] })}
               >
                 <option value="neutral">Neutral</option>
                 <option value="friendly">Friendly</option>
@@ -65,7 +65,7 @@ export function AIDraftDialog({ open, onOpenChange, getContext, onInsert }: Prop
               <select
                 className="w-full rounded-md border bg-transparent p-2 text-sm"
                 value={ui.options.length}
-                onChange={(e) => ui.setOptions({ ...ui.options, length: e.target.value as any })}
+                onChange={(e) => ui.setOptions({ ...ui.options, length: e.target.value as AiOptions['length'] })}
               >
                 <option value="short">Short</option>
                 <option value="medium">Medium</option>

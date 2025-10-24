@@ -344,7 +344,7 @@ export default function DocumentPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-gray-500">Loading document...</div>
       </div>
     );
@@ -352,7 +352,7 @@ export default function DocumentPage() {
 
   if (!document) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center">
+      <div className="h-full flex flex-col items-center justify-center">
         <div className="text-gray-500 mb-4">Document not found</div>
       </div>
     );
@@ -375,7 +375,7 @@ export default function DocumentPage() {
   ];
 
   return (
-    <div className={`h-screen flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
+    <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="p-4 space-y-3">
           {documentPath.length > 0 && (
@@ -514,7 +514,7 @@ export default function DocumentPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1">
         <div className="max-w-4xl mx-auto p-8">
           <BlockEditor
             ref={editorRef}

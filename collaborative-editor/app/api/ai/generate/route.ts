@@ -12,6 +12,14 @@ type Body = {
   context?: string
 }
 
+// Type-safe global rate limit bucket attached to globalThis
+// Using declare global to avoid "any" casts when storing per-process state
+type RateBucket = { last: number; count: number; window: number }
+
+declare global {
+  var __ai_rl: Map<string, RateBucket> | undefined
+}
+
 function buildSystemPrompt(opts: { tone?: string; length?: Body['length'] }) {
   const tone = (opts.tone || 'neutral').toLowerCase()
   const length = opts.length || 'medium'
@@ -34,9 +42,9 @@ export async function POST(req: NextRequest) {
   // Basic in-memory rate limit (best-effort): 1 req/sec and 20/min per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
   const now = Date.now()
-  ;(globalThis as any).__ai_rl ||= new Map<string, { last: number; count: number; window: number }>()
-  const bucket = (globalThis as any).__ai_rl as Map<string, { last: number; count: number; window: number }>
-  const state = bucket.get(ip) || { last: 0, count: 0, window: now }
+  globalThis.__ai_rl ||= new Map<string, RateBucket>()
+  const bucket = globalThis.__ai_rl
+  const state: RateBucket = bucket.get(ip) || { last: 0, count: 0, window: now }
   if (now - state.last < 1000) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 })
   }
@@ -116,7 +124,6 @@ export async function POST(req: NextRequest) {
   const readable = new ReadableStream({
     start(controller) {
       const reader = upstream.body!.getReader()
-      const encoder = new TextEncoder()
       ;(async function pump() {
         try {
           while (true) {

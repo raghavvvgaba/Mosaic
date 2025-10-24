@@ -320,7 +320,8 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
             setMoveDialogOpen={setMoveDialogOpen}
             invalidDropTargets={invalidDropTargets}
             draggingId={draggingId}
-          fontClassMap={FONT_CLASS_MAP}
+            fontClassMap={FONT_CLASS_MAP}
+            handleDuplicate={handleDuplicate}
           />
           <DragOverlay />
         </DndContext>
@@ -412,6 +413,7 @@ interface RootContainerProps {
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
+  handleDuplicate: (doc: DocumentNode) => void;
 }
 
 function RootContainer({
@@ -430,6 +432,7 @@ function RootContainer({
   invalidDropTargets,
   draggingId,
   fontClassMap,
+  handleDuplicate,
 }: RootContainerProps) {
   const { setNodeRef, isOver } = useDroppable({ id: 'root-container' });
 
@@ -439,25 +442,27 @@ function RootContainer({
       className={`relative p-1 space-y-0.5 ${isOver ? 'ring-2 ring-primary/40 rounded-lg' : ''}`}
     >
       {documents.map((doc) => (
-        <SidebarNode
-          key={doc.id}
-          doc={doc}
-          depth={0}
-          pathname={pathname}
-          expandedIds={expandedIds}
-          toggleExpanded={toggleExpanded}
-          openDocument={openDocument}
-          handleAddSubpage={handleAddSubpage}
-          handleOpenInNewTab={handleOpenInNewTab}
-          setSelectedDoc={setSelectedDoc}
-          setRenameDialogOpen={setRenameDialogOpen}
-          setDeleteDialogOpen={setDeleteDialogOpen}
-          setMoveTarget={setMoveTarget}
-          setMoveDialogOpen={setMoveDialogOpen}
-          invalidDropTargets={invalidDropTargets}
-          draggingId={draggingId}
-          fontClassMap={fontClassMap}
-        />
+          <SidebarNode
+            key={doc.id}
+            doc={doc}
+            depth={0}
+            pathname={pathname}
+            expandedIds={expandedIds}
+            toggleExpanded={toggleExpanded}
+            openDocument={openDocument}
+            handleAddSubpage={handleAddSubpage}
+            handleOpenInNewTab={handleOpenInNewTab}
+            setSelectedDoc={setSelectedDoc}
+            setRenameDialogOpen={setRenameDialogOpen}
+            setDeleteDialogOpen={setDeleteDialogOpen}
+            setMoveTarget={setMoveTarget}
+            setMoveDialogOpen={setMoveDialogOpen}
+            invalidDropTargets={invalidDropTargets}
+            draggingId={draggingId}
+            fontClassMap={fontClassMap}
+            handleDuplicate={handleDuplicate}
+          />
+
       ))}
     </div>
   );
@@ -480,6 +485,7 @@ interface SidebarNodeProps {
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
+  handleDuplicate: (doc: DocumentNode) => void;
 }
 
 function SidebarNode({
@@ -499,6 +505,7 @@ function SidebarNode({
   invalidDropTargets,
   draggingId,
   fontClassMap,
+  handleDuplicate,
 }: SidebarNodeProps) {
   const isActive = pathname === `/documents/${doc.id}`;
   const hasChildren = doc.children.length > 0;
@@ -688,6 +695,7 @@ function SidebarNode({
               invalidDropTargets={invalidDropTargets}
               draggingId={draggingId}
               fontClassMap={fontClassMap}
+              handleDuplicate={handleDuplicate}
             />
           ))}
         </div>

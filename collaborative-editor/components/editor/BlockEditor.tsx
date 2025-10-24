@@ -5,12 +5,26 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { filterSuggestionItems } from "@blocknote/core";
+import type { BlockNoteEditor } from "@blocknote/core";
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-upload';
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles } from 'lucide-react';
+
+// Minimal shapes to avoid `any` while remaining version-tolerant
+type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
+type BlockContent = InlineNode[] | string | undefined;
+interface EditorBlock { type?: string; content?: BlockContent; [key: string]: unknown }
+
+// Augment the editor with optional helpers that may vary by version
+type MaybeExtraEditor = BlockNoteEditor & {
+  getTextCursorPosition?: () => { block?: EditorBlock } | undefined;
+  updateBlock?: (oldBlock: EditorBlock, newBlock: EditorBlock) => void;
+  insertBlocks?: unknown;
+  replaceDocument?: unknown;
+};
 
 export interface BlockEditorProps {
   documentId?: string;
@@ -27,7 +41,6 @@ export interface BlockEditorHandle {
 }
 
 export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(function BlockEditor({ 
-  documentId, 
   initialContent,
   onSave,
   className,
@@ -62,7 +75,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         throw error;
       }
     },
-  });
+  }) as unknown as MaybeExtraEditor;
 
   const debouncedSave = useDebouncedCallback(
     (content: string) => {
@@ -72,7 +85,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
   );
 
   const handleChange = useCallback(() => {
-    const jsonDoc = editor.document as unknown as Array<any>;
+    const jsonDoc = editor.document as unknown as EditorBlock[];
     const content = JSON.stringify(jsonDoc);
     debouncedSave(content);
 
@@ -97,7 +110,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
 
   // Initialize empty state on mount
   useEffect(() => {
-    const jsonDoc = editor.document as unknown as Array<any>;
+    const jsonDoc = editor.document as unknown as EditorBlock[];
     const empty =
       !jsonDoc ||
       jsonDoc.length === 0 ||
@@ -124,43 +137,41 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     insertTextAtCursor(text: string) {
       try {
         // Create a paragraph block with text
-        const block = { type: 'paragraph', content: [{ type: 'text', text }] } as any
+        const block: EditorBlock = { type: 'paragraph', content: [{ type: 'text', text }] };
         // Prefer inserting after current block; if current block is empty, replace it
-        // @ts-ignore - BlockNote typing may vary across versions
-        const cursor = (editor as any).getTextCursorPosition?.()
-        const currentBlock = cursor?.block
+        const cursor = editor.getTextCursorPosition?.();
+        const currentBlock = cursor?.block;
         if (currentBlock && Array.isArray(currentBlock.content) && currentBlock.content.length === 0) {
-          // @ts-ignore
-          ;(editor as any).updateBlock?.(currentBlock, block)
-        } else if ((editor as any).insertBlocks) {
-          // @ts-ignore
-          ;(editor as any).insertBlocks?.([block], currentBlock, 'after')
+          (editor as unknown as { updateBlock?: (a: unknown, b: unknown) => void }).updateBlock?.(currentBlock, block);
         } else {
-          // Fallback: append block at end by setting document
-          const doc = (editor as any).document || []
-          const next = [...doc, block]
-          if ((editor as any).replaceDocument) {
-            // @ts-ignore
-            ;(editor as any).replaceDocument(next)
+          // Try insertBlocks when available
+          const insertBlocks = editor.insertBlocks as unknown as ((blocks: unknown[], target?: unknown, position?: 'after' | 'before' | 'replace') => void) | undefined;
+          insertBlocks?.([block], currentBlock, 'after');
+          // Fallback: append block at end by setting document when insertBlocks is unavailable
+          if (!insertBlocks) {
+            const doc = (editor as unknown as { document?: EditorBlock[] }).document ?? [];
+            const next: EditorBlock[] = [...doc, block];
+            const replaceDocument = editor.replaceDocument as unknown as ((doc: unknown[]) => void) | undefined;
+            replaceDocument?.(next as unknown[]);
           }
         }
       } catch (e) {
-        console.error('Failed to insert text into editor', e)
+        console.error('Failed to insert text into editor', e);
       }
     },
     getContextWindow({ around = 2, maxChars = 1400 } = {}) {
       try {
-        const docArr = (editor as any).document as any[];
+        const docArr = (editor as unknown as { document?: EditorBlock[] }).document ?? [];
         if (!Array.isArray(docArr)) return '';
-        const cursor = (editor as any).getTextCursorPosition?.();
+        const cursor = editor.getTextCursorPosition?.();
         const current = cursor?.block;
-        const idx = current ? docArr.findIndex((b) => b === current) : -1;
+        const idx = current ? (docArr as EditorBlock[]).findIndex((b) => b === current) : -1;
         const start = Math.max(0, idx >= 0 ? idx - around : 0);
         const end = Math.min(docArr.length, idx >= 0 ? idx + around + 1 : Math.min(docArr.length, around * 2));
-        const slice = docArr.slice(start, end);
-        const extract = (b: any) => {
+        const slice = docArr.slice(start, end) as EditorBlock[];
+        const extract = (b: EditorBlock) => {
           const c = b?.content;
-          if (Array.isArray(c)) return c.map((x: any) => (typeof x?.text === 'string' ? x.text : '')).join(' ');
+          if (Array.isArray(c)) return c.map((x: InlineNode) => (typeof x?.text === 'string' ? x.text : '')).join(' ');
           if (typeof c === 'string') return c;
           return '';
         };
@@ -193,27 +204,19 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
             <div className="pointer-events-none absolute top-2 left-3 z-10 text-muted-foreground select-none">
               Enter text or type / for commands
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenAIDraft?.()}
-              className="absolute top-2 right-3 z-10 text-xs rounded-full border bg-background px-2 py-1 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity"
-            >
-              Generate with AI
-            </button>
           </>
         )}
         <BlockNoteView
           editor={editor}
           theme={theme === 'dark' ? 'dark' : 'light'}
-          slashMenu={false
-          }
+          slashMenu={false}
         >
           <SuggestionMenuController
             triggerCharacter={"/"}
             getItems={async (query) =>
               filterSuggestionItems(
                 [
-                  ...getDefaultReactSlashMenuItems(editor as any),
+                  ...getDefaultReactSlashMenuItems(editor),
                   getAiSlashItem() as unknown as DefaultReactSuggestionItem,
                 ],
                 query,
