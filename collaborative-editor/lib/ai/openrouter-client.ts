@@ -35,23 +35,18 @@ function parseSSEChunk(chunk: string, cb: StreamCallbacks) {
   }
 }
 
-export function generateWithOpenRouter(params: GenerateParams, signal?: AbortSignal, cb?: StreamCallbacks) {
-  const controller = new AbortController()
-  const combined = signal
-    ? new AbortController()
-    : controller
+// Legacy generateWithOpenRouter removed; use streamGenerate/completeGenerate with task-based API instead.
 
-  if (signal) {
-    signal.addEventListener('abort', () => combined.abort(), { once: true })
-  }
+// New streaming generator for task-based API
+export function streamGenerate(task: string, params: GenerateParams, signal?: AbortSignal, cb?: StreamCallbacks) {
+  const controller = new AbortController()
+  const combined = signal ? new AbortController() : controller
+  if (signal) signal.addEventListener('abort', () => combined.abort(), { once: true })
 
   let stopped = false
-  const stop = () => {
-    stopped = true
-    combined.abort()
-  }
+  const stop = () => { stopped = true; combined.abort() }
 
-  const promise = fetch('/api/ai/generate', {
+  const promise = fetch(`/api/ai/${encodeURIComponent(task)}`, {
     method: 'POST',
     signal: combined.signal,
     headers: { 'Content-Type': 'application/json' },
@@ -70,7 +65,6 @@ export function generateWithOpenRouter(params: GenerateParams, signal?: AbortSig
         const { done, value } = await reader.read()
         if (done) break
         buffer += decoder.decode(value, { stream: true })
-        // Process full lines to be safe
         const lastNewline = Math.max(buffer.lastIndexOf('\n'), buffer.lastIndexOf('\r'))
         if (lastNewline >= 0) {
           const chunk = buffer.slice(0, lastNewline + 1)
@@ -84,4 +78,23 @@ export function generateWithOpenRouter(params: GenerateParams, signal?: AbortSig
     .catch((err) => cb?.onError?.(String(err)))
 
   return { stop, promise }
+}
+
+// Non-streaming completion for task-based API; returns raw text
+export async function completeGenerate(task: string, params: GenerateParams): Promise<string> {
+  const res = await fetch(`/api/ai/${encodeURIComponent(task)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  const ct = res.headers.get('content-type') || ''
+  if (ct.startsWith('text/plain')) {
+    return await res.text()
+  }
+  // Fallback to reading text even for JSON; callers can parse if needed
+  return await res.text()
 }

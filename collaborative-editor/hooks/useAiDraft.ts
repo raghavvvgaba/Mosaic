@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { generateWithOpenRouter, type GenerateParams } from '@/lib/ai/openrouter-client'
+import { streamGenerate, type GenerateParams } from '@/lib/ai/openrouter-client'
 
 export type AiOptions = {
   tone: 'neutral' | 'friendly' | 'formal'
@@ -54,7 +54,7 @@ export function useAiDraft() {
       context: options.includeContext ? params.context : undefined,
     }
 
-    const { stop, promise } = generateWithOpenRouter(payload, undefined, {
+    const { stop, promise } = streamGenerate('draft', payload, undefined, {
       onToken: (t) => setText((s) => s + t),
       onDone: () => setLoading(false),
       onError: (e) => { setError(e || 'Generation failed'); setLoading(false) },

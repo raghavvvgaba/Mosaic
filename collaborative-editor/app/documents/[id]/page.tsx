@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
@@ -22,6 +22,7 @@ import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
+import { generateTitleFromBlocks } from '@/lib/ai/title';
 
 export default function DocumentPage() {
   const params = useParams();
@@ -46,6 +47,7 @@ export default function DocumentPage() {
   const documentRef = useRef<Document | null>(null);
   const editorRef = useRef<BlockEditorHandle | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [titleGenerating, setTitleGenerating] = useState(false);
 
   const loadDocumentPath = useCallback(async (id: string) => {
     const path = await getDocumentPath(id);
@@ -86,6 +88,8 @@ export default function DocumentPage() {
       checkAndDeleteEmpty();
     };
   }, [documentId, loadDocument]);
+
+  // (Minimal rebuild) Removed auto-title timers and retries
 
   // Ensure tab exists and update title when document loads
   useEffect(() => {
@@ -135,6 +139,29 @@ export default function DocumentPage() {
     }
     await handleSave({ content });
   }
+
+  // Minimal manual generate-title flow
+  const handleGenerateTitle = useCallback(async () => {
+    const current = documentRef.current;
+    if (!current) return;
+    setTitleGenerating(true);
+    try {
+      const title = await generateTitleFromBlocks(current.content);
+      if (!title) {
+        alert('Could not generate a title. Try adding more content.');
+        return;
+      }
+      await updateDocument(current.id, { title });
+      setDocument((d) => (d ? { ...d, title } as Document : d));
+      updateTabTitle(current.id, title);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
+    } catch (e) {
+      console.error('Generate title failed:', e);
+      alert('Failed to generate title');
+    } finally {
+      setTitleGenerating(false);
+    }
+  }, [updateTabTitle]);
 
   async function handleSave(updates: Partial<Document>) {
     setSaving(true);
@@ -432,6 +459,17 @@ export default function DocumentPage() {
             >
               <Sparkles className="w-4 h-4" />
               AI Draft
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleGenerateTitle()}
+              disabled={titleGenerating}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              {titleGenerating ? 'Titling…' : 'Generate title'}
             </Button>
 
             <ExportButton document={document} />
