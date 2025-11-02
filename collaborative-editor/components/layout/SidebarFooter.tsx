@@ -44,8 +44,8 @@ export function SidebarFooter({ onShowShortcuts }: SidebarFooterProps) {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="text-sm font-medium">User Name</span>
-                <span className="text-xs text-muted-foreground">user@example.com</span>
+                <span className="text-sm font-medium">CollabEditor User</span>
+                <span className="text-xs text-muted-foreground">Local-first notes</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

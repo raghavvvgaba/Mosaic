@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { searchDocuments } from '@/lib/db/documents';
@@ -19,6 +19,30 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { activeWorkspaceId } = useWorkspace();
 
+  // Debounced search function
+  const performSearch = useCallback(async (workspaceId: string, searchQuery: string) => {
+    if (!workspaceId) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    if (searchQuery.length > 1) {
+      try {
+        const docs = await searchDocuments(workspaceId, searchQuery);
+        setResults(docs);
+        setIsOpen(true);
+      } catch (error) {
+        console.error('Search failed:', error);
+        setResults([]);
+        setIsOpen(false);
+      }
+    } else {
+      setResults([]);
+      setIsOpen(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!activeWorkspaceId) {
       setResults([]);
@@ -26,18 +50,12 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       return;
     }
 
-    async function performSearch(workspaceId: string) {
-      if (query.length > 1) {
-        const docs = await searchDocuments(workspaceId, query);
-        setResults(docs);
-        setIsOpen(true);
-      } else {
-        setResults([]);
-        setIsOpen(false);
-      }
-    }
-    performSearch(activeWorkspaceId);
-  }, [query, activeWorkspaceId]);
+    const timeoutId = setTimeout(() => {
+      performSearch(activeWorkspaceId, query);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [query, activeWorkspaceId, performSearch]);
 
   function handleResultClick(doc: Document) {
     onResultClick(doc);
@@ -55,19 +73,19 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search documents..."
-          className="pl-10 pr-10"
+          className="pl-10 pr-10 w-full text-sm"
           autoFocus
         />
         {query && (
           <button
             onClick={handleClose}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <X className="w-4 h-4" />
           </button>
@@ -75,18 +93,18 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-lg max-h-96 overflow-auto z-50">
+        <div className="absolute top-full mt-2 w-full bg-popover text-popover-foreground border rounded-md shadow-md max-h-96 overflow-auto z-50">
           {results.map(doc => (
             <button
               key={doc.id}
               onClick={() => handleResultClick(doc)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
+              className="w-full text-left px-4 py-3 hover:bg-accent hover:text-accent-foreground border-b last:border-b-0 transition-colors"
             >
               <div className="font-medium mb-1">{doc.title || 'Untitled'}</div>
-              <div className="text-sm text-gray-500 truncate mb-1">
+              <div className="text-sm text-muted-foreground truncate mb-1">
                 {getContentPreview(doc.content)}
               </div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Updated {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
               </div>
             </button>
@@ -95,7 +113,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       )}
 
       {isOpen && results.length === 0 && query.length > 1 && (
-        <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-lg p-4 text-center text-gray-500 z-50">
+        <div className="absolute top-full mt-2 w-full bg-popover text-popover-foreground border rounded-md shadow-md p-4 text-center text-muted-foreground z-50">
           No documents found for “{query}”
         </div>
       )}
