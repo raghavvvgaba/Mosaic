@@ -1,4 +1,4 @@
-export type TaskName = 'draft' | 'title' | string
+export type TaskName = 'draft' | 'title' | 'improve' | string
 
 export type CommonParams = {
   prompt: string
@@ -20,6 +20,7 @@ export type TaskDefinition = {
 const TASK_MODELS: Record<string, string> = {
   draft: process.env.OPENROUTER_MODEL_DRAFT || process.env.OPENROUTER_MODEL || 'xai/grok-2-latest',
   title: process.env.OPENROUTER_MODEL_TITLE || process.env.OPENROUTER_MODEL || 'xai/grok-2-latest',
+  improve: process.env.OPENROUTER_MODEL_IMPROVE || process.env.OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
 }
 
 export function resolveModel(task: string, params: CommonParams): string {
@@ -30,6 +31,7 @@ export function resolveModel(task: string, params: CommonParams): string {
 const TASK_DEFAULTS: Record<string, { temperature?: number }> = {
   draft: { temperature: 0.7 },
   title: { temperature: 0.3 },
+  improve: { temperature: 0.3 },
 }
 
 export function resolveTemperature(task: string, params: CommonParams): number {
@@ -74,9 +76,30 @@ const titleTask: TaskDefinition = {
     'Return ONLY a short, human-friendly title in 2-3 words, in the same language as the input. No punctuation, no quotes, no code tokens, no file extensions, no trailing period.',
 }
 
+// Prompt builder for improve task
+function buildImproveSystemPrompt(opts: { tone?: CommonParams['tone'] }) {
+  const tone = (opts.tone || 'neutral').toLowerCase()
+  const toneText =
+    tone === 'friendly'
+      ? 'Improve the text with a friendly, approachable tone.'
+      : tone === 'formal'
+      ? 'Improve the text with a clear, concise, and professional tone.'
+      : 'Improve the text with a neutral and clear tone.'
+
+  return `${toneText} Your task is to improve the given text by enhancing clarity, flow, grammar, and overall writing quality while preserving the original meaning and intent. Make the text more engaging and easier to read. Return ONLY the improved text without any explanations or additional commentary.`
+}
+
+const improveTask: TaskDefinition = {
+  name: 'improve',
+  stream: false,
+  output: 'text',
+  systemPrompt: (p) => buildImproveSystemPrompt({ tone: p.tone }),
+}
+
 const registry: Record<string, TaskDefinition> = {
   [draftTask.name]: draftTask,
   [titleTask.name]: titleTask,
+  [improveTask.name]: improveTask,
 }
 
 export function getTaskDefinition(task: TaskName): TaskDefinition | null {

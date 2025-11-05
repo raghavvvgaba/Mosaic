@@ -1,6 +1,6 @@
 export type GenerateParams = {
   prompt: string
-  mode?: 'draft'
+  mode?: 'draft' | 'improve'
   temperature?: number
   tone?: 'neutral' | 'friendly' | 'formal'
   length?: 'short' | 'medium' | 'long'

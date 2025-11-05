@@ -1,6 +1,10 @@
 'use client';
 
-import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController } from "@blocknote/react";
+import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController, FormattingToolbarController, useComponentsContext, useEditorContentOrSelectionChange, getFormattingToolbarItems } from "@blocknote/react";
+import { useImproveWriting } from "@/hooks/useImproveWriting";
+import { ImproveWritingLoader } from "./ImproveWritingLoader";
+import { ImprovedTextDisplay } from "./ImprovedTextDisplay";
+import { getSelectedText, getPositionBelowSelection, replaceSelectedText, insertTextBelow } from "@/lib/editor/selection-utils";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
@@ -11,7 +15,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-upload';
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -196,6 +200,92 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     icon: <Sparkles size={16} />,
   }), [onOpenAIDraft]);
 
+  // State for text selection detection
+  const [hasTextSelection, setHasTextSelection] = useState(false);
+
+  // Update selection state when content or selection changes
+  useEditorContentOrSelectionChange(() => {
+    try {
+      const selection = editor.getSelection();
+      const hasSelection = selection && selection.blocks.length > 0;
+      setHasTextSelection(!!hasSelection);
+    } catch {
+      setHasTextSelection(false);
+    }
+  }, editor);
+
+  // Improve Writing functionality
+  const improveWriting = useImproveWriting();
+  const [overlayPosition, setOverlayPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Handle improve writing click
+  const handleImproveWriting = useCallback(() => {
+    const selection = getSelectedText(editor);
+    if (selection.text && wrapperRef.current) {
+      // Calculate position for overlay relative to editor container
+      const position = getPositionBelowSelection(selection, wrapperRef.current);
+      setOverlayPosition(position);
+
+      // Start the improvement process
+      improveWriting.actions.improve(selection.text);
+    }
+  }, [editor, improveWriting.actions]);
+
+  // Handle improve writing actions
+  const handleImproveAction = useCallback((action: 'accept' | 'discard' | 'try-again' | 'insert-below') => {
+    switch (action) {
+      case 'accept':
+        if (improveWriting.state.improvedText) {
+          replaceSelectedText(editor, improveWriting.state.improvedText);
+        }
+        improveWriting.actions.reset();
+        setOverlayPosition(null);
+        break;
+      case 'discard':
+        improveWriting.actions.handleAction('discard');
+        setOverlayPosition(null);
+        break;
+      case 'try-again':
+        if (improveWriting.state.originalText) {
+          improveWriting.actions.improve(improveWriting.state.originalText);
+        }
+        break;
+      case 'insert-below':
+        if (improveWriting.state.improvedText) {
+          insertTextBelow(editor, improveWriting.state.improvedText);
+        }
+        improveWriting.actions.reset();
+        setOverlayPosition(null);
+        break;
+    }
+  }, [editor, improveWriting]);
+
+  // Custom formatting toolbar that extends default items
+  const CustomFormattingToolbar = useCallback(() => {
+    const Components = useComponentsContext()!;
+
+    // Get all default formatting toolbar items
+    const defaultItems = getFormattingToolbarItems();
+
+    // Custom Improve Writing button that only shows when text is selected
+    const improveWritingButton = hasTextSelection && editor.isEditable ? (
+      <Components.FormattingToolbar.Button
+        key="improveWriting"
+        onClick={handleImproveWriting}
+        label="Improve Writing"
+        mainTooltip="Improve writing with AI assistance"
+        icon={<Sparkles size={16} />}
+      >
+        Improve Writing
+      </Components.FormattingToolbar.Button>
+    ) : null;
+
+    return (
+      <Components.FormattingToolbar.Root className="bn-toolbar bn-formatting-toolbar">
+        {[improveWritingButton, ...defaultItems].filter(Boolean)}
+      </Components.FormattingToolbar.Root>
+    );
+  }, [hasTextSelection, editor.isEditable, onOpenAIDraft]);
   return (
     <div ref={wrapperRef} className={className}>
       <div className="relative">
@@ -210,7 +300,9 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
           editor={editor}
           theme={theme === 'dark' ? 'dark' : 'light'}
           slashMenu={false}
+          formattingToolbar={false}
         >
+          <FormattingToolbarController formattingToolbar={CustomFormattingToolbar} />
           <SuggestionMenuController
             triggerCharacter={"/"}
             getItems={async (query) =>
@@ -223,6 +315,50 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
               )
             }
           />
+
+          {/* Improve Writing Overlays */}
+          {overlayPosition && (
+            <div
+              className="absolute z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200"
+              style={{
+                top: `${overlayPosition.top}px`,
+                left: `${overlayPosition.left}px`,
+                width: 'max-content', // Allow content to determine width
+                maxWidth: '600px', // But cap it for readability
+              }}
+            >
+              {improveWriting.state.loading && (
+                <div className="pointer-events-auto animate-in fade-in duration-200">
+                  <ImproveWritingLoader />
+                </div>
+              )}
+
+              {improveWriting.state.error && (
+                <div className="pointer-events-auto mt-2 animate-in fade-in duration-200">
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                        <X className="w-2.5 h-2.5 text-red-600 dark:text-red-400" />
+                      </div>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        {improveWriting.state.error}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {improveWriting.state.showResult && improveWriting.state.improvedText && (
+                <div className="pointer-events-auto animate-in fade-in slide-in-from-top-1 duration-300">
+                  <ImprovedTextDisplay
+                    originalText={improveWriting.state.originalText}
+                    improvedText={improveWriting.state.improvedText}
+                    onAction={handleImproveAction}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </BlockNoteView>
       </div>
     </div>
