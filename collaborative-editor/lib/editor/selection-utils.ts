@@ -9,7 +9,7 @@ export interface SelectionInfo {
 /**
  * Extract selected text from BlockNote editor
  */
-export function getSelectedText(editor: BlockNoteEditor): SelectionInfo {
+export function getSelectedText(_editor: BlockNoteEditor): SelectionInfo {
   try {
     // Get the current selection from the DOM
     const selection = window.getSelection()
@@ -130,7 +130,7 @@ export function insertTextBelow(editor: BlockNoteEditor, text: string): boolean 
     // Insert a new paragraph with the text
     const newBlock = {
       type: 'paragraph' as const,
-      content: [{ type: 'text' as const, text }],
+      content: [{ type: 'text' as const, text, styles: {} }],
     }
 
     // Insert after current block

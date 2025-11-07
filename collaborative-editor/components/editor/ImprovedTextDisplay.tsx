@@ -1,12 +1,11 @@
 import { Check, Sparkles, X, RefreshCw, ArrowDown } from 'lucide-react'
 
 interface ImprovedTextDisplayProps {
-  originalText: string
   improvedText: string
   onAction: (action: 'accept' | 'discard' | 'try-again' | 'insert-below') => void
 }
 
-export function ImprovedTextDisplay({ originalText, improvedText, onAction }: ImprovedTextDisplayProps) {
+export function ImprovedTextDisplay({ improvedText, onAction }: ImprovedTextDisplayProps) {
   return (
     <div className="relative group">
       {/* AI improved text container - Notion-like styling */}
