@@ -17,35 +17,35 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
   const pathname = usePathname();
 
   const navItems = [
-    { 
-      label: 'Home', 
-      icon: FileText, 
+    {
+      label: 'Home',
+      icon: FileText,
       iconName: 'home',
-      path: '/', 
+      path: '/',
       count: allCount,
-      isActive: pathname === '/'
+      isActive: pathname === '/' || pathname.startsWith('/documents/')
     },
-    { 
-      label: 'Recent', 
-      icon: Clock, 
+    {
+      label: 'Recent',
+      icon: Clock,
       iconName: 'recent',
-      path: '/recent', 
+      path: '/recent',
       count: recentCount,
       isActive: pathname === '/recent'
     },
-    { 
-      label: 'Favorites', 
-      icon: Star, 
+    {
+      label: 'Favorites',
+      icon: Star,
       iconName: 'favorites',
-      path: '/favorites', 
+      path: '/favorites',
       count: favoritesCount,
       isActive: pathname === '/favorites'
     },
-    { 
-      label: 'Trash', 
-      icon: Trash2, 
+    {
+      label: 'Trash',
+      icon: Trash2,
       iconName: 'trash',
-      path: '/trash', 
+      path: '/trash',
       count: trashCount,
       isActive: pathname === '/trash'
     },

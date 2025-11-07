@@ -217,3 +217,26 @@ For issues, questions, or contributions, please open an issue on GitHub.
 ---
 
 **Built with ❤️ using Next.js and BlockNote**
+
+---
+
+## ⚡ AI Draft (OpenRouter)
+
+Quickly generate content inline with streaming draft preview.
+
+Setup (.env.local):
+
+```
+OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=openai/gpt-oss-20b:free
+OPENROUTER_SITE=http://localhost:3000
+OPENROUTER_TITLE=Notes AI Draft
+```
+
+How to use:
+- In a document, click the toolbar button “AI Draft” (✨), or
+- Click the “Generate with AI” chip that appears on an empty paragraph, or
+- Open the document menu (⋮) → AI → Draft…, or
+- Press Cmd+Shift+G / Ctrl+Shift+G.
+
+The dialog streams the result; you can Stop, Regenerate, or Insert. Offline disables Generate. For full details, see `docs/AI_New_Content_Generation.md`.

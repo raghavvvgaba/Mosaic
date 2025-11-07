@@ -5,7 +5,7 @@ import { FileText, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFavoriteDocuments, toggleFavorite } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
-import { formatDistanceToNow } from 'date-fns';
+// import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
@@ -85,30 +85,34 @@ export default function FavoritesPage() {
         Workspace: {activeWorkspace?.name ?? 'Loading...'}
       </p>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {documents.map((doc) => (
           <div
             key={doc.id}
             onClick={() => handleDocumentClick(doc)}
-            className="group flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+            className="relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden hover:border-primary/50 hover:shadow-lg"
           >
-            <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className={cn('font-medium truncate', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                {doc.title || 'Untitled'}
+            <div className="p-6 h-40 flex flex-col">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <h2 className={cn('text-xl font-semibold group-hover:text-primary transition-colors', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
+                    {doc.title || 'Untitled'}
+                  </h2>
+                </div>
+                {/* No updated time on favorites page */}
               </div>
-              <div className={cn('text-sm text-muted-foreground', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                Updated {formatDistanceToNow(doc.updatedAt, { addSuffix: true })}
+              <div className="mt-auto flex items-center justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleToggleFavorite(e, doc.id)}
+                  className={`${doc.isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity text-yellow-500`}
+                >
+                  <Star className={`w-4 h-4 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
+                </Button>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => handleToggleFavorite(e, doc.id)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-yellow-500"
-            >
-              <Star className="w-4 h-4 fill-yellow-500" />
-            </Button>
           </div>
         ))}
       </div>

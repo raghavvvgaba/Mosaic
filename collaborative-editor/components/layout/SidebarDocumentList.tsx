@@ -25,7 +25,7 @@ import {
   ChevronDown,
   Plus,
   FolderPlus,
-  GripVertical,
+  Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,13 +37,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { RenameDialog } from '@/components/RenameDialog';
-import { updateDocument, deleteDocument, createDocument, moveDocument } from '@/lib/db/documents';
+import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument } from '@/lib/db/documents';
 import { useTabs } from '@/contexts/TabsContext';
 import type { DocumentFont, DocumentNode } from '@/lib/db/types';
-import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
+
+// Indentation utility based on tree depth
+const depthPaddingClass = (depth: number) => {
+  const paddings = ['pl-2', 'pl-4', 'pl-6', 'pl-8', 'pl-10', 'pl-12'];
+  return paddings[Math.min(Math.max(depth, 0), paddings.length - 1)];
+};
 
 interface SidebarDocumentListProps {
   documents: DocumentNode[];
@@ -83,6 +88,17 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
     },
     [openTab]
   );
+
+  const handleDuplicate = useCallback(async (doc: DocumentNode) => {
+    try {
+      const dup = await duplicateDocument(doc.id);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: dup.workspaceId } }));
+      openTab(dup.id, dup.title);
+    } catch (err) {
+      console.error('Failed to duplicate document:', err);
+      alert('Failed to duplicate document');
+    }
+  }, [openTab]);
 
   const expandedStorageKey = useMemo(() => {
     if (!activeWorkspaceId) return null;
@@ -283,7 +299,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
 
   if (documents.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
+      <div className="px-4 py-1 text-center text-sm text-muted-foreground">
         No documents yet
       </div>
     );
@@ -309,7 +325,8 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
             setMoveDialogOpen={setMoveDialogOpen}
             invalidDropTargets={invalidDropTargets}
             draggingId={draggingId}
-          fontClassMap={FONT_CLASS_MAP}
+            fontClassMap={FONT_CLASS_MAP}
+            handleDuplicate={handleDuplicate}
           />
           <DragOverlay />
         </DndContext>
@@ -376,8 +393,8 @@ function RootDropZone({ active }: { active: boolean }) {
   return (
     <div
       ref={setNodeRef}
-      className={`mx-2 mb-1 rounded-md border border-dashed text-xs px-3 py-2 transition-colors ${
-        isOver ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground'
+      className={`mx-1 mb-1 rounded-md border border-dashed text-xs px-2 py-1.5 transition-colors ${
+        isOver ? 'border-accent bg-accent/20 text-accent-foreground' : 'border-border text-muted-foreground'
       } ${active ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
     >
       Drop here to move to top level
@@ -401,6 +418,7 @@ interface RootContainerProps {
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
+  handleDuplicate: (doc: DocumentNode) => void;
 }
 
 function RootContainer({
@@ -419,34 +437,37 @@ function RootContainer({
   invalidDropTargets,
   draggingId,
   fontClassMap,
+  handleDuplicate,
 }: RootContainerProps) {
   const { setNodeRef, isOver } = useDroppable({ id: 'root-container' });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`relative p-1 space-y-0.5 ${isOver ? 'ring-2 ring-primary/40 rounded-lg' : ''}`}
-    >
+      <div
+        ref={setNodeRef}
+        className={`relative px-2 py-0 space-y-0.5 ${isOver ? 'ring-2 ring-accent/50 rounded-lg' : ''}`}
+      >
       {documents.map((doc) => (
-        <SidebarNode
-          key={doc.id}
-          doc={doc}
-          depth={0}
-          pathname={pathname}
-          expandedIds={expandedIds}
-          toggleExpanded={toggleExpanded}
-          openDocument={openDocument}
-          handleAddSubpage={handleAddSubpage}
-          handleOpenInNewTab={handleOpenInNewTab}
-          setSelectedDoc={setSelectedDoc}
-          setRenameDialogOpen={setRenameDialogOpen}
-          setDeleteDialogOpen={setDeleteDialogOpen}
-          setMoveTarget={setMoveTarget}
-          setMoveDialogOpen={setMoveDialogOpen}
-          invalidDropTargets={invalidDropTargets}
-          draggingId={draggingId}
-          fontClassMap={fontClassMap}
-        />
+          <SidebarNode
+            key={doc.id}
+            doc={doc}
+            depth={0}
+            pathname={pathname}
+            expandedIds={expandedIds}
+            toggleExpanded={toggleExpanded}
+            openDocument={openDocument}
+            handleAddSubpage={handleAddSubpage}
+            handleOpenInNewTab={handleOpenInNewTab}
+            setSelectedDoc={setSelectedDoc}
+            setRenameDialogOpen={setRenameDialogOpen}
+            setDeleteDialogOpen={setDeleteDialogOpen}
+            setMoveTarget={setMoveTarget}
+            setMoveDialogOpen={setMoveDialogOpen}
+            invalidDropTargets={invalidDropTargets}
+            draggingId={draggingId}
+            fontClassMap={fontClassMap}
+            handleDuplicate={handleDuplicate}
+          />
+
       ))}
     </div>
   );
@@ -469,6 +490,7 @@ interface SidebarNodeProps {
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
+  handleDuplicate: (doc: DocumentNode) => void;
 }
 
 function SidebarNode({
@@ -488,6 +510,7 @@ function SidebarNode({
   invalidDropTargets,
   draggingId,
   fontClassMap,
+  handleDuplicate,
 }: SidebarNodeProps) {
   const isActive = pathname === `/documents/${doc.id}`;
   const hasChildren = doc.children.length > 0;
@@ -522,48 +545,46 @@ function SidebarNode({
   return (
     <div ref={setRefs} style={style} className={isDragged ? 'opacity-60' : undefined}>
       <div
-        className={`group flex items-center gap-1 rounded-lg transition-colors border border-transparent ${
+        className={cn(
+          'group flex items-center gap-1 rounded-lg transition-colors',
           isActive
-            ? 'bg-secondary text-secondary-foreground font-medium'
-            : 'hover:bg-accent text-muted-foreground hover:text-foreground'
-        } ${
-          isOver && !droppableDisabled ? 'border-primary bg-primary/10' : ''
-        }`}
-        style={{ paddingLeft: depth * 12 + 8 }}
+            ? 'bg-secondary text-secondary-foreground font-medium border border-secondary-foreground/20'
+            : 'hover:bg-accent text-muted-foreground hover:text-foreground border border-transparent hover:border-accent/50',
+          isOver && !droppableDisabled && 'border-accent bg-accent/20',
+          depthPaddingClass(depth)
+        )}
         {...listeners}
         {...attributes}
       >
-        <button
-          className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-          onClick={() => hasChildren && toggleExpanded(doc.id)}
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
-          disabled={!hasChildren}
-        >
-          {hasChildren ? (
-            isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
-          ) : (
-            <span className="w-4 h-4" />
-          )}
-        </button>
-        <button
-          onClick={() => openDocument(doc.id, doc.title)}
-          className="flex items-start gap-2 flex-1 min-w-0 text-left py-2"
-        >
-          <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+         {hasChildren ? (
+           <button
+             className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] rounded"
+             onClick={() => toggleExpanded(doc.id)}
+             aria-label={isExpanded ? 'Collapse' : 'Expand'}
+           >
+            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+           </button>
+         ) : (
+           <div className="h-6 w-6 flex items-center justify-center">
+             <span className="w-4 h-4" aria-hidden="true" />
+           </div>
+         )}
+         <button
+           onClick={() => openDocument(doc.id, doc.title)}
+           className="flex items-start gap-2 flex-1 min-w-0 text-left py-2 rounded focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+         >
+          <FileText className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
           <div className="flex-1 min-w-0">
             <div className={cn('font-medium text-sm truncate', fontClassMap[doc.font ?? 'sans'])}>
               {doc.title || 'Untitled'}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
             </div>
           </div>
         </button>
         <div className="flex items-center gap-1 pr-2">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            size="icon-sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
               handleAddSubpage(doc);
@@ -572,19 +593,18 @@ function SidebarNode({
           >
             <Plus className="w-4 h-4" />
           </Button>
-          <GripVertical className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                size="icon-sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
@@ -598,6 +618,15 @@ function SidebarNode({
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
+                  handleDuplicate(doc);
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
                   setMoveTarget(doc);
                   setMoveDialogOpen(true);
                 }}
@@ -605,15 +634,7 @@ function SidebarNode({
                 <FolderPlus className="w-4 h-4 mr-2" />
                 Move to…
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddSubpage(doc);
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Subpage
-              </DropdownMenuItem>
+              {/* Note: "Add Subpage" menu item removed to avoid redundancy with the quick action button above */}
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
@@ -622,6 +643,21 @@ function SidebarNode({
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open in New Tab
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Safely get the origin URL with fallback
+                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                  const url = `${origin}/documents/${doc.id}`;
+                  navigator.clipboard.writeText(url).catch((error) => {
+                    console.error('Clipboard write failed:', error);
+                    alert('Failed to copy link to clipboard. Please copy it manually: ' + url);
+                  });
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy link
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -660,6 +696,7 @@ function SidebarNode({
               invalidDropTargets={invalidDropTargets}
               draggingId={draggingId}
               fontClassMap={fontClassMap}
+              handleDuplicate={handleDuplicate}
             />
           ))}
         </div>

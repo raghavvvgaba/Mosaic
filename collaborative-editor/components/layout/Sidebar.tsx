@@ -47,26 +47,19 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
 
     loadDocuments(activeWorkspaceId);
 
-    const handleDocumentsChanged = (event: Event) => {
+    const handleDataChanged = (event: Event) => {
       const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
       if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
         loadDocuments(activeWorkspaceId);
       }
     };
 
-    const handleWorkspaceChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadDocuments(activeWorkspaceId);
-      }
-    };
-
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
-    window.addEventListener('activeWorkspaceChanged', handleWorkspaceChanged);
+    window.addEventListener('documentsChanged', handleDataChanged);
+    window.addEventListener('activeWorkspaceChanged', handleDataChanged);
 
     return () => {
-      window.removeEventListener('documentsChanged', handleDocumentsChanged);
-      window.removeEventListener('activeWorkspaceChanged', handleWorkspaceChanged);
+      window.removeEventListener('documentsChanged', handleDataChanged);
+      window.removeEventListener('activeWorkspaceChanged', handleDataChanged);
     };
   }, [activeWorkspaceId, loadDocuments]);
 
@@ -84,7 +77,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
       <Button
         variant="ghost"
         size="sm"
-        className="md:hidden fixed top-4 left-4 z-50"
+        className="md:hidden fixed top-4 left-4 z-60"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -93,7 +86,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-45 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -113,24 +106,22 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
           trashCount={trashedDocuments.length}
         />
 
-        <div className="px-2 pt-2 pb-1 flex items-center justify-between">
+        <div className="px-2 py-1 flex items-center justify-between">
           <div className="text-xs font-semibold text-muted-foreground px-3">
             DOCUMENTS
           </div>
           <Button
             variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
+            size="icon-sm"
             onClick={handleNewDocument}
             title="New Document (⌘N)"
           >
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-
-        <SidebarDocumentList documents={documentTree} />
-
-        <div className="flex-1" />
+        <div className='flex-1 overflow-hidden'>
+          <SidebarDocumentList documents={documentTree} />
+        </div>
 
         <SidebarFooter onShowShortcuts={onShowShortcuts} />
       </aside>

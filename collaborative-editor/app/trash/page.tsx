@@ -303,58 +303,50 @@ export default function TrashPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {documents.map(doc => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="bg-card p-6 rounded-lg border"
+                className="relative bg-card rounded-xl border transition-all overflow-hidden hover:border-primary/50 hover:shadow-lg"
               >
-                <div className="flex items-start gap-4">
-                  {selectionMode && (
-                    <div 
-                      className="pt-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={selectedIds.has(doc.id)}
-                        onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 flex justify-between items-start">
+                <div className="p-6 h-40 flex flex-col">
+                  <div className="flex items-start gap-3">
+                    {selectionMode && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(doc.id)}
+                          onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                        />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-5 h-5 text-muted-foreground" />
-                        <h2 className={cn('text-xl font-semibold', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
+                        <h2 className={cn('text-lg font-semibold', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
                           {doc.title || 'Untitled'}
                         </h2>
                       </div>
-                      <p className={cn('text-sm text-gray-500', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
+                      <p className={cn('text-sm text-muted-foreground', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
                         Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
                       </p>
                     </div>
-                    {!selectionMode && (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => handleRestore(doc.id, e)}
-                        >
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Restore
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={(e) => handlePermanentDelete(doc.id, doc.title, e)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Forever
-                        </Button>
-                      </div>
-                    )}
                   </div>
+                  {!selectionMode && (
+                    <div className="mt-auto flex items-center justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={(e) => handleRestore(doc.id, e)}>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => handlePermanentDelete(doc.id, doc.title, e)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Forever
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

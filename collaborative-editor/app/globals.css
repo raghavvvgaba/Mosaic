@@ -244,3 +244,19 @@ div[data-suggestion-menu] button[data-selected="true"],
 .bn-shadcn .ProseMirror p.is-empty:first-child::before {
   content: none !important;
 }
+
+/* Prevent nested scrollbars inside BlockNote editor; let page handle scroll */
+.bn-shadcn .bn-root,
+.bn-shadcn .bn-container,
+.bn-shadcn .bn-editor,
+.bn-shadcn .bn-content,
+.bn-shadcn .bn-page,
+.bn-shadcn .bn-block-content {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* Ensure editor grows with content */
+.bn-shadcn .bn-editor {
+  height: auto !important;
+}

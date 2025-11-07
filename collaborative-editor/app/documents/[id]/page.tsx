@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -14,13 +14,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
-import { BlockEditor } from '@/components/editor/BlockEditor';
+import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
 import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
+import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
+import { generateTitleFromBlocks } from '@/lib/ai/title';
 
 export default function DocumentPage() {
   const params = useParams();
@@ -43,6 +45,9 @@ export default function DocumentPage() {
     action: () => Promise<void> | void;
   } | null>(null);
   const documentRef = useRef<Document | null>(null);
+  const editorRef = useRef<BlockEditorHandle | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [titleGenerating, setTitleGenerating] = useState(false);
 
   const loadDocumentPath = useCallback(async (id: string) => {
     const path = await getDocumentPath(id);
@@ -83,6 +88,8 @@ export default function DocumentPage() {
       checkAndDeleteEmpty();
     };
   }, [documentId, loadDocument]);
+
+  // (Minimal rebuild) Removed auto-title timers and retries
 
   // Ensure tab exists and update title when document loads
   useEffect(() => {
@@ -132,6 +139,29 @@ export default function DocumentPage() {
     }
     await handleSave({ content });
   }
+
+  // Minimal manual generate-title flow
+  const handleGenerateTitle = useCallback(async () => {
+    const current = documentRef.current;
+    if (!current) return;
+    setTitleGenerating(true);
+    try {
+      const title = await generateTitleFromBlocks(current.content);
+      if (!title) {
+        alert('Could not generate a title. Try adding more content.');
+        return;
+      }
+      await updateDocument(current.id, { title });
+      setDocument((d) => (d ? { ...d, title } as Document : d));
+      updateTabTitle(current.id, title);
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
+    } catch (e) {
+      console.error('Generate title failed:', e);
+      alert('Failed to generate title');
+    } finally {
+      setTitleGenerating(false);
+    }
+  }, [updateTabTitle]);
 
   async function handleSave(updates: Partial<Document>) {
     setSaving(true);
@@ -281,11 +311,16 @@ export default function DocumentPage() {
       void handleCreateSubpage();
     }
 
+    function handleAIDraftOpen() {
+      setAiOpen(true);
+    }
+
     window.addEventListener('duplicate-document', handleDuplicateDocument);
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
     window.addEventListener('create-subpage', handleCreateSubpageEvent);
+    window.addEventListener('ai-draft-open', handleAIDraftOpen);
 
     return () => {
       window.removeEventListener('duplicate-document', handleDuplicateDocument);
@@ -293,6 +328,7 @@ export default function DocumentPage() {
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
       window.removeEventListener('create-subpage', handleCreateSubpageEvent);
+      window.removeEventListener('ai-draft-open', handleAIDraftOpen);
     };
   }, [documentId, handleCreateSubpage, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
 
@@ -335,7 +371,7 @@ export default function DocumentPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-gray-500">Loading document...</div>
       </div>
     );
@@ -343,7 +379,7 @@ export default function DocumentPage() {
 
   if (!document) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center">
+      <div className="h-full flex flex-col items-center justify-center">
         <div className="text-gray-500 mb-4">Document not found</div>
       </div>
     );
@@ -366,7 +402,7 @@ export default function DocumentPage() {
   ];
 
   return (
-    <div className={`h-screen flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
+    <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="p-4 space-y-3">
           {documentPath.length > 0 && (
@@ -396,15 +432,7 @@ export default function DocumentPage() {
               placeholder="Untitled"
             />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCreateSubpage}
-              className="flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" />
-              New subpage
-            </Button>
+            {/* Moved New subpage into dropdown */}
 
             <Button
               variant="ghost"
@@ -423,6 +451,27 @@ export default function DocumentPage() {
               ) : null}
             </div>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiOpen(true)}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Draft
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleGenerateTitle()}
+              disabled={titleGenerating}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              {titleGenerating ? 'Titling…' : 'Generate title'}
+            </Button>
+
             <ExportButton document={document} />
             
             <DropdownMenu>
@@ -432,6 +481,12 @@ export default function DocumentPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">AI</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setAiOpen(true)}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Draft…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
                 <div className="px-1 py-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -455,6 +510,15 @@ export default function DocumentPage() {
                     })}
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    void handleCreateSubpage();
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New subpage
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
                   <FolderPlus className="w-4 h-4 mr-2" />
@@ -488,14 +552,16 @@ export default function DocumentPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1">
         <div className="max-w-4xl mx-auto p-8">
           <BlockEditor
+            ref={editorRef}
             documentId={documentId}
             initialContent={document.content}
             onSave={handleContentSave}
             className={FONT_CLASS_MAP[documentFont]}
             font={documentFont}
+            onOpenAIDraft={() => setAiOpen(true)}
           />
         </div>
       </div>
@@ -533,6 +599,19 @@ export default function DocumentPage() {
           }}
         />
       )}
+
+      <AIDraftDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        getContext={() => {
+          const title = documentRef.current?.title || 'Untitled';
+          const around = editorRef.current?.getContextWindow?.({ around: 2, maxChars: 1400 }) || '';
+          return [`Title: ${title}`, around ? `Context:\n${around}` : ''].filter(Boolean).join('\n');
+        }}
+        onInsert={(text) => {
+          editorRef.current?.insertTextAtCursor(text)
+        }}
+      />
     </div>
   );
 }
