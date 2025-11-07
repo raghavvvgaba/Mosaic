@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController, FormattingToolbarController, useComponentsContext, useEditorContentOrSelectionChange, getFormattingToolbarItems } from "@blocknote/react";
 import { useImproveWriting } from "@/hooks/useImproveWriting";
 import { ImproveWritingLoader } from "./ImproveWritingLoader";
@@ -260,17 +261,17 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     }
   }, [editor, improveWriting]);
 
+  // Get Components context outside of callback
+  const Components = useComponentsContext()!;
+
   // Custom formatting toolbar that extends default items
   const CustomFormattingToolbar = useCallback(() => {
-    const Components = useComponentsContext()!;
-
     // Get all default formatting toolbar items
     const defaultItems = getFormattingToolbarItems();
 
     // Custom Improve Writing button that only shows when text is selected
     const improveWritingButton = hasTextSelection && editor.isEditable ? (
       <Components.FormattingToolbar.Button
-        key="improveWriting"
         onClick={handleImproveWriting}
         label="Improve Writing"
         mainTooltip="Improve writing with AI assistance"
@@ -285,7 +286,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         {[improveWritingButton, ...defaultItems].filter(Boolean)}
       </Components.FormattingToolbar.Root>
     );
-  }, [hasTextSelection, editor.isEditable, onOpenAIDraft]);
+  }, [Components, hasTextSelection, editor.isEditable, handleImproveWriting]);
   return (
     <div ref={wrapperRef} className={className}>
       <div className="relative">
@@ -337,8 +338,8 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
                 <div className="pointer-events-auto mt-2 animate-in fade-in duration-200">
                   <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg shadow-sm">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-                        <X className="w-2.5 h-2.5 text-red-600 dark:text-red-400" />
+                      <div className="w-4 h-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                        <X size={10} />
                       </div>
                       <p className="text-sm text-red-700 dark:text-red-300">
                         {improveWriting.state.error}
@@ -351,7 +352,6 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
               {improveWriting.state.showResult && improveWriting.state.improvedText && (
                 <div className="pointer-events-auto animate-in fade-in slide-in-from-top-1 duration-300">
                   <ImprovedTextDisplay
-                    originalText={improveWriting.state.originalText}
                     improvedText={improveWriting.state.improvedText}
                     onAction={handleImproveAction}
                   />
