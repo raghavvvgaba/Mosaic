@@ -53,6 +53,13 @@ export async function createDocument(
     isDeleted: false,
     parentId,
     font: 'sans',
+    // Cloud synchronization fields with defaults
+    cloudSynced: false,
+    syncVersion: 0,
+    isPublic: false,
+    collaborators: [],
+    permissions: [],
+    conflicts: [],
   };
 
   await db.add('documents', doc);
@@ -310,6 +317,13 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
     isDeleted: false,
     parentId: original.parentId,
     font: original.font ?? 'sans',
+    // Cloud synchronization fields with defaults
+    cloudSynced: false,
+    syncVersion: 0,
+    isPublic: false,
+    collaborators: [],
+    permissions: [],
+    conflicts: [],
   };
 
   await db.add('documents', duplicate);

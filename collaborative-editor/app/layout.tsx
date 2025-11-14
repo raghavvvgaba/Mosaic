@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TabsProvider } from "@/contexts/TabsContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,11 +44,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <WorkspaceProvider>
-            <TabsProvider>
-              <AppLayout>{children}</AppLayout>
-            </TabsProvider>
-          </WorkspaceProvider>
+          <AuthProvider>
+            <WorkspaceProvider>
+              <TabsProvider>
+                <AppLayout>{children}</AppLayout>
+              </TabsProvider>
+            </WorkspaceProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
