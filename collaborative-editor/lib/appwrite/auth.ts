@@ -145,18 +145,19 @@ export class AuthService {
     }
 
     try {
-      await appwrite.databases.createDocument(
+      const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
+      await appwrite.tablesDB.upsertRow({
         databaseId,
-        'users',
-        user.id,
-        {
+        tableId: usersTableId,
+        rowId: user.id,
+        data: {
           email: user.email,
           name: user.name,
           preferences: user.preferences,
           createdAt: user.createdAt.toISOString(),
           lastLoginAt: user.lastLoginAt?.toISOString()
         }
-      );
+      });
     } catch (error) {
       console.error('Failed to create user profile:', error);
       // Don't throw - user can still use app locally
@@ -170,12 +171,9 @@ export class AuthService {
     }
 
     try {
-      const userDoc = await appwrite.databases.getDocument(
-        databaseId,
-        'users',
-        userId
-      );
-      return userDoc.preferences || this.getDefaultPreferences();
+      const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
+      const userDoc = await appwrite.tablesDB.getRow(databaseId, usersTableId, userId);
+      return userDoc.data?.preferences || this.getDefaultPreferences();
     } catch {
       return this.getDefaultPreferences();
     }
@@ -189,14 +187,15 @@ export class AuthService {
     }
 
     try {
-      await appwrite.databases.updateDocument(
+      const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
+      await appwrite.tablesDB.upsertRow({
         databaseId,
-        'users',
-        userId,
-        {
+        tableId: usersTableId,
+        rowId: userId,
+        data: {
           preferences
         }
-      );
+      });
     } catch (error) {
       console.error('Failed to save user preferences:', error);
       // Don't throw - preferences will be cached locally
@@ -210,14 +209,15 @@ export class AuthService {
     }
 
     try {
-      await appwrite.databases.updateDocument(
+      const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
+      await appwrite.tablesDB.upsertRow({
         databaseId,
-        'users',
-        userId,
-        {
+        tableId: usersTableId,
+        rowId: userId,
+        data: {
           lastLoginAt: new Date().toISOString()
         }
-      );
+      });
     } catch (error) {
       console.error('Failed to update last login:', error);
       // Don't throw - login is still successful

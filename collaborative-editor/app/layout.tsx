@@ -2,9 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { TabsProvider } from "@/contexts/TabsContext";
-import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
@@ -45,11 +42,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <WorkspaceProvider>
-              <TabsProvider>
-                <AppLayout>{children}</AppLayout>
-              </TabsProvider>
-            </WorkspaceProvider>
+            {children}
           </AuthProvider>
         </ThemeProvider>
       </body>

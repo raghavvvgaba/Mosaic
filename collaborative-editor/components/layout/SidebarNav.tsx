@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { FileText, Clock, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface SidebarNavProps {
   allCount: number;
@@ -13,7 +13,7 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }: SidebarNavProps) {
-  const { openPage } = useTabs();
+  const { openPage } = useNavigation();
   const pathname = usePathname();
 
   const navItems = [
@@ -62,7 +62,7 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
               variant={item.isActive ? 'secondary' : 'ghost'}
               className="w-full justify-start"
               size="sm"
-              onClick={() => openPage(item.path, item.label, item.iconName)}
+              onClick={() => openPage(item.path, item.label)}
             >
               <Icon className="w-4 h-4 mr-2" />
               <span className="flex-1 text-left">{item.label}</span>

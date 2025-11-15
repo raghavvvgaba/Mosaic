@@ -8,15 +8,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getDeletedDocuments, restoreDocument, permanentlyDeleteDocument } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
-import { useTabs } from '@/contexts/TabsContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { cn } from '@/lib/utils';
 
 export default function TrashPage() {
   const router = useRouter();
-  const { ensureTabExists } = useTabs();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+    const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -54,7 +52,6 @@ export default function TrashPage() {
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    ensureTabExists('/trash', 'Trash', 'page', 'trash');
     setSelectionMode(false);
     setSelectedIds(new Set());
     setLoading(true);
@@ -81,7 +78,7 @@ export default function TrashPage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('documentsChanged', handleDocumentsChanged);
     };
-  }, [selectionMode, ensureTabExists, activeWorkspaceId, loadDocuments]);
+  }, [selectionMode, activeWorkspaceId, loadDocuments]);
 
   async function handleRestore(id: string, e: React.MouseEvent) {
     e.stopPropagation();

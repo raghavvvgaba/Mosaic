@@ -1,10 +1,11 @@
-import { Client, Account, Databases, Storage, ID, Query } from 'appwrite';
+import { Client, Account, Databases, TablesDB, Storage, ID, Query } from 'appwrite';
 
 export class AppwriteConfig {
   private static instance: AppwriteConfig;
   public client: Client;
   public account: Account;
   public databases: Databases;
+  public tablesDB: TablesDB;
   public storage: Storage;
   // Realtime will be added when needed for Phase 2C
 
@@ -17,6 +18,7 @@ export class AppwriteConfig {
     // Initialize Appwrite services
     this.account = new Account(this.client);
     this.databases = new Databases(this.client);
+    this.tablesDB = new TablesDB(this.client);
     this.storage = new Storage(this.client);
   }
 

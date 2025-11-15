@@ -47,6 +47,15 @@ export interface Workspace {
   createdAt: Date;
   updatedAt: Date;
   isDefault?: boolean;
+
+  // Cloud synchronization fields
+  cloudId?: string;               // Appwrite workspace ID
+  cloudSynced: boolean;           // Sync status with cloud
+  cloudUpdatedAt?: Date;          // Last cloud modification
+  syncVersion: number;            // Version for conflict resolution
+  ownerId?: string;               // Workspace owner ID
+  lastSyncAt?: Date;             // Last successful sync timestamp
+  syncError?: string;            // Last sync error message
 }
 
 // New Phase 2 types for cloud integration

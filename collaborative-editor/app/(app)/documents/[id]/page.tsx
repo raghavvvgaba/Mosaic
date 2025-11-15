@@ -12,12 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
+import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath, canCreateGuestDocument } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useGuestLimit } from '@/contexts/GuestLimitContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
@@ -27,8 +29,10 @@ import { generateTitleFromBlocks } from '@/lib/ai/title';
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params.id as string;
-  const { updateTabTitle, ensureTabExists, openTab, openPage, openDocument } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
+  const { isAuthenticated } = useAuthContext();
+  const { showGuestLimit } = useGuestLimit();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,14 +95,7 @@ export default function DocumentPage() {
 
   // (Minimal rebuild) Removed auto-title timers and retries
 
-  // Ensure tab exists and update title when document loads
-  useEffect(() => {
-    if (document) {
-      ensureTabExists(documentId, document.title);
-      updateTabTitle(documentId, document.title);
-    }
-  }, [document, documentId, updateTabTitle, ensureTabExists]);
-
+  
 
 
   function isDocumentEmpty(doc: Document): boolean {
@@ -153,7 +150,6 @@ export default function DocumentPage() {
       }
       await updateDocument(current.id, { title });
       setDocument((d) => (d ? { ...d, title } as Document : d));
-      updateTabTitle(current.id, title);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
     } catch (e) {
       console.error('Generate title failed:', e);
@@ -161,7 +157,7 @@ export default function DocumentPage() {
     } finally {
       setTitleGenerating(false);
     }
-  }, [updateTabTitle]);
+  }, []);
 
   async function handleSave(updates: Partial<Document>) {
     setSaving(true);
@@ -179,12 +175,12 @@ export default function DocumentPage() {
     try {
       const duplicate = await duplicateDocument(documentId);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: duplicate.workspaceId } }));
-      openTab(duplicate.id, duplicate.title);
+      openDocument(duplicate.id, duplicate.title);
     } catch (error) {
       console.error('Duplicate failed:', error);
       alert('Failed to duplicate document');
     }
-  }, [documentId, openTab]);
+  }, [documentId, openDocument]);
 
   const handleToggleFavorite = useCallback(async () => {
     try {
@@ -242,17 +238,27 @@ export default function DocumentPage() {
         try {
           await deleteDocument(documentId);
           window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
-          openPage('/', 'Home', 'home');
+          window.location.href = '/'; // Navigate to home
         } catch (error) {
           console.error('Failed to move document to trash:', error);
           alert('Failed to move document to trash');
         }
       },
     });
-  }, [documentId, openPage]);
+  }, [documentId]);
 
   const handleCreateSubpage = useCallback(async () => {
     if (!document) return;
+
+    // Check guest limits if not authenticated
+    if (!isAuthenticated) {
+      const canCreate = await canCreateGuestDocument();
+      if (!canCreate) {
+        showGuestLimit('document');
+        return;
+      }
+    }
+
     try {
       const newDoc = await createDocument('Untitled', document.workspaceId, document.id);
       openDocument(newDoc.id, newDoc.title);
@@ -261,7 +267,7 @@ export default function DocumentPage() {
       console.error('Failed to create subpage:', error);
       alert('Failed to create subpage');
     }
-  }, [document, openDocument]);
+  }, [document, isAuthenticated, showGuestLimit, openDocument]);
 
   const handleBreadcrumbNavigate = useCallback((target: Document) => {
     if (target.id === documentId) return;

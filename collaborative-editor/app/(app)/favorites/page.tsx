@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { getFavoriteDocuments, toggleFavorite } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 // import { formatDistanceToNow } from 'date-fns';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
 
 export default function FavoritesPage() {
-  const { openDocument, ensureTabExists } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
 
@@ -23,7 +23,6 @@ export default function FavoritesPage() {
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    ensureTabExists('/favorites', 'Favorites', 'page', 'favorites');
     setDocuments([]);
     loadFavorites(activeWorkspaceId);
 
@@ -36,7 +35,7 @@ export default function FavoritesPage() {
 
     window.addEventListener('documentsChanged', handleDocumentsChanged);
     return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [ensureTabExists, activeWorkspaceId, loadFavorites]);
+  }, [activeWorkspaceId, loadFavorites]);
 
   async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
     e.stopPropagation();

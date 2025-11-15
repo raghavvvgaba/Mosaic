@@ -8,13 +8,13 @@ import { getAllDocuments, deleteDocument, toggleFavorite } from '@/lib/db/docume
 import type { Document, DocumentFont } from '@/lib/db/types';
 // import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/AlertDialog';
 
 export default function Home() {
-  const { openDocument, ensureTabExists } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,6 @@ export default function Home() {
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    ensureTabExists('/', 'Home', 'page', 'home');
     setSelectionMode(false);
     setSelectedIds(new Set());
     setLoading(true);
@@ -84,7 +83,7 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('documentsChanged', handleDocumentsChanged);
     };
-  }, [ensureTabExists, activeWorkspaceId, loadDocuments]);
+  }, [activeWorkspaceId, loadDocuments]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;

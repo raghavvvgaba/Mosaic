@@ -20,11 +20,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { DEFAULT_WORKSPACE_ID } from '@/lib/db/constants';
+import { canCreateGuestWorkspace } from '@/lib/db/workspaces';
 import { ConfirmDialog } from '@/components/AlertDialog';
+import { useGuestLimit } from '@/contexts/GuestLimitContext';
 
 export function WorkspaceSwitcher() {
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
+  const { isAuthenticated } = useAuthContext();
+  const { showGuestLimit } = useGuestLimit();
   const [managerOpen, setManagerOpen] = useState(false);
 
   const activeLabel = useMemo(() => {
@@ -91,6 +96,8 @@ function WorkspaceManagerDialog({
     renameWorkspace,
     deleteWorkspace,
   } = useWorkspace();
+  const { isAuthenticated } = useAuthContext();
+  const { showGuestLimit } = useGuestLimit();
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -131,6 +138,16 @@ function WorkspaceManagerDialog({
     event.preventDefault();
     const name = newWorkspaceName.trim();
     if (!name) return;
+
+    // Check guest limits if not authenticated
+    if (!isAuthenticated) {
+      const canCreate = await canCreateGuestWorkspace();
+      if (!canCreate) {
+        showGuestLimit('workspace');
+        return;
+      }
+    }
+
     try {
       setCreating(true);
       await createWorkspace(name);

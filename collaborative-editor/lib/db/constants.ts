@@ -12,5 +12,8 @@ export function createDefaultWorkspace(): Workspace {
     createdAt: now,
     updatedAt: now,
     isDefault: true,
+    // Cloud synchronization fields with defaults
+    cloudSynced: false,
+    syncVersion: 0,
   };
 }

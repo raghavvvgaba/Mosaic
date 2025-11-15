@@ -37,10 +37,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { RenameDialog } from '@/components/RenameDialog';
-import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument } from '@/lib/db/documents';
-import { useTabs } from '@/contexts/TabsContext';
+import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument, canCreateGuestDocument } from '@/lib/db/documents';
+import { useNavigation } from '@/contexts/NavigationContext';
 import type { DocumentFont, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useGuestLimit } from '@/contexts/GuestLimitContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
 
@@ -56,8 +58,10 @@ interface SidebarDocumentListProps {
 
 export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const pathname = usePathname();
-  const { openDocument, openTab } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
+  const { isAuthenticated } = useAuthContext();
+  const { showGuestLimit } = useGuestLimit();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentNode | null>(null);
@@ -84,21 +88,22 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
 
   const handleOpenInNewTab = useCallback(
     (doc: DocumentNode) => {
-      openTab(doc.id, doc.title);
+      // Simply navigate to the document (replacing current view)
+      openDocument(doc.id, doc.title);
     },
-    [openTab]
+    [openDocument]
   );
 
   const handleDuplicate = useCallback(async (doc: DocumentNode) => {
     try {
       const dup = await duplicateDocument(doc.id);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: dup.workspaceId } }));
-      openTab(dup.id, dup.title);
+      openDocument(dup.id, dup.title);
     } catch (err) {
       console.error('Failed to duplicate document:', err);
       alert('Failed to duplicate document');
     }
-  }, [openTab]);
+  }, [openDocument]);
 
   const expandedStorageKey = useMemo(() => {
     if (!activeWorkspaceId) return null;
@@ -196,6 +201,16 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const handleAddSubpage = useCallback(
     async (parent: DocumentNode) => {
       if (!activeWorkspaceId) return;
+
+      // Check guest limits if not authenticated
+      if (!isAuthenticated) {
+        const canCreate = await canCreateGuestDocument();
+        if (!canCreate) {
+          showGuestLimit('document');
+          return;
+        }
+      }
+
       const newDoc = await createDocument('Untitled', activeWorkspaceId, parent.id);
       setExpandedIds((prev) => {
         const next = new Set(prev);
@@ -206,7 +221,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
       openDocument(newDoc.id, newDoc.title);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     },
-    [activeWorkspaceId, openDocument, persistExpanded]
+    [activeWorkspaceId, isAuthenticated, showGuestLimit, openDocument, persistExpanded]
   );
 
   const sensors = useSensors(

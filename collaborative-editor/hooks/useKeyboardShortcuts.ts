@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Shortcut, ShortcutCategory } from '@/lib/shortcuts/shortcutConfig';
 import { matchesShortcut, isMac } from '@/lib/shortcuts/shortcutConfig';
-import { createDocument } from '@/lib/db/documents';
+import { createDocument, canCreateGuestDocument } from '@/lib/db/documents';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useGuestLimit } from '@/contexts/GuestLimitContext';
+import { usePathname } from 'next/navigation';
 
 interface UseKeyboardShortcutsOptions {
   enabled?: boolean;
@@ -14,8 +17,11 @@ interface UseKeyboardShortcutsOptions {
 
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) {
   const { enabled = true, context = 'global' } = options;
-  const { activeTabId, openTab, openDocument } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
+  const { isAuthenticated } = useAuthContext();
+  const { showGuestLimit } = useGuestLimit();
+  const pathname = usePathname();
   const shortcutsRef = useRef<Shortcut[]>([]);
 
   // Toast notification function (simple implementation for now)
@@ -34,84 +40,97 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     }, 2000);
   }, []);
 
-  const createDocumentAndOpen = useCallback(async (openInNewTab: boolean) => {
+  const createDocumentAndOpen = useCallback(async () => {
     if (!activeWorkspaceId) {
       showToast('Workspace is loading...');
       return;
     }
+
+    // Check guest limits if not authenticated
+    if (!isAuthenticated) {
+      const canCreate = await canCreateGuestDocument();
+      if (!canCreate) {
+        showGuestLimit('document');
+        return;
+      }
+    }
+
     try {
       const doc = await createDocument(undefined, activeWorkspaceId);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
-      if (openInNewTab) {
-        openTab(doc.id, doc.title);
-        showToast('New document opened in a tab');
-      } else {
-        openDocument(doc.id, doc.title);
-        showToast('New document created');
-      }
+      openDocument(doc.id, doc.title);
+      showToast('New document created');
     } catch (error) {
       console.error('Failed to create document:', error);
       showToast('Failed to create document');
     }
-  }, [activeWorkspaceId, openDocument, openTab, showToast]);
+  }, [activeWorkspaceId, isAuthenticated, showGuestLimit, openDocument, showToast]);
 
   const handleCreateDocument = useCallback(() => {
-    void createDocumentAndOpen(false);
+    void createDocumentAndOpen();
   }, [createDocumentAndOpen]);
 
-  const handleCreateDocumentInNewTab = useCallback(() => {
-    void createDocumentAndOpen(true);
-  }, [createDocumentAndOpen]);
+  // Helper function to get current document ID from pathname
+  const getCurrentDocumentId = useCallback(() => {
+    const docMatch = pathname.match(/\/documents\/([^/]+)/);
+    return docMatch ? docMatch[1] : null;
+  }, [pathname]);
 
   const duplicateCurrentDocument = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to duplicate it');
       return;
     }
-      window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId: activeTabId } }));
-  }, [activeTabId, showToast]);
+    window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId } }));
+  }, [getCurrentDocumentId, showToast]);
 
   const createSubpageForCurrentDocument = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to create a subpage');
       return;
     }
-    window.dispatchEvent(new CustomEvent('create-subpage', { detail: { documentId: activeTabId } }));
+    window.dispatchEvent(new CustomEvent('create-subpage', { detail: { documentId } }));
     showToast('Creating subpage...');
-  }, [activeTabId, showToast]);
+  }, [getCurrentDocumentId, showToast]);
 
   const exportCurrentDocument = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to export it');
       return;
     }
     showToast('Opening export dialog...');
-    window.dispatchEvent(new CustomEvent('export-document', { detail: { documentId: activeTabId } }));
-  }, [activeTabId, showToast]);
+    window.dispatchEvent(new CustomEvent('export-document', { detail: { documentId } }));
+  }, [getCurrentDocumentId, showToast]);
 
   const toggleFavorite = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to toggle favorite');
       return;
     }
-    window.dispatchEvent(new CustomEvent('toggle-favorite', { detail: { documentId: activeTabId } }));
-  }, [activeTabId, showToast]);
+    window.dispatchEvent(new CustomEvent('toggle-favorite', { detail: { documentId } }));
+  }, [getCurrentDocumentId, showToast]);
 
   const moveToTrash = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to move it to trash');
       return;
     }
-    window.dispatchEvent(new CustomEvent('move-to-trash', { detail: { documentId: activeTabId } }));
-  }, [activeTabId, showToast]);
+    window.dispatchEvent(new CustomEvent('move-to-trash', { detail: { documentId } }));
+  }, [getCurrentDocumentId, showToast]);
 
   const openAIDraft = useCallback(() => {
-    if (!activeTabId || activeTabId.startsWith('/')) {
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
       showToast('Open a document to use AI Draft');
       return;
     }
-    window.dispatchEvent(new CustomEvent('ai-draft-open', { detail: { documentId: activeTabId } }));
-  }, [activeTabId, showToast]);
+    window.dispatchEvent(new CustomEvent('ai-draft-open', { detail: { documentId } }));
+  }, [getCurrentDocumentId, showToast]);
 
   // Search and navigation
   const openSearch = useCallback(() => {
@@ -157,15 +176,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       description: 'Create new document',
       category: 'general',
       action: handleCreateDocument,
-      global: true,
-      context: 'global'
-    },
-    {
-      id: 'new-document-tab',
-      keys: isMac ? ['meta', 'shift', 'n'] : ['ctrl', 'shift', 'n'],
-      description: 'Create document in new tab',
-      category: 'general',
-      action: handleCreateDocumentInNewTab,
       global: true,
       context: 'global'
     },

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getRecentDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
-import { useTabs } from '@/contexts/TabsContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ export default function RecentPage() {
     mono: 'font-mono',
   };
   const router = useRouter();
-  const { openDocument, ensureTabExists } = useTabs();
+  const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,6 @@ export default function RecentPage() {
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    ensureTabExists('/recent', 'Recent', 'page', 'recent');
     setLoading(true);
     loadDocuments(activeWorkspaceId);
 
@@ -54,7 +53,7 @@ export default function RecentPage() {
 
     window.addEventListener('documentsChanged', handleDocumentsChanged);
     return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [ensureTabExists, activeWorkspaceId, loadDocuments]);
+  }, [activeWorkspaceId, loadDocuments]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;

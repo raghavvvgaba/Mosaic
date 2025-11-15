@@ -39,6 +39,9 @@ export async function createWorkspace(
     icon: options.icon,
     createdAt: now,
     updatedAt: now,
+    // Cloud synchronization fields with defaults
+    cloudSynced: false,
+    syncVersion: 0,
   };
 
   await db.add('workspaces', workspace);
@@ -103,4 +106,15 @@ export async function countDocumentsInWorkspace(id: string): Promise<number> {
   const db = await getDB();
   const docs = await db.getAllFromIndex('documents', 'by-workspace', id);
   return docs.length;
+}
+
+export async function canCreateGuestWorkspace(): Promise<boolean> {
+  const workspaces = await getWorkspaces();
+  const guestWorkspaces = workspaces.filter((ws) => !ws.cloudSynced);
+  return guestWorkspaces.length < 2;
+}
+
+export async function getGuestWorkspaceCount(): Promise<number> {
+  const workspaces = await getWorkspaces();
+  return workspaces.filter((ws) => !ws.cloudSynced).length;
 }

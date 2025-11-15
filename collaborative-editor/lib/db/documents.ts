@@ -343,3 +343,14 @@ export async function getFavoriteDocuments(workspaceId?: string): Promise<Docume
   const all = await getAllDocuments(workspaceId);
   return all.filter((doc) => doc.isFavorite);
 }
+
+export async function canCreateGuestDocument(): Promise<boolean> {
+  const all = await getAllDocuments();
+  const guestDocs = all.filter((doc) => !doc.cloudSynced);
+  return guestDocs.length < 10;
+}
+
+export async function getGuestDocumentCount(): Promise<number> {
+  const all = await getAllDocuments();
+  return all.filter((doc) => !doc.cloudSynced).length;
+}

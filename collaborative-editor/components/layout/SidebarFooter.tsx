@@ -1,20 +1,13 @@
 'use client';
 
 import { User, LogIn, Settings, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { UserAvatar } from '@/components/auth/UserAvatar';
-import { useState } from 'react';
-import { AuthModal } from '@/components/auth/AuthModal';
+import { useGuestLimit } from '@/contexts/GuestLimitContext';
+import { GuestLimitModal } from '@/components/guest/GuestLimitModal';
 
 interface SidebarFooterProps {
   onShowShortcuts: () => void;
@@ -22,15 +15,16 @@ interface SidebarFooterProps {
 
 export function SidebarFooter({ onShowShortcuts }: SidebarFooterProps) {
   const { user, loading } = useAuthContext();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  const handleAuthClick = () => {
-    setIsAuthModalOpen(true);
-  };
+  const {
+    isGuestLimitModalOpen,
+    limitType,
+    setIsGuestLimitModalOpen,
+    handleGuestLimitSignUp
+  } = useGuestLimit();
 
   return (
     <>
-      <div className="p-4 border-t flex items-center justify-between gap-2">
+        <div className="p-4 border-t flex items-center justify-between gap-2">
         <div className="text-xs text-muted-foreground truncate flex-1">
           CollabEditor
         </div>
@@ -53,40 +47,30 @@ export function SidebarFooter({ onShowShortcuts }: SidebarFooterProps) {
           ) : user ? (
             <UserAvatar />
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
-                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4" />
-                  </div>
+            <div className="flex flex-col gap-1">
+              <Link href="/login">
+                <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2" title="Sign In">
+                  <LogIn className="w-3 h-3 mr-2" />
+                  <span className="text-xs">Sign In</span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">Guest User</span>
-                    <span className="text-xs text-muted-foreground">Local-first notes</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleAuthClick}>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In / Sign Up
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+              <Link href="/signup">
+                <Button variant="default" size="sm" className="h-7 w-full justify-start px-2" title="Sign Up">
+                  <User className="w-3 h-3 mr-2" />
+                  <span className="text-xs">Sign Up</span>
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>
 
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
-    </>
-  );
+        <GuestLimitModal
+          isOpen={isGuestLimitModalOpen}
+          onClose={() => setIsGuestLimitModalOpen(false)}
+          onSignUp={handleGuestLimitSignUp}
+          limitType={limitType}
+        />
+      </>
+    );
 }
