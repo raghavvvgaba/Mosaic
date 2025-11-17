@@ -5,9 +5,8 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Shortcut, ShortcutCategory } from '@/lib/shortcuts/shortcutConfig';
 import { matchesShortcut, isMac } from '@/lib/shortcuts/shortcutConfig';
-import { createDocument, canCreateGuestDocument } from '@/lib/db/documents';
+import { createDocument } from '@/lib/db/documents';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useGuestLimit } from '@/contexts/GuestLimitContext';
 import { usePathname } from 'next/navigation';
 
 interface UseKeyboardShortcutsOptions {
@@ -19,8 +18,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
   const { enabled = true, context = 'global' } = options;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
-  const { isAuthenticated } = useAuthContext();
-  const { showGuestLimit } = useGuestLimit();
+  const { user } = useAuthContext();
   const pathname = usePathname();
   const shortcutsRef = useRef<Shortcut[]>([]);
 
@@ -46,15 +44,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       return;
     }
 
-    // Check guest limits if not authenticated
-    if (!isAuthenticated) {
-      const canCreate = await canCreateGuestDocument();
-      if (!canCreate) {
-        showGuestLimit('document');
-        return;
-      }
-    }
-
     try {
       const doc = await createDocument(undefined, activeWorkspaceId);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
@@ -64,7 +53,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       console.error('Failed to create document:', error);
       showToast('Failed to create document');
     }
-  }, [activeWorkspaceId, isAuthenticated, showGuestLimit, openDocument, showToast]);
+  }, [activeWorkspaceId, openDocument, showToast]);
 
   const handleCreateDocument = useCallback(() => {
     void createDocumentAndOpen();

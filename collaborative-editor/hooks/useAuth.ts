@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { authService } from '../lib/appwrite/auth';
-import { syncFacade } from '../lib/sync/sync-facade';
-import { hasGuestData, migrateGuestData } from '../lib/migration/guest-migration';
 import type { User } from '../lib/db/types';
 
 export function useAuth() {
@@ -23,68 +21,31 @@ export function useAuth() {
     }
   }, []);
 
-  const triggerMigrationIfNeeded = useCallback(async (newUser: User) => {
-    try {
-      // Check if user has guest data that needs migration
-      const hasGuest = await hasGuestData();
-      if (hasGuest) {
-        console.log('Guest data detected, starting migration...');
-        const migrationResult = await migrateGuestData(newUser.id);
-
-        if (migrationResult.success) {
-          console.log(`Migration completed: ${migrationResult.documentsMigrated} documents, ${migrationResult.workspacesMigrated} workspaces`);
-
-          // Trigger sync facade to handle post-migration sync
-          await syncFacade.triggerGuestMigration(newUser);
-        } else {
-          console.error('Migration failed:', migrationResult.errors);
-        }
-      } else {
-        // No guest data, just initialize sync normally
-        await syncFacade.initializeForUser(newUser);
-      }
-    } catch (error) {
-      console.error('Migration/init sync failed:', error);
-    }
-  }, []);
-
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      setLoading(true);
       setError(null);
       const newUser = await authService.signUp(email, password, name);
       setUser(newUser);
-
-      // Trigger migration after successful signup
-      await triggerMigrationIfNeeded(newUser);
-
       return newUser;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      const errorMessage = err instanceof Error ? err.message : 'Sign up failed';
+      setError(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
-  }, [triggerMigrationIfNeeded]);
+  }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      setLoading(true);
       setError(null);
       const loggedInUser = await authService.signIn(email, password);
       setUser(loggedInUser);
-
-      // Trigger migration after successful signin
-      await triggerMigrationIfNeeded(loggedInUser);
-
       return loggedInUser;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
+      setError(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
-  }, [triggerMigrationIfNeeded]);
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
@@ -93,37 +54,42 @@ export function useAuth() {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign out failed');
+      throw err;
     }
   }, []);
 
   const updateProfile = useCallback(async (updates: { name?: string; preferences?: Partial<import('../lib/db/types').UserPreferences> }) => {
     try {
-      setLoading(true);
       setError(null);
-      const updatedUser = await authService.updateProfile(updates);
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+      const updatedUser = await authService.updateProfile(user.id, updates);
       setUser(updatedUser);
       return updatedUser;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      const errorMessage = err instanceof Error ? err.message : 'Profile update failed';
+      setError(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [user]);
 
+  // Check authentication on mount
   useEffect(() => {
     checkAuth();
-  }, []); // Run only once on mount
+  }, [checkAuth]);
+
+  const isAuthenticated = !!user;
 
   return {
     user,
     loading,
     error,
+    isAuthenticated,
     signUp,
     signIn,
     signOut,
     updateProfile,
     checkAuth,
-    isAuthenticated: !!user
   };
 }

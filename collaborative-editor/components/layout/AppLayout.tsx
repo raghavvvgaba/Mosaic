@@ -5,13 +5,8 @@ import { Sidebar } from './Sidebar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SearchBar } from '@/components/sidebar/SearchBar';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
-import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
-import { ConflictResolutionModal } from '@/components/sync/ConflictResolutionModal';
 import { useNavigation } from '@/contexts/NavigationContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useSyncStatus } from '@/lib/sync';
-import { syncFacade } from '@/lib/sync/sync-facade';
 import type { Document } from '@/lib/db/types';
 
 interface AppLayoutProps {
@@ -20,33 +15,11 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { openDocument } = useNavigation();
-  const { user } = useAuthContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [conflictModal, setConflictModal] = useState<{ isOpen: boolean; documentId: string; conflicts: any[] }>({
-    isOpen: false,
-    documentId: '',
-    conflicts: []
-  });
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({ context: 'global' });
-
-  // Initialize sync system (only if cloud sync is enabled and user is authenticated)
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_ENABLE_CLOUD_SYNC === 'true' && user) {
-      syncFacade.initializeForUser(user).catch(console.error);
-
-      // Cleanup when component unmounts or user changes
-      return () => {
-        syncFacade.cleanup().catch(console.error);
-      };
-    }
-  }, [user]);
-
-  // Handle sync status (only if cloud sync is enabled and user is authenticated)
-  const syncStatus = process.env.NEXT_PUBLIC_ENABLE_CLOUD_SYNC === 'true' && user ? useSyncStatus() : null;
-  const isAuthenticated = !!user;
 
   // Handle custom events from keyboard shortcuts
   useEffect(() => {
@@ -90,14 +63,6 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content area */}
       <div className="flex-1 md:ml-64 flex flex-col">
-        {/* Sync Status Bar - Only show for authenticated users */}
-        {isAuthenticated && (
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-background">
-            <div className="flex-1" />
-            <SyncStatusIndicator className="text-sm" />
-          </div>
-        )}
-
         <main className="flex-1 overflow-auto">
           {children}
         </main>
@@ -109,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <DialogHeader>
             <DialogTitle>Search Documents</DialogTitle>
           </DialogHeader>
-          <SearchBar 
+          <SearchBar
             onResultClick={handleSearchResultClick}
             onClose={() => setSearchOpen(false)}
           />
@@ -120,21 +85,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       <KeyboardShortcutsDialog
         open={shortcutsOpen}
         onOpenChange={setShortcutsOpen}
-      />
-
-      
-      {/* Conflict Resolution Modal */}
-      <ConflictResolutionModal
-        isOpen={conflictModal.isOpen}
-        onClose={() => setConflictModal({ isOpen: false, documentId: '', conflicts: [] })}
-        documentId={conflictModal.documentId}
-        conflicts={conflictModal.conflicts}
-        onResolved={() => {
-          setConflictModal({ isOpen: false, documentId: '', conflicts: [] });
-          if (user) {
-            syncFacade.forceSyncNow(user).catch(console.error);
-          }
-        }}
       />
     </div>
   );

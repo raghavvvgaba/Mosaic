@@ -1,6 +1,5 @@
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
-import { GuestLimitProvider } from "@/contexts/GuestLimitContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function AppRouteLayout({
@@ -11,9 +10,7 @@ export default function AppRouteLayout({
   return (
     <WorkspaceProvider>
       <NavigationProvider>
-        <GuestLimitProvider>
-          <AppLayout>{children}</AppLayout>
-        </GuestLimitProvider>
+        <AppLayout>{children}</AppLayout>
       </NavigationProvider>
     </WorkspaceProvider>
   );

@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { hasGuestData, migrateGuestData } from '@/lib/migration/guest-migration';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -20,8 +19,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationSuccess, setMigrationSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,30 +26,14 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const hasGuest = await hasGuestData();
+      // Create account - migration will be handled by useAuth hook
+      await signUp(email, password, name);
 
-      // Create account
-      const user = await signUp(email, password, name);
-
-      // If user had guest data, migrate it
-      if (hasGuest) {
-        setIsMigrating(true);
-        const result = await migrateGuestData(user.id);
-        setMigrationSuccess(true);
-        setIsMigrating(false);
-
-        // Show success message briefly before redirecting
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-      } else {
-        // Redirect immediately if no guest data
-        router.push('/');
-      }
+      // Redirect to dashboard - migration happens automatically in background
+      router.push('/');
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
       setIsLoading(false);
-      setIsMigrating(false);
     }
   };
 
@@ -86,24 +67,6 @@ export default function SignupPage() {
               </Alert>
             )}
 
-            {isMigrating && (
-              <Alert className="mb-4 bg-blue-50 border-blue-200">
-                <AlertDescription className="flex items-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
-                  Migrating your local documents...
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {migrationSuccess && (
-              <Alert className="mb-4 bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  Account created! Your local documents have been migrated successfully.
-                </AlertDescription>
-              </Alert>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
@@ -117,7 +80,7 @@ export default function SignupPage() {
                     onChange={(e) => setName(e.target.value)}
                     className="pl-10"
                     required
-                    disabled={isLoading || isMigrating}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -134,7 +97,7 @@ export default function SignupPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
                     required
-                    disabled={isLoading || isMigrating}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -152,7 +115,7 @@ export default function SignupPage() {
                     className="pl-10"
                     required
                     minLength={8}
-                    disabled={isLoading || isMigrating}
+                    disabled={isLoading}
                   />
                 </div>
                 <p className="text-xs text-slate-500">
@@ -163,12 +126,9 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading || isMigrating || migrationSuccess}
+                disabled={isLoading}
               >
-                {isLoading ? 'Creating account...' :
-                 isMigrating ? 'Migrating...' :
-                 migrationSuccess ? 'Success!' :
-                 'Create Account'}
+                {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
 

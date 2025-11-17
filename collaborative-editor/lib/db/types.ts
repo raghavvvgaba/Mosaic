@@ -14,20 +14,10 @@ export interface Document {
   isFavorite?: boolean;
   parentId?: string;
   font?: DocumentFont;
-
-  // Cloud synchronization fields
-  cloudId?: string;               // Appwrite document ID
-  cloudSynced: boolean;           // Sync status with cloud
-  cloudUpdatedAt?: Date;          // Last cloud modification
-  syncVersion: number;            // Version for conflict resolution
   isPublic: boolean;              // Public sharing status
   ownerId?: string;               // Document owner ID
   collaborators: Collaborator[];  // List of collaborators
   permissions: Permission[];      // Document permissions
-  yjsState?: string;             // Base64 encoded Yjs state
-  lastSyncAt?: Date;             // Last successful sync timestamp
-  syncError?: string;            // Last sync error message
-  conflicts: Conflict[];         // Pending conflicts
 }
 
 export interface DocumentNode extends Document {
@@ -47,15 +37,7 @@ export interface Workspace {
   createdAt: Date;
   updatedAt: Date;
   isDefault?: boolean;
-
-  // Cloud synchronization fields
-  cloudId?: string;               // Appwrite workspace ID
-  cloudSynced: boolean;           // Sync status with cloud
-  cloudUpdatedAt?: Date;          // Last cloud modification
-  syncVersion: number;            // Version for conflict resolution
   ownerId?: string;               // Workspace owner ID
-  lastSyncAt?: Date;             // Last successful sync timestamp
-  syncError?: string;            // Last sync error message
 }
 
 // New Phase 2 types for cloud integration
@@ -78,16 +60,6 @@ export interface Permission {
   expiresAt?: Date;
 }
 
-export interface Conflict {
-  id: string;
-  field: string;
-  localValue: unknown;
-  remoteValue: unknown;
-  localTimestamp: Date;
-  remoteTimestamp: Date;
-  resolved: boolean;
-  resolution?: 'local' | 'remote' | 'merge';
-}
 
 export interface User {
   id: string;
@@ -102,7 +74,6 @@ export interface User {
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   font: DocumentFont;
-  autoSync: boolean;
   notifications: NotificationSettings;
 }
 

@@ -12,14 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath, canCreateGuestDocument } from '@/lib/db/documents';
+import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useGuestLimit } from '@/contexts/GuestLimitContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
@@ -31,8 +30,7 @@ export default function DocumentPage() {
   const documentId = params.id as string;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
-  const { isAuthenticated } = useAuthContext();
-  const { showGuestLimit } = useGuestLimit();
+  const { user } = useAuthContext();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -250,15 +248,6 @@ export default function DocumentPage() {
   const handleCreateSubpage = useCallback(async () => {
     if (!document) return;
 
-    // Check guest limits if not authenticated
-    if (!isAuthenticated) {
-      const canCreate = await canCreateGuestDocument();
-      if (!canCreate) {
-        showGuestLimit('document');
-        return;
-      }
-    }
-
     try {
       const newDoc = await createDocument('Untitled', document.workspaceId, document.id);
       openDocument(newDoc.id, newDoc.title);
@@ -267,7 +256,7 @@ export default function DocumentPage() {
       console.error('Failed to create subpage:', error);
       alert('Failed to create subpage');
     }
-  }, [document, isAuthenticated, showGuestLimit, openDocument]);
+  }, [document, openDocument]);
 
   const handleBreadcrumbNavigate = useCallback((target: Document) => {
     if (target.id === documentId) return;

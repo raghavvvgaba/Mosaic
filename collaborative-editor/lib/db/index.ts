@@ -1,86 +1,17 @@
-import { openDB, DBSchema, IDBPDatabase, type IDBPObjectStore } from 'idb';
-import type { Document, Settings, Workspace } from './types';
-import { createDefaultWorkspace } from './constants';
+// This file previously contained IndexedDB setup, but has been replaced with Appwrite
+// All database operations are now handled through the Appwrite SDK
+// This file remains for backward compatibility during the transition
 
-interface EditorDB extends DBSchema {
-  documents: {
-    key: string;
-    value: Document;
-    indexes: { 'by-updated': Date; 'by-created': Date; 'by-workspace': string };
-  };
-  settings: {
-    key: string;
-    value: Settings;
-  };
-  workspaces: {
-    key: string;
-    value: Workspace;
-    indexes: { 'by-updated': Date };
-  };
-}
+// Re-export types for convenience
+export type { Document, Workspace, Settings, User, UserPreferences } from './types';
 
-let dbInstance: IDBPDatabase<EditorDB> | null = null;
-
+// Legacy function stubs - these now no-ops since we don't use IndexedDB
 export async function getDB() {
-  if (dbInstance) return dbInstance;
-
-  dbInstance = await openDB<EditorDB>('editor-db', 2, {
-    async upgrade(db, oldVersion, _newVersion, transaction) {
-      let docStore: IDBPObjectStore<EditorDB, ['documents', 'settings', 'workspaces'], 'documents', 'versionchange'> | undefined;
-
-      if (oldVersion < 1) {
-        docStore = db.createObjectStore('documents', {
-          keyPath: 'id',
-        });
-        docStore.createIndex('by-updated', 'updatedAt');
-        docStore.createIndex('by-created', 'createdAt');
-        docStore.createIndex('by-workspace', 'workspaceId');
-        db.createObjectStore('settings', { keyPath: 'key' });
-      } else {
-        docStore = transaction.objectStore('documents');
-        if (!docStore.indexNames.contains('by-workspace')) {
-          docStore.createIndex('by-workspace', 'workspaceId');
-        }
-      }
-
-      if (oldVersion < 2) {
-        if (!db.objectStoreNames.contains('workspaces')) {
-          const workspaceStore = db.createObjectStore('workspaces', { keyPath: 'id' });
-          workspaceStore.createIndex('by-updated', 'updatedAt');
-        }
-
-        const workspaceStore = transaction.objectStore('workspaces');
-        const defaultWorkspace = createDefaultWorkspace();
-
-        await workspaceStore.put(defaultWorkspace);
-
-        const documentsStore = docStore ?? transaction.objectStore('documents');
-        let cursor = await documentsStore.openCursor();
-        while (cursor) {
-          const value = cursor.value as Document & { workspaceId?: string };
-          if (!value.workspaceId) {
-            const updated = { ...value, workspaceId: defaultWorkspace.id } as Document;
-            await cursor.update(updated);
-          }
-          cursor = await cursor.continue();
-        }
-      }
-    },
-  });
-
-  return dbInstance;
+  // No longer needed - using Appwrite instead
+  return null;
 }
 
 export async function resetDB() {
-  if (dbInstance) {
-    dbInstance.close();
-    dbInstance = null;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase('editor-db');
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error ?? new Error('Failed to delete database'));
-    request.onblocked = () => resolve();
-  });
+  // No longer needed - Appwrite handles data persistence
+  console.log('DB reset is no longer needed - using Appwrite cloud storage');
 }

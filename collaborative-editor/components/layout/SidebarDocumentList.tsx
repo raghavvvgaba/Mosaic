@@ -37,12 +37,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { RenameDialog } from '@/components/RenameDialog';
-import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument, canCreateGuestDocument } from '@/lib/db/documents';
+import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument } from '@/lib/db/documents';
 import { useNavigation } from '@/contexts/NavigationContext';
 import type { DocumentFont, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useGuestLimit } from '@/contexts/GuestLimitContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
 
@@ -60,8 +59,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
-  const { isAuthenticated } = useAuthContext();
-  const { showGuestLimit } = useGuestLimit();
+  const { user } = useAuthContext();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentNode | null>(null);
@@ -202,15 +200,6 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
     async (parent: DocumentNode) => {
       if (!activeWorkspaceId) return;
 
-      // Check guest limits if not authenticated
-      if (!isAuthenticated) {
-        const canCreate = await canCreateGuestDocument();
-        if (!canCreate) {
-          showGuestLimit('document');
-          return;
-        }
-      }
-
       const newDoc = await createDocument('Untitled', activeWorkspaceId, parent.id);
       setExpandedIds((prev) => {
         const next = new Set(prev);
@@ -221,7 +210,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
       openDocument(newDoc.id, newDoc.title);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
     },
-    [activeWorkspaceId, isAuthenticated, showGuestLimit, openDocument, persistExpanded]
+    [activeWorkspaceId, openDocument, persistExpanded]
   );
 
   const sensors = useSensors(

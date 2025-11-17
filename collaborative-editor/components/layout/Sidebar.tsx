@@ -8,11 +8,10 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarNav } from './SidebarNav';
 import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
-import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree, canCreateGuestDocument } from '@/lib/db/documents';
+import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree } from '@/lib/db/documents';
 import type { Document, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useGuestLimit } from '@/contexts/GuestLimitContext';
 
 interface SidebarProps {
   onSearchOpen: () => void;
@@ -22,8 +21,7 @@ interface SidebarProps {
 export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const router = useRouter();
   const { activeWorkspaceId } = useWorkspace();
-  const { isAuthenticated, user } = useAuthContext();
-  const { showGuestLimit } = useGuestLimit();
+  const { user } = useAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentTree, setDocumentTree] = useState<DocumentNode[]>([]);
@@ -69,15 +67,6 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
 
   async function handleNewDocument() {
     if (!activeWorkspaceId) return;
-
-    // Check guest limits if not authenticated
-    if (!isAuthenticated) {
-      const canCreate = await canCreateGuestDocument();
-      if (!canCreate) {
-        showGuestLimit('document');
-        return;
-      }
-    }
 
     const doc = await createDocument('Untitled', activeWorkspaceId);
     router.push(`/documents/${doc.id}`);
