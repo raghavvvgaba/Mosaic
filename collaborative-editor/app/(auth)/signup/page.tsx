@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,8 +31,8 @@ export default function SignupPage() {
 
       // Redirect to dashboard - migration happens automatically in background
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
       setIsLoading(false);
     }
   };

@@ -41,7 +41,6 @@ import { updateDocument, deleteDocument, createDocument, moveDocument, duplicate
 import { useNavigation } from '@/contexts/NavigationContext';
 import type { DocumentFont, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
 
@@ -59,7 +58,6 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useAuthContext();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentNode | null>(null);
@@ -278,7 +276,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
       }
 
       try {
-        await moveDocument(activeId, overId || null);
+        await moveDocument(activeId, activeWorkspaceId || '', overId || undefined);
         if (overId) {
           setExpandedIds((prev) => {
             const next = new Set(prev);

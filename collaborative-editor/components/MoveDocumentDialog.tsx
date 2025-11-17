@@ -106,7 +106,7 @@ export function MoveDocumentDialog({
 
     setSubmitting(true);
     try {
-      await moveDocument(documentId, targetParentId);
+      await moveDocument(documentId, workspaceId, targetParentId || undefined);
       onMoved?.(targetParentId);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
       onOpenChange(false);

@@ -11,7 +11,6 @@ import { SidebarFooter } from './SidebarFooter';
 import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree } from '@/lib/db/documents';
 import type { Document, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   onSearchOpen: () => void;
@@ -21,7 +20,6 @@ interface SidebarProps {
 export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const router = useRouter();
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentTree, setDocumentTree] = useState<DocumentNode[]>([]);

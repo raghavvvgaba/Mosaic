@@ -1,5 +1,5 @@
 import { appwrite, ID, Query } from './config';
-import type { Document, DocumentNode } from '../db/types';
+import type { Document, DocumentNode, Collaborator, Permission } from '../db/types';
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'default';
 const DOCUMENTS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_COLLECTION_ID || 'documents';
@@ -7,23 +7,23 @@ const DOCUMENTS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_COLLE
 // Helper function to convert Appwrite document to our Document type
 function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Document {
   return {
-    id: appwriteDoc.$id,
-    title: appwriteDoc.title,
-    content: appwriteDoc.content || '',
-    workspaceId: appwriteDoc.workspaceId,
-    icon: appwriteDoc.icon,
-    coverImage: appwriteDoc.coverImage,
-    createdAt: new Date(appwriteDoc.$createdAt),
-    updatedAt: new Date(appwriteDoc.$updatedAt),
-    lastOpenedAt: appwriteDoc.lastOpenedAt ? new Date(appwriteDoc.lastOpenedAt) : undefined,
-    isDeleted: appwriteDoc.isDeleted || false,
-    isFavorite: appwriteDoc.isFavorite || false,
-    parentId: appwriteDoc.parentId,
-    font: appwriteDoc.font,
-    isPublic: appwriteDoc.isPublic || false,
-    ownerId: appwriteDoc.ownerId,
-    collaborators: appwriteDoc.collaborators || [],
-    permissions: appwriteDoc.permissions || [],
+    id: appwriteDoc.$id as string,
+    title: appwriteDoc.title as string,
+    content: (appwriteDoc.content as string) || '',
+    workspaceId: appwriteDoc.workspaceId as string,
+    icon: appwriteDoc.icon as string,
+    coverImage: appwriteDoc.coverImage as string,
+    createdAt: new Date(appwriteDoc.$createdAt as string),
+    updatedAt: new Date(appwriteDoc.$updatedAt as string),
+    lastOpenedAt: appwriteDoc.lastOpenedAt ? new Date(appwriteDoc.lastOpenedAt as string) : undefined,
+    isDeleted: (appwriteDoc.isDeleted as boolean) || false,
+    isFavorite: (appwriteDoc.isFavorite as boolean) || false,
+    parentId: appwriteDoc.parentId as string,
+    font: (appwriteDoc.font as 'sans' | 'serif' | 'mono') || undefined,
+    isPublic: (appwriteDoc.isPublic as boolean) || false,
+    ownerId: appwriteDoc.ownerId as string,
+    collaborators: (appwriteDoc.collaborators as Collaborator[]) || [],
+    permissions: (appwriteDoc.permissions as Permission[]) || [],
   };
 }
 
@@ -320,7 +320,7 @@ export async function getDocumentTree(workspaceId?: string): Promise<DocumentNod
 
     // Filter non-deleted documents and build tree structure
     const nonDeletedDocs = documents.filter(doc => !doc.isDeleted);
-    const docMap = new Map(nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }]));
+    const docMap = new Map<string, DocumentNode>(nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }]));
     const roots: DocumentNode[] = [];
 
     for (const doc of nonDeletedDocs) {

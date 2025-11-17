@@ -64,7 +64,7 @@ export function useAuth() {
       if (!user) {
         throw new Error('No authenticated user');
       }
-      const updatedUser = await authService.updateProfile(user.id, updates);
+      const updatedUser = await authService.updateProfile(updates);
       setUser(updatedUser);
       return updatedUser;
     } catch (err) {

@@ -16,7 +16,7 @@ export class AuthService {
   async signUp(email: string, password: string, name: string): Promise<User> {
     try {
       // Create user account
-      const account = await appwrite.account.create(
+      await appwrite.account.create(
         ID.unique(),
         email,
         password,
@@ -159,6 +159,7 @@ export class AuthService {
       };
     } catch (error) {
       // User is not logged in
+      console.debug('User not authenticated:', error);
       return null;
     }
   }
@@ -235,7 +236,7 @@ export class AuthService {
       console.error('❌ Failed to create user profile:', errorMsg);
       console.error('🔍 Debug info:', {
         databaseId,
-        tableId: usersTableId,
+        tableId: process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users',
         userId: user.id,
         userData: {
           email: user.email,
@@ -261,11 +262,12 @@ export class AuthService {
 
       // If preferences field doesn't exist in schema, use defaults
       // In the future, preferences can be stored in a separate table or as JSON metadata
+      console.debug(`User document retrieved:`, userDoc);
       return this.getDefaultPreferences();
     } catch (error) {
       // User profile might not exist yet (common during signup)
       // or preferences field is not accessible
-      console.log(`ℹ️ User preferences not found in database, using defaults for user ${userId}`);
+      console.log(`ℹ️ User preferences not found in database, using defaults for user ${userId}:`, error);
       return this.getDefaultPreferences();
     }
   }

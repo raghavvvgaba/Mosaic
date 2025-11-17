@@ -33,7 +33,7 @@ export default function RecentPage() {
   } | null>(null);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getRecentDocuments(workspaceId, 20);
+    const docs = await getRecentDocuments(workspaceId);
     setDocuments(docs);
     setLoading(false);
   }, []);

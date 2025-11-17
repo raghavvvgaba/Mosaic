@@ -8,14 +8,14 @@ const DEFAULT_WORKSPACE_ID = process.env.NEXT_PUBLIC_APPWRITE_DEFAULT_WORKSPACE_
 // Helper function to convert Appwrite workspace to our Workspace type
 function appwriteWorkspaceToWorkspace(appwriteWorkspace: Record<string, unknown>): Workspace {
   return {
-    id: appwriteWorkspace.$id,
-    name: appwriteWorkspace.name,
-    color: appwriteWorkspace.color,
-    icon: appwriteWorkspace.icon,
-    createdAt: new Date(appwriteWorkspace.$createdAt),
-    updatedAt: new Date(appwriteWorkspace.$updatedAt),
-    isDefault: appwriteWorkspace.isDefault || false,
-    ownerId: appwriteWorkspace.ownerId,
+    id: appwriteWorkspace.$id as string,
+    name: appwriteWorkspace.name as string,
+    color: appwriteWorkspace.color as string,
+    icon: appwriteWorkspace.icon as string,
+    createdAt: new Date(appwriteWorkspace.$createdAt as string),
+    updatedAt: new Date(appwriteWorkspace.$updatedAt as string),
+    isDefault: (appwriteWorkspace.isDefault as boolean) || false,
+    ownerId: appwriteWorkspace.ownerId as string,
   };
 }
 

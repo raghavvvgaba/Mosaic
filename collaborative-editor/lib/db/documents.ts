@@ -14,8 +14,7 @@ export {
   getDocumentTree,
   getDocumentPath,
   getDescendants,
-  canMoveDocument,
-  moveDocument,
+    moveDocument,
   getChildren,
   getRecentDocuments,
   duplicateDocument,
@@ -25,6 +24,7 @@ export {
 } from '../appwrite/documents';
 
 import type { Document, DocumentNode } from './types';
+import { getDescendants } from '../appwrite/documents';
 
 // Helper function to check if a document can be moved
 export async function canMoveDocument(

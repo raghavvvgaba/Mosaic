@@ -18,7 +18,6 @@ import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEd
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { ExportButton } from '@/components/export/ExportButton';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
@@ -30,7 +29,6 @@ export default function DocumentPage() {
   const documentId = params.id as string;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
-  const { user } = useAuthContext();
   
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);

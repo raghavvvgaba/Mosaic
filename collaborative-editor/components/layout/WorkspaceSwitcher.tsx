@@ -20,13 +20,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { DEFAULT_WORKSPACE_ID } from '@/lib/db/constants';
 import { ConfirmDialog } from '@/components/AlertDialog';
 
 export function WorkspaceSwitcher() {
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
-  const { user } = useAuthContext();
   const [managerOpen, setManagerOpen] = useState(false);
 
   const activeLabel = useMemo(() => {
@@ -93,7 +91,6 @@ function WorkspaceManagerDialog({
     renameWorkspace,
     deleteWorkspace,
   } = useWorkspace();
-  const { user } = useAuthContext();
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);

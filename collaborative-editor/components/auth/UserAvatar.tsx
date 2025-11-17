@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { User, Settings, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,10 +50,13 @@ export function UserAvatar({ className }: UserAvatarProps) {
         >
           <div className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground rounded-full">
             {user.avatar ? (
-              <img
+              <Image
                 src={user.avatar}
                 alt={user.name}
+                width={32}
+                height={32}
                 className="h-8 w-8 rounded-full object-cover"
+                unoptimized
               />
             ) : (
               <span className="text-sm font-medium">

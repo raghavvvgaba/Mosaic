@@ -12,6 +12,7 @@ import {
   deleteWorkspace as deleteWorkspaceRecord,
   updateWorkspaceMetadata as updateWorkspaceMetadataRecord,
 } from '@/lib/db/workspaces';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface WorkspaceContextValue {
   workspaces: Workspace[];
@@ -35,6 +36,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { user } = useAuthContext();
 
   const loadWorkspaces = useCallback(async () => {
     await ensureDefaultWorkspace();
@@ -79,13 +81,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const createWorkspace = useCallback(
     async (name: string, options: { color?: string; icon?: string } = {}) => {
-      const workspace = await createWorkspaceRecord(name, options);
+      const workspace = await createWorkspaceRecord(name, user?.id);
       await loadWorkspaces();
       setActiveWorkspace(workspace.id);
       window.dispatchEvent(new CustomEvent('workspacesChanged', { detail: { type: 'created', workspaceId: workspace.id } }));
       return workspace;
     },
-    [loadWorkspaces, setActiveWorkspace]
+    [loadWorkspaces, setActiveWorkspace, user]
   );
 
   const renameWorkspace = useCallback(
