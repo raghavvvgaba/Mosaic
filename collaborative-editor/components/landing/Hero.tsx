@@ -1,12 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Edit3, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export function Hero() {
+  const { user, loading } = useAuthContext();
+  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
+
+  const handleGoToDashboard = () => {
+    router.push('/dashboard');
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden">
@@ -29,35 +37,70 @@ export function Hero() {
 
           {/* Subheading */}
           <p className="text-xl sm:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            A powerful collaborative document editor that brings teams together.
-            Edit in real-time, organize your thoughts, and watch your productivity soar.
+            {user ? (
+              <>
+                Welcome back, <span className="font-semibold text-foreground">{user.name || 'User'}</span>!
+                <br />
+                Ready to continue where you left off?
+              </>
+            ) : (
+              <>
+                A powerful collaborative document editor that brings teams together.
+                <br />
+                Edit in real-time, organize your thoughts, and watch your productivity soar.
+              </>
+            )}
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Link href="/signup">
+            {loading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                Loading...
+              </div>
+            ) : user ? (
+              // Authenticated user - Show dashboard button
               <Button
                 size="lg"
                 className="w-full sm:w-auto text-base px-8 py-3 h-auto"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
+                onClick={handleGoToDashboard}
               >
-                Start Writing Free
+                Go to Dashboard
                 <ArrowRight className={`ml-2 w-4 h-4 transition-transform duration-300 ${
                   isHovered ? 'translate-x-1' : ''
                 }`} />
               </Button>
-            </Link>
+            ) : (
+              // Unauthenticated user - Show signup and signin buttons
+              <>
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto text-base px-8 py-3 h-auto"
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                  >
+                    Start Writing Free
+                    <ArrowRight className={`ml-2 w-4 h-4 transition-transform duration-300 ${
+                      isHovered ? 'translate-x-1' : ''
+                    }`} />
+                  </Button>
+                </Link>
 
-            <Link href="/login">
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto text-base px-8 py-3 h-auto"
-              >
-                Sign In
-              </Button>
-            </Link>
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto text-base px-8 py-3 h-auto"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Feature Highlights */}

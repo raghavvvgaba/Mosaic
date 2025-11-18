@@ -2,9 +2,9 @@ import { appwrite, ID, Query } from './config';
 import type { Document, DocumentNode, Collaborator, Permission } from '../db/types';
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'default';
-const DOCUMENTS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_COLLECTION_ID || 'documents';
+const DOCUMENTS_TABLE_ID = process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_TABLE_ID || 'documents';
 
-// Helper function to convert Appwrite document to our Document type
+// Helper function to convert Appwrite table row to our Document type
 function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Document {
   return {
     id: appwriteDoc.$id as string,
@@ -61,12 +61,12 @@ export async function createDocument(
       isFavorite: false,
     });
 
-    const response = await appwrite.databases.createDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      ID.unique(),
-      docData
-    );
+    const response = await appwrite.tablesDB.insertRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: ID.unique(),
+      data: docData
+    });
 
     return appwriteDocumentToDocument(response);
   } catch (error) {
@@ -77,9 +77,9 @@ export async function createDocument(
 
 export async function getDocument(id: string): Promise<Document | undefined> {
   try {
-    const response = await appwrite.databases.getDocument(
+    const response = await appwrite.tablesDB.getRow(
       DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
+      DOCUMENTS_TABLE_ID,
       id
     );
 
@@ -97,12 +97,12 @@ export async function updateDocument(
   try {
     const updateData = documentToAppwriteDocument(updates);
 
-    const response = await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      id,
-      updateData
-    );
+    const response = await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: id,
+      data: updateData
+    });
 
     return appwriteDocumentToDocument(response);
   } catch (error) {
@@ -114,12 +114,12 @@ export async function updateDocument(
 export async function deleteDocument(id: string): Promise<void> {
   try {
     // Soft delete by marking as deleted
-    await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      id,
-      { isDeleted: true }
-    );
+    await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: id,
+      data: { isDeleted: true }
+    });
   } catch (error) {
     console.error('Failed to delete document:', error);
     throw new Error('Failed to delete document');
@@ -128,11 +128,11 @@ export async function deleteDocument(id: string): Promise<void> {
 
 export async function permanentlyDeleteDocument(id: string): Promise<void> {
   try {
-    await appwrite.databases.deleteDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      id
-    );
+    await appwrite.tablesDB.deleteRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: id
+    });
   } catch (error) {
     console.error('Failed to permanently delete document:', error);
     throw new Error('Failed to permanently delete document');
@@ -141,12 +141,12 @@ export async function permanentlyDeleteDocument(id: string): Promise<void> {
 
 export async function restoreDocument(id: string): Promise<void> {
   try {
-    await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      id,
-      { isDeleted: false }
-    );
+    await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: id,
+      data: { isDeleted: false }
+    });
   } catch (error) {
     console.error('Failed to restore document:', error);
     throw new Error('Failed to restore document');
@@ -168,13 +168,13 @@ export async function getAllDocuments(
 
     queries.push(Query.orderDesc('$updatedAt'));
 
-    const response = await appwrite.databases.listDocuments(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
       queries
-    );
+    });
 
-    return response.documents.map(appwriteDocumentToDocument);
+    return response.rows.map(appwriteDocumentToDocument);
   } catch (error) {
     console.error('Failed to get all documents:', error);
     return [];
@@ -192,18 +192,18 @@ export async function searchDocuments(
   query: string
 ): Promise<Document[]> {
   try {
-    const response = await appwrite.databases.listDocuments(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      [
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
         Query.search('title', query),
         Query.orderDesc('$updatedAt'),
       ]
-    );
+    });
 
-    return response.documents.map(appwriteDocumentToDocument);
+    return response.rows.map(appwriteDocumentToDocument);
   } catch (error) {
     console.error('Failed to search documents:', error);
     return [];
@@ -212,18 +212,18 @@ export async function searchDocuments(
 
 export async function getRecentDocuments(workspaceId?: string): Promise<Document[]> {
   try {
-    const response = await appwrite.databases.listDocuments(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      [
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
         Query.orderDesc('lastOpenedAt'),
         Query.limit(20),
       ]
-    );
+    });
 
-    return response.documents
+    return response.rows
       .map(appwriteDocumentToDocument)
       .filter(doc => doc.lastOpenedAt);
   } catch (error) {
@@ -234,18 +234,18 @@ export async function getRecentDocuments(workspaceId?: string): Promise<Document
 
 export async function getFavoriteDocuments(workspaceId?: string): Promise<Document[]> {
   try {
-    const response = await appwrite.databases.listDocuments(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      [
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
         Query.equal('isFavorite', [true]),
         Query.orderDesc('$updatedAt'),
       ]
-    );
+    });
 
-    return response.documents.map(appwriteDocumentToDocument);
+    return response.rows.map(appwriteDocumentToDocument);
   } catch (error) {
     console.error('Failed to get favorite documents:', error);
     return [];
@@ -266,12 +266,12 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
       isFavorite: false,
     });
 
-    const response = await appwrite.databases.createDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      ID.unique(),
-      duplicateData
-    );
+    const response = await appwrite.tablesDB.insertRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: ID.unique(),
+      data: duplicateData
+    });
 
     return appwriteDocumentToDocument(response);
   } catch (error) {
@@ -282,12 +282,12 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
 
 export async function updateLastOpened(documentId: string): Promise<void> {
   try {
-    await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      documentId,
-      { lastOpenedAt: new Date().toISOString() }
-    );
+    await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: documentId,
+      data: { lastOpenedAt: new Date().toISOString() }
+    });
   } catch (error) {
     console.error('Failed to update last opened:', error);
     // Don't throw error for non-critical operation
@@ -301,12 +301,12 @@ export async function toggleFavorite(documentId: string): Promise<void> {
       throw new Error('Document not found');
     }
 
-    await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      documentId,
-      { isFavorite: !doc.isFavorite }
-    );
+    await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: documentId,
+      data: { isFavorite: !doc.isFavorite }
+    });
   } catch (error) {
     console.error('Failed to toggle favorite:', error);
     throw new Error('Failed to toggle favorite');
@@ -373,17 +373,17 @@ export async function getDocumentPath(documentId: string): Promise<Document[]> {
 
 export async function getChildren(parentId: string): Promise<Document[]> {
   try {
-    const response = await appwrite.databases.listDocuments(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      [
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      queries: [
         Query.equal('parentId', [parentId]),
         Query.equal('isDeleted', [false]),
         Query.orderAsc('title'),
       ]
-    );
+    });
 
-    return response.documents.map(appwriteDocumentToDocument);
+    return response.rows.map(appwriteDocumentToDocument);
   } catch (error) {
     console.error('Failed to get children:', error);
     return [];
@@ -392,15 +392,15 @@ export async function getChildren(parentId: string): Promise<Document[]> {
 
 export async function moveDocument(documentId: string, newWorkspaceId: string, newParentId?: string): Promise<Document> {
   try {
-    const response = await appwrite.databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      documentId,
-      {
+    const response = await appwrite.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: DOCUMENTS_TABLE_ID,
+      rowId: documentId,
+      data: {
         workspaceId: newWorkspaceId,
         parentId: newParentId,
       }
-    );
+    });
 
     return appwriteDocumentToDocument(response);
   } catch (error) {

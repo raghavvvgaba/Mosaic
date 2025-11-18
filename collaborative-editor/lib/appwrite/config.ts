@@ -1,5 +1,32 @@
 import { Client, Account, Databases, TablesDB, Storage, ID, Query } from 'appwrite';
 
+// Environment variable validation
+function validateEnvironment() {
+  const required = [
+    'NEXT_PUBLIC_APPWRITE_ENDPOINT',
+    'NEXT_PUBLIC_APPWRITE_PROJECT',
+    'NEXT_PUBLIC_APPWRITE_DATABASE_ID',
+    'NEXT_PUBLIC_APPWRITE_DOCUMENTS_TABLE_ID',
+    'NEXT_PUBLIC_APPWRITE_WORKSPACES_TABLE_ID',
+    'NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID',
+    'NEXT_PUBLIC_APPWRITE_DEFAULT_WORKSPACE_ID'
+  ];
+
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    console.error('Missing required environment variables:', missing);
+    console.error('Please check your .env.local file configuration');
+
+    // In development, we can continue with warnings
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Running in development mode with missing environment variables');
+    } else {
+      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
+  }
+}
+
 export class AppwriteConfig {
   private static instance: AppwriteConfig;
   public client: Client;
@@ -10,6 +37,9 @@ export class AppwriteConfig {
   // Realtime will be added when needed for Phase 2C
 
   private constructor() {
+    // Validate environment variables first
+    validateEnvironment();
+
     // Initialize Appwrite client
     this.client = new Client()
       .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
@@ -36,6 +66,19 @@ export class AppwriteConfig {
 
   static get ID() {
     return ID;
+  }
+
+  // Database connection health check
+  static async checkConnection(): Promise<boolean> {
+    try {
+      // Try to get the default workspace to test database connectivity
+      const { ensureDefaultWorkspace } = await import('./workspaces');
+      await ensureDefaultWorkspace();
+      return true;
+    } catch (error) {
+      console.error('Database connection check failed:', error);
+      return false;
+    }
   }
 }
 

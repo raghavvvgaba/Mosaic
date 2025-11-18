@@ -11,6 +11,146 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuthContext } from '@/contexts/AuthContext';
 
+function checkPasswordStrength(password: string) {
+  // Empty password
+  if (!password || password.length === 0) {
+    return {
+      score: 0,
+      label: '',
+      color: '',
+      message: ''
+    };
+  }
+
+  let score = 0;
+  const feedback: string[] = [];
+
+  // Length checks
+  if (password.length >= 8) {
+    score += 1;
+  } else {
+    feedback.push('at least 8 characters');
+  }
+
+  if (password.length >= 12) {
+    score += 1;
+  }
+
+  // Character variety checks
+  if (/[a-z]/.test(password)) {
+    score += 0.5;
+  } else {
+    feedback.push('lowercase letters');
+  }
+
+  if (/[A-Z]/.test(password)) {
+    score += 0.5;
+  } else {
+    feedback.push('uppercase letters');
+  }
+
+  if (/[0-9]/.test(password)) {
+    score += 0.5;
+  } else {
+    feedback.push('numbers');
+  }
+
+  if (/[^a-zA-Z0-9]/.test(password)) {
+    score += 0.5;
+  } else {
+    feedback.push('special characters');
+  }
+
+  // Cap the score at 4
+  score = Math.min(score, 4);
+
+  // Determine strength level
+  if (score < 1.5) {
+    return {
+      score: 0,
+      label: 'Weak',
+      color: 'bg-red-500',
+      message: password.length < 8
+        ? 'Password must be at least 8 characters'
+        : `Consider adding: ${feedback.slice(0, 2).join(', ')}`
+    };
+  } else if (score < 2.5) {
+    return {
+      score: 1,
+      label: 'Fair',
+      color: 'bg-orange-500',
+      message: feedback.length > 0
+        ? `Consider adding: ${feedback.slice(0, 2).join(', ')}`
+        : 'Getting stronger'
+    };
+  } else if (score < 3.5) {
+    return {
+      score: 2,
+      label: 'Good',
+      color: 'bg-yellow-500',
+      message: 'Good password strength'
+    };
+  } else if (score < 4) {
+    return {
+      score: 3,
+      label: 'Strong',
+      color: 'bg-green-500',
+      message: 'Strong password'
+    };
+  } else {
+    return {
+      score: 4,
+      label: 'Very Strong',
+      color: 'bg-green-600',
+      message: 'Excellent password strength'
+    };
+  }
+}
+
+function PasswordStrength({ password }: { password: string }) {
+  // Don't show anything if password is empty
+  if (!password) {
+    return null;
+  }
+
+  const strength = checkPasswordStrength(password);
+
+  // Don't show if there's no strength score (empty password)
+  if (strength.score === 0 && strength.label === '') {
+    return null;
+  }
+
+  return (
+    <div className="mt-2 space-y-2">
+      {/* Strength bar */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex gap-1">
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                index <= strength.score
+                  ? strength.color
+                  : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="text-xs font-medium text-gray-600 min-w-[60px]">
+          {strength.label}
+        </span>
+      </div>
+
+      {/* Strength message */}
+      {strength.message && (
+        <p className="text-xs text-gray-600">
+          {strength.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const { signUp } = useAuthContext();
@@ -30,7 +170,7 @@ export default function SignupPage() {
       await signUp(email, password, name);
 
       // Redirect to dashboard - migration happens automatically in background
-      router.push('/');
+      router.push('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create account');
       setIsLoading(false);
@@ -118,6 +258,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   />
                 </div>
+                <PasswordStrength password={password} />
                 <p className="text-xs text-slate-500">
                   Password must be at least 8 characters
                 </p>
