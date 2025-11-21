@@ -38,12 +38,12 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
       isDefault: false,
     });
 
-    const response = await appwrite.tablesDB.insertRow({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      rowId: ID.unique(),
-      data: workspaceData
-    });
+    const response = await appwrite.databases.createDocument(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      ID.unique(),
+      workspaceData
+    );
 
     return appwriteWorkspaceToWorkspace(response);
   } catch (error) {
@@ -54,13 +54,13 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
 
 export async function getWorkspaces(): Promise<Workspace[]> {
   try {
-    const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      queries: [Query.orderDesc('$updatedAt')]
-    });
+    const response = await appwrite.databases.listDocuments(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      [Query.orderDesc('$updatedAt')]
+    );
 
-    return response.rows.map(appwriteWorkspaceToWorkspace);
+    return response.documents.map(appwriteWorkspaceToWorkspace);
   } catch (error) {
     console.error('Failed to get workspaces:', error);
     return [];
@@ -69,7 +69,7 @@ export async function getWorkspaces(): Promise<Workspace[]> {
 
 export async function getWorkspace(id: string): Promise<Workspace | undefined> {
   try {
-    const response = await appwrite.tablesDB.getRow(
+    const response = await appwrite.databases.getDocument(
       DATABASE_ID,
       WORKSPACES_TABLE_ID,
       id
@@ -84,12 +84,12 @@ export async function getWorkspace(id: string): Promise<Workspace | undefined> {
 
 export async function renameWorkspace(id: string, name: string): Promise<Workspace> {
   try {
-    const response = await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      rowId: id,
-      data: { name }
-    });
+    const response = await appwrite.databases.updateDocument(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      id,
+      { name }
+    );
 
     return appwriteWorkspaceToWorkspace(response);
   } catch (error) {
@@ -107,12 +107,12 @@ export async function updateWorkspaceMetadata(
     if (updates.color !== undefined) updateData.color = updates.color;
     if (updates.icon !== undefined) updateData.icon = updates.icon;
 
-    const response = await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      rowId: id,
-      data: updateData
-    });
+    const response = await appwrite.databases.updateDocument(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      id,
+      updateData
+    );
 
     return appwriteWorkspaceToWorkspace(response);
   } catch (error) {
@@ -129,11 +129,11 @@ export async function deleteWorkspace(id: string): Promise<void> {
       throw new Error('Cannot delete the default workspace');
     }
 
-    await appwrite.tablesDB.deleteRow({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      rowId: id
-    });
+    await appwrite.databases.deleteDocument(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      id
+    );
   } catch (error) {
     console.error('Failed to delete workspace:', error);
     throw new Error('Failed to delete workspace');
@@ -154,12 +154,12 @@ export async function ensureDefaultWorkspace(): Promise<Workspace> {
       isDefault: true,
     });
 
-    const response = await appwrite.tablesDB.insertRow({
-      databaseId: DATABASE_ID,
-      tableId: WORKSPACES_TABLE_ID,
-      rowId: DEFAULT_WORKSPACE_ID,
-      data: workspaceData
-    });
+    const response = await appwrite.databases.createDocument(
+      DATABASE_ID,
+      WORKSPACES_TABLE_ID,
+      DEFAULT_WORKSPACE_ID,
+      workspaceData
+    );
 
     return appwriteWorkspaceToWorkspace(response);
   } catch (error) {
@@ -191,15 +191,15 @@ export async function countDocumentsInWorkspace(id: string): Promise<number> {
   try {
     // We would need to query the documents collection with workspaceId filter
     // This is a simplified implementation
-    const response = await appwrite.tablesDB.listRows({
-      databaseId: process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'default',
-      tableId: process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_TABLE_ID || 'documents',
-      queries: [
+    const response = await appwrite.databases.listDocuments(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'default',
+      process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_TABLE_ID || 'documents',
+      [
         Query.equal('workspaceId', [id]),
         Query.equal('isDeleted', [false]),
         Query.limit(1), // We only need the count
       ]
-    });
+    );
 
     return response.total;
   } catch (error) {

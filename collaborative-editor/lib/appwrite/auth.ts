@@ -4,7 +4,7 @@ import type { User, UserPreferences } from '../db/types';
 export class AuthService {
   private static instance: AuthService;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -217,18 +217,34 @@ export class AuthService {
 
       // Only include basic fields that exist in the users table schema
       // Preferences will be handled locally for now to avoid schema mismatches
-      await appwrite.tablesDB.upsertRow({
-        databaseId,
-        tableId: usersTableId,
-        rowId: user.id,
-        data: {
-          email: user.email,
-          name: user.name,
-          lastLoginAt: user.lastLoginAt?.toISOString()
-          // Note: Appwrite system fields like $id, $createdAt, $updatedAt are managed automatically
-          // We only provide custom fields specific to our application
+      try {
+        await appwrite.databases.updateDocument(
+          databaseId,
+          usersTableId,
+          user.id,
+          {
+            email: user.email,
+            name: user.name,
+            lastLoginAt: user.lastLoginAt?.toISOString()
+          }
+        );
+      } catch (error: unknown) {
+        // If document not found (404), create it
+        if (error && typeof error === 'object' && 'code' in error && (error as { code: number }).code === 404) {
+          await appwrite.databases.createDocument(
+            databaseId,
+            usersTableId,
+            user.id,
+            {
+              email: user.email,
+              name: user.name,
+              lastLoginAt: user.lastLoginAt?.toISOString()
+            }
+          );
+        } else {
+          throw error;
         }
-      });
+      }
 
       console.log('✅ User profile created successfully in Appwrite');
     } catch (error) {
@@ -258,7 +274,7 @@ export class AuthService {
 
     try {
       const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
-      const userDoc = await appwrite.tablesDB.getRow(databaseId, usersTableId, userId);
+      const userDoc = await appwrite.databases.getDocument(databaseId, usersTableId, userId);
 
       // If preferences field doesn't exist in schema, use defaults
       // In the future, preferences can be stored in a separate table or as JSON metadata
@@ -281,14 +297,22 @@ export class AuthService {
 
     try {
       const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
-      await appwrite.tablesDB.upsertRow({
-        databaseId,
-        tableId: usersTableId,
-        rowId: userId,
-        data: {
-          preferences
+
+      try {
+        await appwrite.databases.updateDocument(
+          databaseId,
+          usersTableId,
+          userId,
+          { preferences }
+        );
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'code' in error && (error as { code: number }).code === 404) {
+          // Should exist if user is logged in, but handle just in case
+          console.warn('User document not found when saving preferences');
+        } else {
+          throw error;
         }
-      });
+      }
     } catch (error) {
       console.error('Failed to save user preferences:', error);
       // Don't throw - preferences will be cached locally
@@ -303,14 +327,17 @@ export class AuthService {
 
     try {
       const usersTableId = process.env.NEXT_PUBLIC_APPWRITE_USERS_TABLE_ID || 'users';
-      await appwrite.tablesDB.upsertRow({
-        databaseId,
-        tableId: usersTableId,
-        rowId: userId,
-        data: {
-          lastLoginAt: new Date().toISOString()
-        }
-      });
+
+      try {
+        await appwrite.databases.updateDocument(
+          databaseId,
+          usersTableId,
+          userId,
+          { lastLoginAt: new Date().toISOString() }
+        );
+      } catch {
+        // Ignore if user doc doesn't exist yet
+      }
     } catch (error) {
       console.error('Failed to update last login:', error);
       // Don't throw - login is still successful

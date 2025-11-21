@@ -1,85 +1,145 @@
 'use client';
 
-import { FileText, Users, Lock, Zap, Smartphone, Cloud } from 'lucide-react';
+import { useRef } from 'react';
+import {
+  Layout,
+  Share2,
+  Smartphone,
+  Lock,
+  Cloud,
+  Search,
+  History
+} from 'lucide-react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export function Features() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    // Header Animation
+    gsap.from(headerRef.current, {
+      scrollTrigger: {
+        trigger: headerRef.current,
+        start: 'top 80%',
+        toggleActions: 'play none none reverse'
+      },
+      y: 50,
+      opacity: 0,
+      duration: 1,
+      ease: 'power3.out'
+    });
+
+    // Grid Items Animation
+    const items = gridRef.current?.children;
+    if (items) {
+      Array.from(items).forEach((item, i) => {
+        gsap.from(item, {
+          scrollTrigger: {
+            trigger: item,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse'
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.8,
+          delay: i * 0.1,
+          ease: 'power2.out'
+        });
+      });
+    }
+  }, { scope: containerRef });
+
   const features = [
     {
-      icon: FileText,
-      title: "Document Editor",
-      description: "Powerful block-based editor with rich formatting, tables, and markdown support."
+      title: "Block-Based Editing",
+      desc: "Drag, drop, and reorganize your thoughts with our intuitive block editor.",
+      icon: Layout,
+      className: "md:col-span-2 bg-blue-500/5 border-blue-500/20"
     },
     {
-      icon: Users,
-      title: "Real-time Collaboration",
-      description: "Work together seamlessly with live cursors, comments, and instant updates."
+      title: "Real-Time Sync",
+      desc: "Collaborate instantly with your team.",
+      icon: Share2,
+      className: "md:col-span-1 bg-purple-500/5 border-purple-500/20"
     },
     {
+      title: "Offline First",
+      desc: "Keep working even when you lose connection.",
       icon: Cloud,
-      title: "Cloud Storage",
-      description: "All your documents securely stored in the cloud with automatic backups."
+      className: "md:col-span-1 bg-pink-500/5 border-pink-500/20"
     },
     {
-      icon: Lock,
-      title: "Secure & Private",
-      description: "Enterprise-grade security with end-to-end encryption and privacy controls."
-    },
-    {
-      icon: Smartphone,
       title: "Mobile Ready",
-      description: "Access and edit your documents from any device with our responsive design."
+      desc: "Seamless experience across all your devices.",
+      icon: Smartphone,
+      className: "md:col-span-2 bg-orange-500/5 border-orange-500/20"
     },
     {
-      icon: Zap,
-      title: "Lightning Fast",
-      description: "Optimized performance with instant loading and smooth real-time updates."
+      title: "Secure by Design",
+      desc: "End-to-end encryption for your private notes.",
+      icon: Lock,
+      className: "md:col-span-1 bg-green-500/5 border-green-500/20"
+    },
+    {
+      title: "Instant Search",
+      desc: "Find anything in milliseconds.",
+      icon: Search,
+      className: "md:col-span-1 bg-teal-500/5 border-teal-500/20"
+    },
+    {
+      title: "Version History",
+      desc: "Never lose a great idea. Go back in time.",
+      icon: History,
+      className: "md:col-span-1 bg-indigo-500/5 border-indigo-500/20"
     }
   ];
 
   return (
-    <section className="py-24 bg-muted/30">
+    <section ref={containerRef} id="features" className="py-32 relative overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Everything You Need to Create Amazing Documents
+        <div ref={headerRef} className="text-center max-w-3xl mx-auto mb-20">
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-6">
+            Everything you need to <br />
+            <span className="text-primary">do your best work.</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Built for modern teams who value simplicity, speed, and collaboration.
+          <p className="text-xl text-muted-foreground">
+            Powerful features wrapped in a beautiful, distraction-free interface.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
+        {/* Bento Grid */}
+        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {features.map((feature, i) => (
             <div
-              key={index}
-              className="bg-background rounded-xl p-8 shadow-sm border hover:shadow-md transition-shadow duration-200"
+              key={i}
+              className={`group relative p-8 rounded-3xl border backdrop-blur-sm hover:bg-background/80 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${feature.className}`}
             >
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
-                <feature.icon className="w-6 h-6 text-primary" />
+              <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-background/80 flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                    <feature.icon className="w-6 h-6 text-foreground" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {feature.desc}
+                  </p>
+                </div>
+
+                {/* Decorative gradient blob */}
+                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
 
-        {/* Call to Action */}
-        <div className="text-center mt-16">
-          <div className="bg-primary/5 rounded-xl p-8 max-w-2xl mx-auto border border-primary/10">
-            <h3 className="text-2xl font-semibold mb-4">Ready to get started?</h3>
-            <p className="text-muted-foreground mb-6">
-              Join thousands of teams who are already using our platform to create amazing content together.
-            </p>
-            <a
-              href="/signup"
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Start Free Today
-            </a>
-          </div>
-        </div>
       </div>
     </section>
   );

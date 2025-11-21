@@ -21,7 +21,7 @@ import { Sparkles, X } from 'lucide-react';
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
 type BlockContent = InlineNode[] | string | undefined;
-interface EditorBlock { type?: string; content?: BlockContent; [key: string]: unknown }
+interface EditorBlock { type?: string; content?: BlockContent;[key: string]: unknown }
 
 // Augment the editor with optional helpers that may vary by version
 type MaybeExtraEditor = BlockNoteEditor & {
@@ -45,7 +45,7 @@ export interface BlockEditorHandle {
   getContextWindow: (opts?: { around?: number; maxChars?: number }) => string;
 }
 
-export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(function BlockEditor({ 
+export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(function BlockEditor({
   initialContent,
   onSave,
   className,
@@ -65,10 +65,10 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     []
   );
   const fontFamily = fontFamilies[fontKey];
-  
+
   const editor = useCreateBlockNote({
-    initialContent: initialContent 
-      ? JSON.parse(initialContent) 
+    initialContent: initialContent
+      ? JSON.parse(initialContent)
       : undefined,
     uploadFile: async (file: File) => {
       try {
@@ -221,7 +221,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
 
   // Handle improve writing click
   const handleImproveWriting = useCallback(() => {
-    const selection = getSelectedText(editor);
+    const selection = getSelectedText();
     if (selection.text && wrapperRef.current) {
       // Calculate position for overlay relative to editor container
       const position = getPositionBelowSelection(selection, wrapperRef.current);
@@ -230,7 +230,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
       // Start the improvement process
       improveWriting.actions.improve(selection.text);
     }
-  }, [editor, improveWriting.actions]);
+  }, [improveWriting.actions]);
 
   // Handle improve writing actions
   const handleImproveAction = useCallback((action: 'accept' | 'discard' | 'try-again' | 'insert-below') => {

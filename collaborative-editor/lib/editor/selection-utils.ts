@@ -9,7 +9,7 @@ export interface SelectionInfo {
 /**
  * Extract selected text from BlockNote editor
  */
-export function getSelectedText(editor: BlockNoteEditor): SelectionInfo {
+export function getSelectedText(): SelectionInfo {
   try {
     // Use DOM-based selection for reliability with BlockNote
     const selection = window.getSelection()
@@ -54,8 +54,8 @@ export function getSelectedText(editor: BlockNoteEditor): SelectionInfo {
 /**
  * Check if text is currently selected in the editor
  */
-export function hasTextSelection(editor: BlockNoteEditor): boolean {
-  const selection = getSelectedText(editor)
+export function hasTextSelection(): boolean {
+  const selection = getSelectedText()
   return selection.text.length > 0
 }
 
