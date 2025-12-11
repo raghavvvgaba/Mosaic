@@ -7,6 +7,7 @@ import { searchDocuments } from '@/lib/db/documents';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface SearchBarProps {
   onResultClick: (doc: Document) => void;
@@ -18,10 +19,11 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   const [results, setResults] = useState<Document[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const { activeWorkspaceId } = useWorkspace();
+  const { user } = useAuthContext();
 
   // Debounced search function
   const performSearch = useCallback(async (workspaceId: string, searchQuery: string) => {
-    if (!workspaceId) {
+    if (!workspaceId || !user) {
       setResults([]);
       setIsOpen(false);
       return;
@@ -30,7 +32,24 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
     if (searchQuery.length > 1) {
       try {
         const docs = await searchDocuments(workspaceId, searchQuery);
-        setResults(docs);
+        // Filter results by user ownership and permissions
+        const filteredDocs = docs.filter((doc) => {
+          // Show documents owned by the user
+          if (doc.ownerId === user.id) return true;
+
+          // Show documents where user is in collaborators list
+          if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === user.id)) {
+            return true;
+          }
+
+          // Show documents with user permissions
+          if (doc.permissions && doc.permissions.some((perm) => perm.userId === user.id)) {
+            return true;
+          }
+
+          return false;
+        });
+        setResults(filteredDocs);
         setIsOpen(true);
       } catch (error) {
         console.error('Search failed:', error);
@@ -41,7 +60,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       setResults([]);
       setIsOpen(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!activeWorkspaceId) {

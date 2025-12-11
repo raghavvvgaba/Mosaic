@@ -1,14 +1,14 @@
 export type DocumentFont = 'sans' | 'serif' | 'mono';
 
 export interface Document {
-  id: string;
+  id: string;                     // Maps to Appwrite's $id
   title: string;
   content: string; // JSON string of BlockNote content
   workspaceId: string;
   icon?: string;
   coverImage?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date;                // Maps to Appwrite's $createdAt
+  updatedAt: Date;                // Maps to Appwrite's $updatedAt
   lastOpenedAt?: Date;
   isDeleted: boolean;
   isFavorite?: boolean;
@@ -30,12 +30,12 @@ export interface Settings {
 }
 
 export interface Workspace {
-  id: string;
+  id: string;                     // Maps to Appwrite's $id
   name: string;
   color?: string;
   icon?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date;                // Maps to Appwrite's $createdAt
+  updatedAt: Date;                // Maps to Appwrite's $updatedAt
   isDefault?: boolean;
   ownerId?: string;               // Workspace owner ID
 }
@@ -62,12 +62,12 @@ export interface Permission {
 
 
 export interface User {
-  id: string;
+  id: string;                     // Maps to Appwrite's $id
   email: string;
   name: string;
   avatar?: string;
   preferences: UserPreferences;
-  createdAt: Date;
+  createdAt: Date;                // Maps to Appwrite's $createdAt
   lastLoginAt?: Date;
 }
 

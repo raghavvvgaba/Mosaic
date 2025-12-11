@@ -1,4 +1,3 @@
-import { AuthProvider } from "@/contexts/AuthContext";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 
 export default function AuthRouteLayout({
@@ -7,8 +6,6 @@ export default function AuthRouteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthProvider>
-      <AuthLayout>{children}</AuthLayout>
-    </AuthProvider>
+    <AuthLayout>{children}</AuthLayout>
   );
 }

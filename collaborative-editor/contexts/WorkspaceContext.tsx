@@ -3,15 +3,13 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Workspace } from '@/lib/db/types';
-import { DEFAULT_WORKSPACE_ID } from '@/lib/db/constants';
 import {
-  ensureDefaultWorkspace,
   getWorkspaces,
   createWorkspace as createWorkspaceRecord,
   renameWorkspace as renameWorkspaceRecord,
   deleteWorkspace as deleteWorkspaceRecord,
   updateWorkspaceMetadata as updateWorkspaceMetadataRecord,
-} from '@/lib/db/workspaces';
+} from '@/lib/appwrite/workspaces';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface WorkspaceContextValue {
@@ -39,11 +37,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
 
   const loadWorkspaces = useCallback(async () => {
-    await ensureDefaultWorkspace();
     const list = await getWorkspaces();
-    setWorkspaces(list);
-    return list;
-  }, []);
+
+    // Sort workspaces: user's personal workspaces first, then others by updatedAt
+    const sortedWorkspaces = list.sort((a, b) => {
+      // User's personal workspaces (owned by current user) come first
+      const aIsUserWorkspace = user && a.ownerId === user.id;
+      const bIsUserWorkspace = user && b.ownerId === user.id;
+
+      if (aIsUserWorkspace && !bIsUserWorkspace) return -1;
+      if (!aIsUserWorkspace && bIsUserWorkspace) return 1;
+
+      // Within the same category, sort by updatedAt (newest first)
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
+    setWorkspaces(sortedWorkspaces);
+    return sortedWorkspaces;
+  }, [user]);
 
   const setActiveWorkspace = useCallback((id: string, options: { navigate?: boolean } = {}) => {
     setActiveWorkspaceId(id);
@@ -64,9 +75,21 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       const storedId = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY) : null;
-      const fallbackId = storedId && list.some((workspace) => workspace.id === storedId)
-        ? storedId
-        : list[0]?.id ?? DEFAULT_WORKSPACE_ID;
+
+      // Priority for active workspace selection:
+      // 1. Previously selected workspace (if it still exists)
+      // 2. User's personal workspace (if logged in and has one)
+      // 3. First available workspace
+      let fallbackId;
+      if (storedId && list.some((workspace) => workspace.id === storedId)) {
+        fallbackId = storedId;
+      } else if (user) {
+        // Find user's personal workspace
+        const userWorkspace = list.find((workspace) => workspace.ownerId === user.id);
+        fallbackId = userWorkspace?.id ?? list[0]?.id;
+      } else {
+        fallbackId = list[0]?.id;
+      }
 
       setActiveWorkspace(fallbackId, { navigate: false });
       setLoading(false);
@@ -77,7 +100,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [loadWorkspaces, setActiveWorkspace]);
+  }, [loadWorkspaces, setActiveWorkspace, user]);
 
   const createWorkspace = useCallback(
     async (name: string, options: { color?: string; icon?: string } = {}) => {
@@ -116,7 +139,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const updated = await loadWorkspaces();
 
       if (activeWorkspaceId === id) {
-        const fallbackId = updated[0]?.id ?? DEFAULT_WORKSPACE_ID;
+        const fallbackId = updated[0]?.id;
         setActiveWorkspace(fallbackId);
       }
 

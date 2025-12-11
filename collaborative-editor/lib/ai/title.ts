@@ -1,5 +1,7 @@
 import { completeGenerate } from '@/lib/ai/openrouter-client'
 
+const isProduction = () => process.env.NODE_ENV === 'production';
+
 const STOPWORDS = new Set([
   'a','an','and','the','of','to','in','on','for','with','by','at','from','as','that','this','these','those','is','are','was','were','be','been','being','it','its','into','about','over','under','after','before','than','then','so','such','but','or','nor','not','like','unlike','within','without','across','through','while','during','between','among','via'
 ])
@@ -171,13 +173,13 @@ export async function suggestTitleAI(plainText: string): Promise<string | null> 
   try {
     const out = await completeGenerate('title', { prompt })
     const text = out.trim()
-    if (!text && process.env.NODE_ENV !== 'production') {
+    if (!text && !isProduction()) {
       // Dev-only diagnostic: empty AI response triggers fallback
       console.warn('[title-ai] empty response from /api/ai/title; heuristic fallback will be used')
     }
     return text || null
   } catch (e) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction()) {
       console.warn('[title-ai] request failed; heuristic fallback will be used', e)
     }
     return null

@@ -52,9 +52,10 @@ const depthPaddingClass = (depth: number) => {
 
 interface SidebarDocumentListProps {
   documents: DocumentNode[];
+  userId: string;
 }
 
-export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
+export function SidebarDocumentList({ documents, userId }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
@@ -238,6 +239,26 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
     return map;
   }, [documents]);
 
+  // Filter documents by user ownership and permissions
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      // Show documents owned by the user
+      if (doc.ownerId === userId) return true;
+
+      // Show documents where user is in collaborators list
+      if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === userId)) {
+        return true;
+      }
+
+      // Show documents with user permissions
+      if (doc.permissions && doc.permissions.some((perm) => perm.userId === userId)) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [documents, userId]);
+
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const id = event.active.id as string;
@@ -299,7 +320,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
     [activeWorkspaceId, invalidDropTargets, persistExpanded]
   );
 
-  if (documents.length === 0) {
+  if (filteredDocuments.length === 0) {
     return (
       <div className="px-4 py-1 text-center text-sm text-muted-foreground">
         No documents yet
@@ -313,7 +334,7 @@ export function SidebarDocumentList({ documents }: SidebarDocumentListProps) {
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <RootDropZone active={draggingId !== null} />
           <RootContainer
-            documents={documents}
+            documents={filteredDocuments}
             pathname={pathname}
             expandedIds={expandedIds}
             toggleExpanded={toggleExpanded}
@@ -514,7 +535,7 @@ function SidebarNode({
   fontClassMap,
   handleDuplicate,
 }: SidebarNodeProps) {
-  const isActive = pathname === `/documents/${doc.id}`;
+  const isActive = pathname === `/dashboard/documents/${doc.id}`;
   const hasChildren = doc.children.length > 0;
   const isExpanded = expandedIds.has(doc.id);
   const isDragged = draggingId === doc.id;
@@ -651,7 +672,7 @@ function SidebarNode({
                   e.stopPropagation();
                   // Safely get the origin URL with fallback
                   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                  const url = `${origin}/documents/${doc.id}`;
+                  const url = `${origin}/dashboard/documents/${doc.id}`;
                   navigator.clipboard.writeText(url).catch((error) => {
                     console.error('Clipboard write failed:', error);
                     alert('Failed to copy link to clipboard. Please copy it manually: ' + url);

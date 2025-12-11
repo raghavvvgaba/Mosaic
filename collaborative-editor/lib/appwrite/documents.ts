@@ -1,8 +1,8 @@
-import { appwrite, ID, Query } from './config';
+import { getAppwrite, ID, Query, appwriteConfig } from './config';
 import type { Document, DocumentNode, Collaborator, Permission } from '../db/types';
 
-const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'default';
-const DOCUMENTS_TABLE_ID = process.env.NEXT_PUBLIC_APPWRITE_DOCUMENTS_TABLE_ID || 'documents';
+const getDatabaseId = () => appwriteConfig.databaseId;
+const getDocumentsTableId = () => appwriteConfig.documentsTableId;
 
 // Helper function to convert Appwrite table row to our Document type
 function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Document {
@@ -53,6 +53,8 @@ export async function createDocument(
   parentId?: string
 ): Promise<Document> {
   try {
+    const appwrite = getAppwrite();
+
     const docData = documentToAppwriteDocument({
       title: title || 'Untitled',
       workspaceId: workspaceId || 'default',
@@ -61,9 +63,9 @@ export async function createDocument(
       isFavorite: false,
     });
 
-    const response = await appwrite.tablesDB.insertRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+    const response = await appwrite.tablesDB.createRow({
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: ID.unique(),
       data: docData
     });
@@ -77,9 +79,10 @@ export async function createDocument(
 
 export async function getDocument(id: string): Promise<Document | undefined> {
   try {
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.getRow(
-      DATABASE_ID,
-      DOCUMENTS_TABLE_ID,
+      getDatabaseId(),
+      getDocumentsTableId(),
       id
     );
 
@@ -95,11 +98,13 @@ export async function updateDocument(
   updates: Partial<Document>
 ): Promise<Document> {
   try {
+    const appwrite = getAppwrite();
+
     const updateData = documentToAppwriteDocument(updates);
 
     const response = await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: id,
       data: updateData
     });
@@ -113,10 +118,12 @@ export async function updateDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   try {
+    const appwrite = getAppwrite();
+
     // Soft delete by marking as deleted
     await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: id,
       data: { isDeleted: true }
     });
@@ -128,9 +135,10 @@ export async function deleteDocument(id: string): Promise<void> {
 
 export async function permanentlyDeleteDocument(id: string): Promise<void> {
   try {
+    const appwrite = getAppwrite();
     await appwrite.tablesDB.deleteRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: id
     });
   } catch (error) {
@@ -141,9 +149,10 @@ export async function permanentlyDeleteDocument(id: string): Promise<void> {
 
 export async function restoreDocument(id: string): Promise<void> {
   try {
+    const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: id,
       data: { isDeleted: false }
     });
@@ -158,6 +167,8 @@ export async function getAllDocuments(
   options?: { includeDeleted?: boolean }
 ): Promise<Document[]> {
   try {
+    const appwrite = getAppwrite();
+
     const queries = [
       Query.equal('workspaceId', [workspaceId || 'default']),
     ];
@@ -169,8 +180,8 @@ export async function getAllDocuments(
     queries.push(Query.orderDesc('$updatedAt'));
 
     const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       queries
     });
 
@@ -192,9 +203,11 @@ export async function searchDocuments(
   query: string
 ): Promise<Document[]> {
   try {
+    const appwrite = getAppwrite();
+
     const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
@@ -212,9 +225,10 @@ export async function searchDocuments(
 
 export async function getRecentDocuments(workspaceId?: string): Promise<Document[]> {
   try {
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
@@ -234,9 +248,10 @@ export async function getRecentDocuments(workspaceId?: string): Promise<Document
 
 export async function getFavoriteDocuments(workspaceId?: string): Promise<Document[]> {
   try {
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
@@ -266,9 +281,10 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
       isFavorite: false,
     });
 
-    const response = await appwrite.tablesDB.insertRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+    const appwrite = getAppwrite();
+    const response = await appwrite.tablesDB.createRow({
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: ID.unique(),
       data: duplicateData
     });
@@ -282,9 +298,10 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
 
 export async function updateLastOpened(documentId: string): Promise<void> {
   try {
+    const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: documentId,
       data: { lastOpenedAt: new Date().toISOString() }
     });
@@ -301,9 +318,10 @@ export async function toggleFavorite(documentId: string): Promise<void> {
       throw new Error('Document not found');
     }
 
+    const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: documentId,
       data: { isFavorite: !doc.isFavorite }
     });
@@ -373,9 +391,10 @@ export async function getDocumentPath(documentId: string): Promise<Document[]> {
 
 export async function getChildren(parentId: string): Promise<Document[]> {
   try {
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       queries: [
         Query.equal('parentId', [parentId]),
         Query.equal('isDeleted', [false]),
@@ -392,9 +411,10 @@ export async function getChildren(parentId: string): Promise<Document[]> {
 
 export async function moveDocument(documentId: string, newWorkspaceId: string, newParentId?: string): Promise<Document> {
   try {
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: DOCUMENTS_TABLE_ID,
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
       rowId: documentId,
       data: {
         workspaceId: newWorkspaceId,

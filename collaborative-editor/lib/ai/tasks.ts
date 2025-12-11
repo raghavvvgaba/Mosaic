@@ -1,3 +1,13 @@
+export const openrouterConfig = {
+  apiKey: process.env.OPENROUTER_API_KEY,
+  model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
+  site: process.env.OPENROUTER_SITE || 'http://localhost:3000',
+  title: process.env.OPENROUTER_TITLE || 'Notes AI Draft',
+  modelDraft: process.env.OPENROUTER_MODEL_DRAFT || 'qwen/qwen-2.5-72b-instruct:free',
+  modelTitle: process.env.OPENROUTER_MODEL_TITLE || 'meta-llama/llama-3.3-70b-instruct:free',
+  modelImprove: process.env.OPENROUTER_MODEL_IMPROVE || 'anthropic/claude-3.5-sonnet',
+};
+
 export type TaskName = 'draft' | 'title' | 'improve' | string
 
 export type CommonParams = {
@@ -16,15 +26,18 @@ export type TaskDefinition = {
   systemPrompt: (params: CommonParams) => string
 }
 
-// Centralized per-task model preferences
-const TASK_MODELS: Record<string, string> = {
-  draft: process.env.OPENROUTER_MODEL_DRAFT || process.env.OPENROUTER_MODEL || 'xai/grok-2-latest',
-  title: process.env.OPENROUTER_MODEL_TITLE || process.env.OPENROUTER_MODEL || 'xai/grok-2-latest',
-  improve: process.env.OPENROUTER_MODEL_IMPROVE || process.env.OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
+// Centralized per-task model preferences (runtime access)
+function getTaskModels(): Record<string, string> {
+  return {
+    draft: openrouterConfig.modelDraft || openrouterConfig.model,
+    title: openrouterConfig.modelTitle || openrouterConfig.model,
+    improve: openrouterConfig.modelImprove || openrouterConfig.model,
+  };
 }
 
 export function resolveModel(task: string, params: CommonParams): string {
-  return params.model || TASK_MODELS[task] || process.env.OPENROUTER_MODEL || 'xai/grok-2-latest'
+  const taskModels = getTaskModels();
+  return params.model || taskModels[task] || openrouterConfig.model
 }
 
 // Centralized per-task defaults (e.g., temperature)

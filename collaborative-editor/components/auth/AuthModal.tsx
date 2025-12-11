@@ -42,7 +42,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
     try {
       if (mode === 'signup') {
-        await signUp(email, password, name);
+        await signUp(name, email, password);
       } else {
         await signIn(email, password);
       }

@@ -167,7 +167,7 @@ export default function SignupPage() {
 
     try {
       // Create account - migration will be handled by useAuth hook
-      await signUp(email, password, name);
+      await signUp(name, email, password);
 
       // Redirect to dashboard - migration happens automatically in background
       router.push('/dashboard');

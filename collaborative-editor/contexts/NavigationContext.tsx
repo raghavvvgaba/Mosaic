@@ -17,7 +17,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const openDocument = useCallback((id: string, title: string) => {
     // Simply navigate to the document, replacing current view
-    router.push(`/documents/${id}`);
+    router.push(`/dashboard/documents/${id}`);
   }, [router]);
 
   const openPage = useCallback((path: string, title: string) => {
@@ -26,7 +26,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const navigateToDocument = useCallback((id: string) => {
-    router.push(`/documents/${id}`);
+    router.push(`/dashboard/documents/${id}`);
   }, [router]);
 
   const navigateToPage = useCallback((path: string) => {

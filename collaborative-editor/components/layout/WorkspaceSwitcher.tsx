@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { DEFAULT_WORKSPACE_ID } from '@/lib/db/constants';
+// System workspace constants removed - no more shared workspaces
 import { ConfirmDialog } from '@/components/AlertDialog';
 
 export function WorkspaceSwitcher() {
@@ -168,10 +168,7 @@ function WorkspaceManagerDialog({
   };
 
   const handleDeleteWorkspace = (workspaceId: string) => {
-    if (workspaceId === DEFAULT_WORKSPACE_ID) {
-      alert('The default workspace cannot be deleted');
-      return;
-    }
+    // System workspace protection removed - users can now manage their own workspaces
     const target = workspaces.find((workspace) => workspace.id === workspaceId);
     setConfirmConfig({
       title: 'Delete Workspace',
@@ -232,7 +229,7 @@ function WorkspaceManagerDialog({
                       <div className="font-medium flex items-center gap-2">
                         <span>{workspace.name}</span>
                         {workspace.isDefault && (
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Default</span>
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Personal</span>
                         )}
                       </div>
                       {isActive && (
@@ -258,8 +255,7 @@ function WorkspaceManagerDialog({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {!workspace.isDefault && (
-                        <Button
+                      <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive"
@@ -269,7 +265,6 @@ function WorkspaceManagerDialog({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
                     </div>
                   </div>
 

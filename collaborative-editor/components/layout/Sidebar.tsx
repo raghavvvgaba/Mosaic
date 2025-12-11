@@ -11,6 +11,7 @@ import { SidebarFooter } from './SidebarFooter';
 import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree } from '@/lib/db/documents';
 import type { Document, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   onSearchOpen: () => void;
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuthContext();
   const { activeWorkspaceId } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -43,7 +45,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   }, []);
 
   useEffect(() => {
-    if (!activeWorkspaceId) return;
+    if (!activeWorkspaceId || !user || authLoading) return;
 
     loadDocuments(activeWorkspaceId);
 
@@ -61,13 +63,13 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
       window.removeEventListener('documentsChanged', handleDataChanged);
       window.removeEventListener('activeWorkspaceChanged', handleDataChanged);
     };
-  }, [activeWorkspaceId, loadDocuments]);
+  }, [activeWorkspaceId, loadDocuments, user, authLoading]);
 
   async function handleNewDocument() {
-    if (!activeWorkspaceId) return;
+    if (!activeWorkspaceId || !user) return;
 
     const doc = await createDocument('Untitled', activeWorkspaceId);
-    router.push(`/documents/${doc.id}`);
+    router.push(`/dashboard/documents/${doc.id}`);
     loadDocuments(activeWorkspaceId);
     window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
@@ -121,7 +123,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
           </Button>
         </div>
         <div className='flex-1 overflow-hidden'>
-          <SidebarDocumentList documents={documentTree} />
+          {user && <SidebarDocumentList documents={documentTree} userId={user.id} />}
         </div>
 
         <SidebarFooter onShowShortcuts={onShowShortcuts} />

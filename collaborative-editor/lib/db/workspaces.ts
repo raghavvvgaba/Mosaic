@@ -8,7 +8,6 @@ export {
   renameWorkspace,
   updateWorkspaceMetadata,
   deleteWorkspace,
-  ensureDefaultWorkspace,
   countDocumentsInWorkspace,
 } from '../appwrite/workspaces';
 

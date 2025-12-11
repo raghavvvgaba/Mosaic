@@ -23,31 +23,31 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
       iconName: 'home',
       path: '/',
       count: allCount,
-      isActive: pathname === '/' || pathname.startsWith('/documents/')
+      isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/documents/')
     },
     {
       label: 'Recent',
       icon: Clock,
       iconName: 'recent',
-      path: '/recent',
+      path: '/dashboard/recent',
       count: recentCount,
-      isActive: pathname === '/recent'
+      isActive: pathname === '/dashboard/recent'
     },
     {
       label: 'Favorites',
       icon: Star,
       iconName: 'favorites',
-      path: '/favorites',
+      path: '/dashboard/favorites',
       count: favoritesCount,
-      isActive: pathname === '/favorites'
+      isActive: pathname === '/dashboard/favorites'
     },
     {
       label: 'Trash',
       icon: Trash2,
       iconName: 'trash',
-      path: '/trash',
+      path: '/dashboard/trash',
       count: trashCount,
-      isActive: pathname === '/trash'
+      isActive: pathname === '/dashboard/trash'
     },
   ];
 

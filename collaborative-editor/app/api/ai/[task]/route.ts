@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { openrouterConfig } from '@/lib/ai/tasks'
 import { getTaskDefinition, resolveModel, resolveTemperature, type CommonParams } from '@/lib/ai/tasks'
 
 export const runtime = 'nodejs'
@@ -29,12 +30,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
     return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), { status: 429 })
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!openrouterConfig.apiKey) {
     return new Response(JSON.stringify({ error: 'Missing OPENROUTER_API_KEY' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
   }
 
   const origin = req.headers.get('origin') || ''
-  if (process.env.NODE_ENV === 'production' && origin) {
+  const isProduction = process.env.NODE_ENV === 'production'
+  if (isProduction && origin) {
     const url = new URL(req.url)
     if (origin !== `${url.protocol}//${url.host}`) {
       return new Response('Forbidden', { status: 403 })
@@ -60,9 +62,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': process.env.OPENROUTER_SITE || 'http://localhost',
-      'X-Title': process.env.OPENROUTER_TITLE || 'Notes AI',
+      Authorization: `Bearer ${openrouterConfig.apiKey}`,
+      'HTTP-Referer': openrouterConfig.site,
+      'X-Title': openrouterConfig.title,
     },
     body: JSON.stringify({
       model: resolveModel(task, body),
