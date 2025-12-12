@@ -55,19 +55,29 @@ export async function createDocument(
   try {
     const appwrite = getAppwrite();
 
+    // Get current authenticated user
+    const user = await appwrite.account.get();
+    const userId = user.$id;
+
     const docData = documentToAppwriteDocument({
       title: title || 'Untitled',
       workspaceId: workspaceId || 'default',
       parentId,
       isDeleted: false,
       isFavorite: false,
+      ownerId: userId,
     });
 
     const response = await appwrite.tablesDB.createRow({
       databaseId: getDatabaseId(),
       tableId: getDocumentsTableId(),
       rowId: ID.unique(),
-      data: docData
+      data: docData,
+      permissions: [
+        `read:user:${userId}`,
+        `write:user:${userId}`,
+        `delete:user:${userId}`
+      ]
     });
 
     return appwriteDocumentToDocument(response);
@@ -274,19 +284,29 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
       throw new Error('Original document not found');
     }
 
+    // Get current authenticated user
+    const appwrite = getAppwrite();
+    const user = await appwrite.account.get();
+    const userId = user.$id;
+
     const duplicateData = documentToAppwriteDocument({
       ...originalDoc,
       title: `${originalDoc.title} (Copy)`,
       isDeleted: false,
       isFavorite: false,
+      ownerId: userId, // Set current user as owner of duplicate
     });
 
-    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.createRow({
       databaseId: getDatabaseId(),
       tableId: getDocumentsTableId(),
       rowId: ID.unique(),
-      data: duplicateData
+      data: duplicateData,
+      permissions: [
+        `read:user:${userId}`,
+        `write:user:${userId}`,
+        `delete:user:${userId}`
+      ]
     });
 
     return appwriteDocumentToDocument(response);

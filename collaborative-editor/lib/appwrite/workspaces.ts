@@ -53,6 +53,12 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
   try {
     const appwrite = getAppwrite();
 
+    // If no userId provided, get current authenticated user
+    if (!userId) {
+      const user = await appwrite.account.get();
+      userId = user.$id;
+    }
+
     const workspaceData = workspaceToAppwriteWorkspace({
       name,
       ownerId: userId,
@@ -63,7 +69,12 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
       databaseId: getDatabaseId(),
       tableId: getWorkspacesTableId(),
       rowId: ID.unique(),
-      data: workspaceData
+      data: workspaceData,
+      permissions: [
+        `read:user:${userId}`,
+        `write:user:${userId}`,
+        `delete:user:${userId}`
+      ]
     });
 
     return appwriteWorkspaceToWorkspace(response);
@@ -83,10 +94,17 @@ export async function getWorkspaces(): Promise<Workspace[]> {
 
     const appwrite = getAppwrite();
 
+    // Get current authenticated user
+    const user = await appwrite.account.get();
+    const userId = user.$id;
+
     const response = await appwrite.tablesDB.listRows({
       databaseId: getDatabaseId(),
       tableId: getWorkspacesTableId(),
-      queries: [Query.orderDesc('$updatedAt')]
+      queries: [
+        Query.equal('ownerId', [userId]),  // Only return user's own workspaces
+        Query.orderDesc('$updatedAt')
+      ]
     });
 
     return response.rows.map(appwriteWorkspaceToWorkspace);

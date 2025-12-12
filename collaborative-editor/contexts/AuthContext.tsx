@@ -117,7 +117,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         console.log('Personal workspace created successfully');
       } catch (workspaceError) {
         console.error('Failed to create personal workspace:', workspaceError);
-        // Don't fail signup if workspace creation fails, but log the error
+        // Don't fail signup if workspace creation fails, but notify user
+        setError('Account created successfully, but workspace creation failed. You may need to create a workspace manually.');
+        // Still allow signup to complete since user account was created
       }
     } catch (err: any) {
       console.error('Sign up failed:', err);
