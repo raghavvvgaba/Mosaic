@@ -1,8 +1,58 @@
-import { getAppwrite, ID, Query, appwriteConfig } from './config';
+import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
 import type { Document, DocumentNode, Collaborator, Permission } from '../db/types';
+
+// Import workspace validation
+import type { Workspace } from '../db/types';
 
 const getDatabaseId = () => appwriteConfig.databaseId;
 const getDocumentsTableId = () => appwriteConfig.documentsTableId;
+
+// Helper function to validate document ownership
+async function validateDocumentOwnership(documentId: string): Promise<{ userId: string; valid: boolean; document?: Document }> {
+  try {
+    const appwrite = getAppwrite();
+    const user = await appwrite.account.get();
+
+    // Get document to check ownership
+    const response = await appwrite.tablesDB.getRow(
+      getDatabaseId(),
+      getDocumentsTableId(),
+      documentId
+    );
+
+    const document = appwriteDocumentToDocument(response);
+    return {
+      userId: user.$id,
+      valid: document.ownerId === user.$id,
+      document
+    };
+  } catch (error) {
+    return { userId: '', valid: false };
+  }
+}
+
+// Helper function to validate workspace ownership for document operations
+async function validateWorkspaceOwnershipForDocuments(workspaceId: string): Promise<{ userId: string; valid: boolean }> {
+  try {
+    const appwrite = getAppwrite();
+    const user = await appwrite.account.get();
+
+    // Get workspace to check ownership
+    const response = await appwrite.tablesDB.getRow(
+      appwriteConfig.databaseId,
+      appwriteConfig.workspacesTableId,
+      workspaceId
+    );
+
+    const workspace = response as any;
+    return {
+      userId: user.$id,
+      valid: workspace.ownerId === user.$id
+    };
+  } catch (error) {
+    return { userId: '', valid: false };
+  }
+}
 
 // Helper function to convert Appwrite table row to our Document type
 function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Document {
@@ -55,19 +105,29 @@ export async function createDocument(
   try {
     const appwrite = getAppwrite();
 
+    // Get current authenticated user
+    const user = await appwrite.account.get();
+    const userId = user.$id;
+
     const docData = documentToAppwriteDocument({
       title: title || 'Untitled',
       workspaceId: workspaceId || 'default',
       parentId,
       isDeleted: false,
       isFavorite: false,
+      ownerId: userId,
     });
 
     const response = await appwrite.tablesDB.createRow({
       databaseId: getDatabaseId(),
       tableId: getDocumentsTableId(),
       rowId: ID.unique(),
-      data: docData
+      data: docData,
+      permissions: [
+        AppwritePermission.read(Role.user(userId)),
+        AppwritePermission.write(Role.user(userId)),
+        AppwritePermission.delete(Role.user(userId))
+      ]
     });
 
     return appwriteDocumentToDocument(response);
@@ -79,14 +139,14 @@ export async function createDocument(
 
 export async function getDocument(id: string): Promise<Document | undefined> {
   try {
-    const appwrite = getAppwrite();
-    const response = await appwrite.tablesDB.getRow(
-      getDatabaseId(),
-      getDocumentsTableId(),
-      id
-    );
+    // Validate ownership first
+    const ownership = await validateDocumentOwnership(id);
+    if (!ownership.valid) {
+      return undefined;
+    }
 
-    return appwriteDocumentToDocument(response);
+    // We already have the document from validation
+    return ownership.document;
   } catch (error) {
     console.error('Failed to get document:', error);
     return undefined;
@@ -98,6 +158,12 @@ export async function updateDocument(
   updates: Partial<Document>
 ): Promise<Document> {
   try {
+    // Validate ownership first
+    const ownership = await validateDocumentOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Document not found or access denied');
+    }
+
     const appwrite = getAppwrite();
 
     const updateData = documentToAppwriteDocument(updates);
@@ -118,6 +184,12 @@ export async function updateDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   try {
+    // Validate ownership first
+    const ownership = await validateDocumentOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Document not found or access denied');
+    }
+
     const appwrite = getAppwrite();
 
     // Soft delete by marking as deleted
@@ -168,6 +240,14 @@ export async function getAllDocuments(
 ): Promise<Document[]> {
   try {
     const appwrite = getAppwrite();
+
+    // Validate workspace ownership first
+    if (workspaceId) {
+      const ownership = await validateWorkspaceOwnershipForDocuments(workspaceId);
+      if (!ownership.valid) {
+        throw new Error('Workspace not found or access denied');
+      }
+    }
 
     const queries = [
       Query.equal('workspaceId', [workspaceId || 'default']),
@@ -274,19 +354,29 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
       throw new Error('Original document not found');
     }
 
+    // Get current authenticated user
+    const appwrite = getAppwrite();
+    const user = await appwrite.account.get();
+    const userId = user.$id;
+
     const duplicateData = documentToAppwriteDocument({
       ...originalDoc,
       title: `${originalDoc.title} (Copy)`,
       isDeleted: false,
       isFavorite: false,
+      ownerId: userId, // Set current user as owner of duplicate
     });
 
-    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.createRow({
       databaseId: getDatabaseId(),
       tableId: getDocumentsTableId(),
       rowId: ID.unique(),
-      data: duplicateData
+      data: duplicateData,
+      permissions: [
+        AppwritePermission.read(Role.user(userId)),
+        AppwritePermission.write(Role.user(userId)),
+        AppwritePermission.delete(Role.user(userId))
+      ]
     });
 
     return appwriteDocumentToDocument(response);
@@ -298,6 +388,13 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
 
 export async function updateLastOpened(documentId: string): Promise<void> {
   try {
+    // Validate ownership first
+    const ownership = await validateDocumentOwnership(documentId);
+    if (!ownership.valid) {
+      // Silently fail for non-critical operation
+      return;
+    }
+
     const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),
@@ -411,6 +508,18 @@ export async function getChildren(parentId: string): Promise<Document[]> {
 
 export async function moveDocument(documentId: string, newWorkspaceId: string, newParentId?: string): Promise<Document> {
   try {
+    // Validate document ownership first
+    const docOwnership = await validateDocumentOwnership(documentId);
+    if (!docOwnership.valid) {
+      throw new Error('Document not found or access denied');
+    }
+
+    // Validate target workspace ownership
+    const wsOwnership = await validateWorkspaceOwnershipForDocuments(newWorkspaceId);
+    if (!wsOwnership.valid) {
+      throw new Error('Target workspace not found or access denied');
+    }
+
     const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),
