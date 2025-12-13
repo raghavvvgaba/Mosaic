@@ -63,7 +63,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       window.dispatchEvent(new CustomEvent('activeWorkspaceChanged', { detail: { workspaceId: id } }));
     }
     if (options.navigate !== false) {
-      router.push('/');
+      router.push('/dashboard');
     }
   }, [router]);
 

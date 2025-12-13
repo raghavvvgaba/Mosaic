@@ -21,7 +21,7 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
       label: 'Home',
       icon: FileText,
       iconName: 'home',
-      path: '/',
+      path: '/dashboard',
       count: allCount,
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/documents/')
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, User } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -25,19 +25,6 @@ export function SidebarHeader({ onSearch }: SidebarHeaderProps) {
 
   return (
     <div className="p-4 border-b space-y-3">
-      {/* User info display */}
-      {user && (
-        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-          <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{user.name}</div>
-            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-          </div>
-        </div>
-      )}
-
       <WorkspaceSwitcher />
       <Button
         onClick={onSearch}
