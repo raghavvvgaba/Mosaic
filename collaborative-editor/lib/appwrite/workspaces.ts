@@ -1,9 +1,31 @@
-import { getAppwrite, ID, Query, appwriteConfig } from './config';
+import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
 import type { Workspace } from '../db/types';
 
 const getDatabaseId = () => appwriteConfig.databaseId;
 const getWorkspacesTableId = () => appwriteConfig.workspacesTableId;
-// Default workspace functionality removed - no more shared workspaces
+
+// Helper function to validate workspace ownership
+async function validateWorkspaceOwnership(workspaceId: string): Promise<{ userId: string; valid: boolean }> {
+  try {
+    const appwrite = getAppwrite();
+    const user = await appwrite.account.get();
+
+    // Get workspace to check ownership
+    const response = await appwrite.tablesDB.getRow(
+      getDatabaseId(),
+      getWorkspacesTableId(),
+      workspaceId
+    );
+
+    const workspace = response as any;
+    return {
+      userId: user.$id,
+      valid: workspace.ownerId === user.$id
+    };
+  } catch (error) {
+    return { userId: '', valid: false };
+  }
+}
 
 // Helper function to check if environment is properly configured for database operations
 function isEnvironmentReady(): boolean {
@@ -71,9 +93,9 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
       rowId: ID.unique(),
       data: workspaceData,
       permissions: [
-        `read:user:${userId}`,
-        `write:user:${userId}`,
-        `delete:user:${userId}`
+        AppwritePermission.read(Role.user(userId)),
+        AppwritePermission.write(Role.user(userId)),
+        AppwritePermission.delete(Role.user(userId))
       ]
     });
 
@@ -116,8 +138,13 @@ export async function getWorkspaces(): Promise<Workspace[]> {
 
 export async function getWorkspace(id: string): Promise<Workspace | undefined> {
   try {
-    const appwrite = getAppwrite();
+    // Validate ownership first
+    const ownership = await validateWorkspaceOwnership(id);
+    if (!ownership.valid) {
+      return undefined;
+    }
 
+    const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.getRow(
       getDatabaseId(),
       getWorkspacesTableId(),
@@ -133,6 +160,12 @@ export async function getWorkspace(id: string): Promise<Workspace | undefined> {
 
 export async function renameWorkspace(id: string, name: string): Promise<Workspace> {
   try {
+    // Validate ownership first
+    const ownership = await validateWorkspaceOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Workspace not found or access denied');
+    }
+
     const appwrite = getAppwrite();
     const response = await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),
@@ -157,6 +190,12 @@ export async function updateWorkspaceMetadata(
       throw new Error('Environment not ready for database operations');
     }
 
+    // Validate ownership first
+    const ownership = await validateWorkspaceOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Workspace not found or access denied');
+    }
+
     const updateData: Record<string, unknown> = {};
     if (updates.color !== undefined) updateData.color = updates.color;
     if (updates.icon !== undefined) updateData.icon = updates.icon;
@@ -178,6 +217,12 @@ export async function updateWorkspaceMetadata(
 
 export async function deleteWorkspace(id: string): Promise<void> {
   try {
+    // Validate ownership first
+    const ownership = await validateWorkspaceOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Workspace not found or access denied');
+    }
+
     // Check if this is the default workspace
     const appwrite = getAppwrite();
     const workspace = await getWorkspace(id);
@@ -200,6 +245,12 @@ export async function deleteWorkspace(id: string): Promise<void> {
 
 export async function countDocumentsInWorkspace(id: string): Promise<number> {
   try {
+    // Validate workspace ownership first
+    const ownership = await validateWorkspaceOwnership(id);
+    if (!ownership.valid) {
+      throw new Error('Workspace not found or access denied');
+    }
+
     // We would need to query the documents collection with workspaceId filter
     // This is a simplified implementation
     const appwrite = getAppwrite();

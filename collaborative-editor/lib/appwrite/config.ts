@@ -1,4 +1,4 @@
-import { Client, Account, Databases, TablesDB, Storage, ID, Query } from 'appwrite';
+import { Client, Account, Databases, TablesDB, Storage, ID, Query, Permission, Role } from 'appwrite';
 
 export const appwriteConfig = {
   endpoint: process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1',
@@ -77,4 +77,4 @@ export class AppwriteConfig {
 export const getAppwrite = () => AppwriteConfig.getInstance();
 
 // Utility exports
-export { ID, Query } from 'appwrite';
+export { ID, Query, Permission, Role } from 'appwrite';
