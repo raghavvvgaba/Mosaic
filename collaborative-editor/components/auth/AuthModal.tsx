@@ -64,23 +64,23 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="neu-card w-full max-w-md mx-4 shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-border/30">
+          <h2 className="text-2xl font-bold tracking-tight">
             {mode === 'signin' ? 'Sign In' : 'Sign Up'}
           </h2>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             onClick={onClose}
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 glass hover:bg-accent/20"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -89,16 +89,16 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
           {mode === 'signup' && (
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="text-sm font-medium">Name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
                   placeholder="Enter your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
+                  className="pl-12 h-11"
                   required
                 />
               </div>
@@ -106,32 +106,32 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
+                className="pl-12 h-11"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type="password"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
+                className="pl-12 h-11"
                 required
                 minLength={6}
               />
@@ -140,7 +140,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-11 text-base font-medium"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -154,7 +154,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           </Button>
         </form>
 
-        <div className="p-6 border-t bg-muted/50">
+        <div className="p-6 border-t border-border/30 bg-muted/30 rounded-b-2xl">
           <p className="text-center text-sm text-muted-foreground">
             {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
             <button

@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -50,7 +51,10 @@ export function ConfirmDialog({
                 });
               }
             }}
-            className={variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            className={cn(
+              variant === 'destructive' && 'text-destructive hover:text-destructive-foreground',
+              variant === 'destructive' && 'hover:bg-destructive/90 hover:shadow-[10px_10px_20px_rgba(0,0,0,0.6),inset_0_0_20px_rgba(220,38,38,0.3)]'
+            )}
           >
             {confirmText}
           </AlertDialogAction>

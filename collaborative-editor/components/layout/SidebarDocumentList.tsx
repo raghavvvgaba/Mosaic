@@ -43,6 +43,7 @@ import type { DocumentFont, DocumentNode } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
+import { DocumentListSkeleton } from '@/components/ui/document-list-skeleton';
 
 // Indentation utility based on tree depth
 const depthPaddingClass = (depth: number) => {
@@ -53,9 +54,10 @@ const depthPaddingClass = (depth: number) => {
 interface SidebarDocumentListProps {
   documents: DocumentNode[];
   userId: string;
+  isLoading?: boolean;
 }
 
-export function SidebarDocumentList({ documents, userId }: SidebarDocumentListProps) {
+export function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
@@ -319,6 +321,10 @@ export function SidebarDocumentList({ documents, userId }: SidebarDocumentListPr
     },
     [activeWorkspaceId, invalidDropTargets, persistExpanded]
   );
+
+  if (isLoading) {
+    return <DocumentListSkeleton />;
+  }
 
   if (filteredDocuments.length === 0) {
     return (

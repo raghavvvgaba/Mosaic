@@ -125,33 +125,33 @@ export function MoveDocumentDialog({
         const updatedLabel = formatDistanceToNow(new Date(node.updatedAt), { addSuffix: true });
 
         return (
-          <div key={node.id} className="space-y-1">
+          <div key={node.id} className="space-y-2">
             <label
               className={cn(
-                'flex items-start gap-2 rounded-lg border p-2 transition-colors cursor-pointer',
+                'flex items-start gap-3 rounded-xl p-4 transition-all cursor-pointer',
                 isInvalid
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-accent'
+                  ? 'neu-card opacity-40 cursor-not-allowed'
+                  : 'neu-card hover:transform hover:-translate-y-1'
               )}
-              style={{ paddingLeft: depth * 16 + 12 }}
+              style={{ paddingLeft: depth * 20 + 16 }}
             >
               <RadioGroupItem value={node.id} id={`move-${node.id}`} disabled={isInvalid} />
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-sm font-semibold text-foreground">
                   {node.title || 'Untitled'}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   Updated {updatedLabel}
                 </span>
                 {isInvalid && (
-                  <span className="text-[11px] text-muted-foreground/80">
+                  <span className="text-[11px] text-muted-foreground/80 mt-1">
                     Cannot move into this page.
                   </span>
                 )}
               </div>
             </label>
             {node.children.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {renderOptions(node.children, depth + 1)}
               </div>
             )}
@@ -166,41 +166,40 @@ export function MoveDocumentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="w-5 h-5" />
-            Move “{documentTitle || 'Untitled'}”
+          <DialogTitle className="flex items-center gap-3 text-lg">
+            <div className="glass w-10 h-10 rounded-xl flex items-center justify-center">
+              <FolderPlus className="w-5 h-5 text-primary" />
+            </div>
+            Move "{documentTitle || 'Untitled'}"
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base">
             Select a new parent page. You can move this note under any other note in the workspace.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-4">
           <div>
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Destination</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Destination</Label>
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground text-sm">
-              Loading pages…
+            <div className="py-12 text-center text-muted-foreground">
+              <div className="w-8 h-8 mx-auto mb-3 opacity-50 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              <p className="text-sm">Loading pages…</p>
             </div>
           ) : (
             <RadioGroup value={value} onValueChange={setValue}>
-              <div className="space-y-1">
-                <label
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer'
-                  )}
-                >
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 neu-card p-4 hover:transform hover:-translate-y-1 transition-all cursor-pointer rounded-xl">
                   <RadioGroupItem value={ROOT_VALUE} id="move-root" />
-                  <div className="flex items-center gap-2 text-sm">
-                    <CornerUpLeft className="w-4 h-4" />
-                    <span>Move to top level</span>
+                  <div className="flex items-center gap-3 text-sm">
+                    <CornerUpLeft className="w-4 h-4 text-primary" />
+                    <span className="font-medium">Move to top level</span>
                   </div>
                 </label>
               </div>
 
-              <ScrollArea className="max-h-72 mt-3">
+              <ScrollArea className="max-h-80 mt-3">
                 <div className="space-y-2 pr-2">
                   {renderOptions(tree, 0)}
                 </div>
@@ -210,10 +209,10 @@ export function MoveDocumentDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="glass" onClick={() => onOpenChange(false)} disabled={submitting} className="h-10">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || submitting || isSelectionUnchanged}>
+          <Button onClick={handleSubmit} disabled={loading || submitting || isSelectionUnchanged} className="h-10">
             Move
           </Button>
         </DialogFooter>

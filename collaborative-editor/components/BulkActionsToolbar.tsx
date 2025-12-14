@@ -13,30 +13,30 @@ export function BulkActionsToolbar({ selectedCount, onClear, onDelete }: BulkAct
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="bg-primary text-primary-foreground rounded-full shadow-lg px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+      <div className="glass px-6 py-3.5 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 rounded-2xl border-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium">{selectedCount} selected</span>
+          <span className="font-medium text-foreground">{selectedCount} selected</span>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={onDelete}
-            className="hover:bg-primary-foreground/20 text-primary-foreground"
+            className="hover:bg-destructive/20 text-destructive h-8"
           >
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
-          
-          <div className="w-px h-6 bg-primary-foreground/20" />
-          
+
+          <div className="w-px h-6 bg-border/30 mx-1" />
+
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             onClick={onClear}
-            className="hover:bg-primary-foreground/20 text-primary-foreground"
+            className="hover:bg-accent/20 text-foreground h-8 w-8"
           >
             <X className="w-4 h-4" />
           </Button>

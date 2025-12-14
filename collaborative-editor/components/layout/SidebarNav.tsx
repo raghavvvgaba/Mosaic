@@ -52,7 +52,7 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
   ];
 
   return (
-    <nav className="p-2 border-b">
+    <nav className="px-3 py-2 border-b border-border/30">
       <div className="space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -60,13 +60,13 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
             <Button
               key={item.path}
               variant={item.isActive ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
+              className={`w-full justify-start h-9 rounded-xl ${item.isActive ? 'glass bg-primary/20 text-primary' : 'hover:bg-accent/20'}`}
               size="sm"
               onClick={() => openPage(item.path, item.label)}
             >
-              <Icon className="w-4 h-4 mr-2" />
+              <Icon className="w-4 h-4 mr-3" />
               <span className="flex-1 text-left">{item.label}</span>
-              <span className="text-xs text-muted-foreground">{item.count}</span>
+              <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">{item.count}</span>
             </Button>
           );
         })}

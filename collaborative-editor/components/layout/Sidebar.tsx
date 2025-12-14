@@ -28,20 +28,26 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
   const [favoriteDocuments, setFavoriteDocuments] = useState<Document[]>([]);
   const [trashedDocuments, setTrashedDocuments] = useState<Document[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
-    const [all, recent, favorites, trashed, tree] = await Promise.all([
-      getAllDocuments(workspaceId),
-      getRecentDocuments(workspaceId),
-      getFavoriteDocuments(workspaceId),
-      getDeletedDocuments(workspaceId),
-      getDocumentTree(workspaceId),
-    ]);
-    setDocuments(all);
-    setRecentDocuments(recent);
-    setFavoriteDocuments(favorites);
-    setTrashedDocuments(trashed);
-    setDocumentTree(tree);
+    setIsLoadingDocuments(true);
+    try {
+      const [all, recent, favorites, trashed, tree] = await Promise.all([
+        getAllDocuments(workspaceId),
+        getRecentDocuments(workspaceId),
+        getFavoriteDocuments(workspaceId),
+        getDeletedDocuments(workspaceId),
+        getDocumentTree(workspaceId),
+      ]);
+      setDocuments(all);
+      setRecentDocuments(recent);
+      setFavoriteDocuments(favorites);
+      setTrashedDocuments(trashed);
+      setDocumentTree(tree);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -65,6 +71,12 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     };
   }, [activeWorkspaceId, loadDocuments, user, authLoading]);
 
+  useEffect(() => {
+    // Reset loading state when user or workspace changes
+    setIsLoadingDocuments(true);
+    setDocumentTree([]);
+  }, [activeWorkspaceId, user]);
+
   async function handleNewDocument() {
     if (!activeWorkspaceId || !user) return;
 
@@ -78,9 +90,9 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     <>
       {/* Mobile toggle button */}
       <Button
-        variant="ghost"
+        variant="glass"
         size="sm"
-        className="md:hidden fixed top-4 left-4 z-60"
+        className="md:hidden fixed top-4 left-4 z-60 glass"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -96,7 +108,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-background border-r flex flex-col z-40 transition-transform md:translate-x-0 ${
+        className={`fixed left-0 top-0 h-screen w-64 neu-card border-0 flex flex-col z-40 transition-transform md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -109,21 +121,34 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
           trashCount={trashedDocuments.length}
         />
 
-        <div className="px-2 py-1 flex items-center justify-between">
-          <div className="text-xs font-semibold text-muted-foreground px-3">
-            DOCUMENTS
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Documents
           </div>
           <Button
-            variant="ghost"
+            variant="glass"
             size="icon-sm"
             onClick={handleNewDocument}
             title="New Document (⌘N)"
+            className="glass"
           >
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        <div className='flex-1 overflow-hidden'>
-          {user && <SidebarDocumentList documents={documentTree} userId={user.id} />}
+        <div className='flex-1 overflow-hidden px-3'>
+          {user ? (
+            <SidebarDocumentList
+              documents={documentTree}
+              userId={user.id}
+              isLoading={isLoadingDocuments || authLoading}
+            />
+          ) : (
+            <SidebarDocumentList
+              documents={[]}
+              userId=""
+              isLoading={true}
+            />
+          )}
         </div>
 
         <SidebarFooter onShowShortcuts={onShowShortcuts} />

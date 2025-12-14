@@ -79,37 +79,58 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* Neumorphic Dark Theme Colors */
+  --background: #0d141c;
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: #0b1118;
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: #0b1118;
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: #ffb86b;
+  --primary-foreground: #0b1118;
+  --secondary: rgba(255,255,255,0.08);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --muted: rgba(255,255,255,0.12);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: rgba(255,255,255,0.08);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: rgba(255,255,255,0.06);
+  --input: rgba(255,255,255,0.08);
+  --ring: #ffb86b;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: #0b1118;
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-primary: #ffb86b;
+  --sidebar-primary-foreground: #0b1118;
+  --sidebar-accent: rgba(255,255,255,0.08);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-ring: #ffb86b;
+
+  /* Neumorphic Design System Variables */
+  --bg: #0b0f14;
+  --neu-card: #0b1118;
+  --neu-muted: rgba(255,255,255,0.12);
+  --neu-accent: #ffb86b;
+  --neu-focus-ring: 3px solid rgba(255,184,107,0.15);
+
+  /* Neumorphic Shadows */
+  --soft-shadow:
+    6px 6px 14px rgba(0,0,0,0.65),
+    -4px -4px 10px rgba(255,255,255,0.02);
+
+  --soft-shadow-2:
+    10px 12px 26px rgba(0,0,0,0.65),
+    -6px -6px 18px rgba(255,255,255,0.02);
+
+  --inset-shadow:
+    inset 4px 4px 10px rgba(0,0,0,0.55),
+    inset -3px -3px 6px rgba(255,255,255,0.02);
 }
 
 @layer base {
@@ -118,6 +139,140 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Neumorphic Utility Classes */
+:root {
+  --bg-gradient-start: #0d141c;
+  --bg-gradient-end: #101a24;
+}
+
+.dark {
+  /* Background gradient for main pages */
+  body {
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    min-height: 100vh;
+  }
+}
+
+/* Neumorphic Card */
+.neu-card {
+  background: #0e161f;
+  box-shadow: var(--soft-shadow);
+  border-radius: 16px;
+  position: relative;
+}
+
+.neu-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  z-index: 1;
+}
+
+.neu-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Neumorphic Card with Hover Effect */
+.neu-card-hover {
+  background: #0e161f;
+  box-shadow: var(--soft-shadow);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  cursor: pointer;
+}
+
+.neu-card-hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  z-index: 1;
+}
+
+.neu-card-hover > * {
+  position: relative;
+  z-index: 2;
+}
+
+.neu-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--soft-shadow-2);
+}
+
+/* Inset Surface */
+.neu-inset {
+  background: #0a0f16;
+  box-shadow: var(--inset-shadow);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Glass Surface */
+.glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--soft-shadow);
+}
+
+/* Glass Surface with Hover Effect */
+.glass-hover {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--soft-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.glass-hover:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-2px);
+  box-shadow: var(--soft-shadow-2);
+}
+
+/* Neumorphic Button */
+.neu-button {
+  background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  box-shadow: var(--soft-shadow);
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.neu-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--soft-shadow-2);
+}
+
+.neu-button:active {
+  transform: scale(0.998);
+  box-shadow: var(--inset-shadow);
+}
+
+/* Focus styles for accessibility */
+.neu-card:focus-visible,
+.neu-button:focus-visible,
+.glass:focus-visible {
+  outline: var(--neu-focus-ring);
+  outline-offset: 4px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .neu-card,
+  .neu-button,
+  .glass {
+    transform: none !important;
+    transition: none !important;
   }
 }
 

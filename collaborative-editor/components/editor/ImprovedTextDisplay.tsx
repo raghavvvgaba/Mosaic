@@ -8,54 +8,54 @@ interface ImprovedTextDisplayProps {
 export function ImprovedTextDisplay({ improvedText, onAction }: ImprovedTextDisplayProps) {
   return (
     <div className="relative group">
-      {/* AI improved text container - Notion-like styling */}
-      <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
+      {/* AI improved text container - Neumorphic styling */}
+      <div className="mt-3 p-5 neu-card border-0">
         {/* AI indicator */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full">
-            <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="glass w-8 h-8 rounded-xl flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            AI improved writing
+          <span className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            AI Improved
           </span>
         </div>
 
         {/* Improved text content */}
-        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-4">
+        <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap mb-5 neu-inset p-4 rounded-xl">
           {improvedText}
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => onAction('accept')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black text-xs font-medium rounded transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 neu-button text-foreground text-sm font-medium rounded-xl hover:opacity-90 transition-all"
           >
-            <Check className="w-3 h-3" />
+            <Check className="w-4 h-4" />
             Accept
           </button>
 
           <button
             onClick={() => onAction('discard')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium rounded transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 glass text-foreground text-sm font-medium rounded-xl hover:bg-white/10 transition-all"
           >
-            <X className="w-3 h-3" />
+            <X className="w-4 h-4" />
             Discard
           </button>
 
           <button
             onClick={() => onAction('try-again')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 glass text-foreground text-sm font-medium rounded-xl hover:bg-white/10 transition-all"
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className="w-4 h-4" />
             Try again
           </button>
 
           <button
             onClick={() => onAction('insert-below')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 glass text-foreground text-sm font-medium rounded-xl hover:bg-white/10 transition-all"
           >
-            <ArrowDown className="w-3 h-3" />
+            <ArrowDown className="w-4 h-4" />
             Insert below
           </button>
         </div>
