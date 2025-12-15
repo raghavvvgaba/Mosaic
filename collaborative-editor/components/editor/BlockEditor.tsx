@@ -17,6 +17,7 @@ import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-uploa
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles, X } from 'lucide-react';
+import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -353,6 +354,28 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
             />
           </div>
         )}
+
+        {/* AI Assistant Button */}
+        <AIAssistantButton
+          onImproveWriting={handleImproveWriting}
+          onAIDraft={onOpenAIDraft}
+          onSummarize={() => {
+            // TODO: Implement summarize functionality
+            console.log('Summarize feature coming soon');
+          }}
+          onTranslate={() => {
+            // TODO: Implement translate functionality
+            console.log('Translate feature coming soon');
+          }}
+          onBrainstorm={() => {
+            // TODO: Implement brainstorm functionality
+            console.log('Brainstorm feature coming soon');
+          }}
+          onAskAI={() => {
+            // TODO: Implement AI chat functionality
+            console.log('AI Chat feature coming soon');
+          }}
+        />
       </div>
     </div>
   );

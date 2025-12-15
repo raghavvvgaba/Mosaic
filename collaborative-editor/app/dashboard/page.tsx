@@ -246,7 +246,7 @@ export default function Home() {
 
         {documents.length === 0 ? (
           <div className="text-center py-24">
-            <div className="neu-card w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center p-4 rounded-2xl transition-all duration-200 bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)] hover:transform hover:-translate-y-0.5">
               <FileText className="w-12 h-12 text-muted-foreground/60" />
             </div>
             <h3 className="text-xl font-semibold mb-2">No documents yet</h3>
@@ -262,51 +262,56 @@ export default function Home() {
               <div
                 key={doc.id}
                 className={cn(
-                  'neu-card-hover p-0 group overflow-hidden h-40',
+                  'p-4 rounded-2xl transition-all duration-200 group overflow-hidden h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background',
+                  'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
+                  'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
+                  'hover:transform hover:-translate-y-0.5',
+                  'cursor-pointer',
                   isSelected && 'ring-2 ring-primary/50',
                   FONT_CLASS_MAP[doc.font ?? 'sans']
                 )}
+                tabIndex={0}
               >
-                {/* Main content area - flex layout for centering */}
-                <div className="h-full flex flex-col p-3" onClick={() => openDocument(doc.id, doc.title)}>
-                  {/* Selection checkbox at top right */}
-                  {selectionMode && (
-                    <div
-                      className="flex justify-end"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
-                        className={cn(
-                          'size-4 rounded border transition-colors',
-                          isSelected
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'border-border/70 bg-background/50'
-                        )}
-                      />
-                    </div>
-                  )}
+                {/* Selection checkbox at top right */}
+                {selectionMode && (
+                  <div
+                    className="flex justify-end -mt-1 -mr-1 mb-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                      className={cn(
+                        'size-4 rounded border transition-colors',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border/70 bg-background/50'
+                      )}
+                    />
+                  </div>
+                )}
 
-                  {/* Center area - flex-1 takes remaining space */}
-                  <div className="flex-1 flex items-center justify-center">
-                    {/* Document title with neu-inset style - perfectly centered */}
-                    <div className="neu-inset h-20 w-full flex items-center justify-center p-3">
-                      <h3
-                        className={cn(
-                          'text-center font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors',
-                          FONT_CLASS_MAP[doc.font ?? 'sans']
-                        )}
-                      >
-                        {doc.title || 'Untitled'}
-                      </h3>
-                    </div>
+                {/* Main content */}
+                <div
+                  className="h-full flex flex-col justify-center"
+                  onClick={() => openDocument(doc.id, doc.title)}
+                >
+                  {/* Inset content area */}
+                  <div className="p-3 rounded-xl bg-[rgba(255,255,255,0.02)] -m-1 transition-all duration-300 border border-transparent hover:bg-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.08)] hover:shadow-[inset_0_1px_3px_rgba(0,0,0,0.25)] hover:scale-[1.01] cursor-pointer">
+                    <h3
+                      className={cn(
+                        'text-center font-medium text-sm line-clamp-2 text-slate-200 group-hover:text-primary transition-colors',
+                        FONT_CLASS_MAP[doc.font ?? 'sans']
+                      )}
+                    >
+                      {doc.title || 'Untitled'}
+                    </h3>
                   </div>
 
-                  {/* Actions at bottom */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground opacity-70">
-                      {/* Could add date here */}
+                  {/* Metadata and actions */}
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="text-xs text-slate-400">
+                      Document
                     </div>
 
                     {!selectionMode && (

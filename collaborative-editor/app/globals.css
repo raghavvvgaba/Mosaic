@@ -211,8 +211,9 @@
 .neu-inset {
   background: #0a0f16;
   box-shadow: var(--inset-shadow);
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Glass Surface */

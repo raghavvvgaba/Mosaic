@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -23,6 +23,35 @@ import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 import { generateTitleFromBlocks } from '@/lib/ai/title';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+
+// Save status icon component
+function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Date | null }) {
+  const getTooltipText = () => {
+    if (saving) return 'Saving...';
+    if (!lastSaved) return 'Not saved yet';
+    return `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`;
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#ffb86b' }} />
+          ) : lastSaved ? (
+            <CircleCheck className="w-4 h-4" style={{ color: '#4ade80' }} />
+          ) : (
+            <Save className="w-4 h-4 text-muted-foreground" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="text-xs">{getTooltipText()}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function DocumentPage() {
   const params = useParams();
@@ -395,9 +424,10 @@ export default function DocumentPage() {
   ];
 
   return (
-    <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
+    <TooltipProvider>
+      <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
-        <div className="p-4 space-y-3">
+        <div className="px-8 py-4 space-y-3">
           {documentPath.length > 0 && (
             <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {documentPath.map((node, index) => (
@@ -416,7 +446,8 @@ export default function DocumentPage() {
           )}
 
           {/* Title bar */}
-          <div className="flex items-center gap-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-4">
             <input
               type="text"
               value={document.title}
@@ -436,23 +467,7 @@ export default function DocumentPage() {
               <Star className={`w-4 h-4 ${document.isFavorite ? 'fill-yellow-500' : ''}`} />
             </Button>
 
-            <div className="text-sm text-muted-foreground whitespace-nowrap">
-              {saving ? (
-                'Saving...'
-              ) : lastSaved ? (
-                `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
-              ) : null}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAiOpen(true)}
-              className="flex items-center gap-1"
-            >
-              <Sparkles className="w-4 h-4" />
-              AI Draft
-            </Button>
+            <SaveStatusIcon saving={saving} lastSaved={lastSaved} />
 
             <Button
               variant="outline"
@@ -462,9 +477,10 @@ export default function DocumentPage() {
               className="flex items-center gap-1"
             >
               <Sparkles className="w-4 h-4" />
-              {titleGenerating ? 'Titling…' : 'Generate title'}
+              {titleGenerating ? 'Generating…' : 'Generate'}
             </Button>
 
+  
             <ExportButton document={document} />
             
             <DropdownMenu>
@@ -474,12 +490,6 @@ export default function DocumentPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">AI</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setAiOpen(true)}>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Draft…
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
                 <div className="px-1 py-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -534,28 +544,43 @@ export default function DocumentPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
-        </div>
-        
-        {/* Stats bar */}
-        <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{wordCount} words</span>
-          <span>•</span>
-          <span>{readingTime} min read</span>
         </div>
       </header>
 
-      <div className="flex-1">
-        <div className="max-w-4xl mx-auto p-8">
-          <BlockEditor
-            ref={editorRef}
-            documentId={documentId}
-            initialContent={document.content}
-            onSave={handleContentSave}
-            className={FONT_CLASS_MAP[documentFont]}
-            font={documentFont}
-            onOpenAIDraft={() => setAiOpen(true)}
-          />
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1">
+          <div className="max-w-4xl mx-auto p-8">
+            <BlockEditor
+              ref={editorRef}
+              documentId={documentId}
+              initialContent={document.content}
+              onSave={handleContentSave}
+              className={FONT_CLASS_MAP[documentFont]}
+              font={documentFont}
+              onOpenAIDraft={() => setAiOpen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Stats bar at bottom */}
+        <div className="border-t bg-muted/30 px-8 py-1.5">
+          <div className="max-w-4xl mx-auto flex items-center justify-start gap-2 sm:gap-4 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">{wordCount} words</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">{readingTime} min read</span>
+            <span className="hidden sm:inline">•</span>
+            <span>
+              {saving ? (
+                'Saving...'
+              ) : lastSaved ? (
+                `Last saved: ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+              ) : (
+                'Not saved'
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -605,6 +630,7 @@ export default function DocumentPage() {
           editorRef.current?.insertTextAtCursor(text)
         }}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
