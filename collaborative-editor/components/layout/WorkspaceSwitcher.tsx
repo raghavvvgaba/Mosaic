@@ -37,10 +37,8 @@ export function WorkspaceSwitcher() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="neu-card p-2 overflow-hidden cursor-pointer hover:shadow-[10px_12px_26px_rgba(0,0,0,0.65),-6px_-6px_18px_rgba(255,255,255,0.02)] transition-shadow duration-300">
-            <div className="neu-inset w-full h-14 flex items-center justify-center p-2">
-              <span className="truncate text-center font-medium text-sm">{activeLabel}</span>
-            </div>
+          <div className="neu-inset w-full h-14 flex items-center justify-center p-2 cursor-pointer">
+            <span className="truncate text-center font-medium text-sm">{activeLabel}</span>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[280px] neu-card border-0 p-3">

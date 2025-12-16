@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
 import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,14 +144,33 @@ export default function DocumentPage() {
     return hasNoTitle && hasNoContent;
   }
 
-  async function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Debounced function to save the title
+  const debouncedSaveTitle = useDebouncedCallback(
+    async (newTitle: string, doc: Document) => {
+      await handleSave({ title: newTitle });
+      void loadDocumentPath(documentId);
+      // Notify other components that this specific document has changed
+      window.dispatchEvent(new CustomEvent('documentUpdated', {
+        detail: {
+          workspaceId: doc.workspaceId,
+          documentId: doc.id,
+          document: { ...doc, title: newTitle },
+          operation: 'title'
+        }
+      }));
+    },
+    500 // 500ms debounce delay
+  );
+
+  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newTitle = e.target.value;
     if (document) {
       const updatedDoc = { ...document, title: newTitle };
       setDocument(updatedDoc);
       documentRef.current = updatedDoc;
-      await handleSave({ title: newTitle });
-      void loadDocumentPath(documentId);
+
+      // Debounced save
+      debouncedSaveTitle(newTitle, document);
     }
   }
 
@@ -448,13 +468,13 @@ export default function DocumentPage() {
           {/* Title bar */}
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
-            <input
-              type="text"
-              value={document.title}
-              onChange={handleTitleChange}
-              className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
-              placeholder="Untitled"
-            />
+              <input
+                type="text"
+                value={document.title}
+                onChange={handleTitleChange}
+                className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
+                placeholder="Untitled"
+              />
 
             {/* Moved New subpage into dropdown */}
 

@@ -309,10 +309,7 @@ export default function Home() {
                   </div>
 
                   {/* Metadata and actions */}
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="text-xs text-slate-400">
-                      Document
-                    </div>
+                  <div className="flex items-center justify-end mt-3">
 
                     {!selectionMode && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

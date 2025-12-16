@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, memo } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -57,7 +57,7 @@ interface SidebarDocumentListProps {
   isLoading?: boolean;
 }
 
-export function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDocumentListProps) {
+function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDocumentListProps) {
   const pathname = usePathname();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
@@ -72,9 +72,18 @@ export function SidebarDocumentList({ documents, userId, isLoading = false }: Si
 
   const handleRename = async (newTitle: string) => {
     if (!selectedDoc) return;
-    await updateDocument(selectedDoc.id, { title: newTitle });
+    const updatedDoc = await updateDocument(selectedDoc.id, { title: newTitle });
     const workspaceId = selectedDoc.workspaceId || activeWorkspaceId;
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
+
+    // Dispatch a documentUpdated event for instant UI update
+    window.dispatchEvent(new CustomEvent('documentUpdated', {
+      detail: {
+        workspaceId,
+        documentId: selectedDoc.id,
+        document: updatedDoc,
+        operation: 'title'
+      }
+    }));
   };
 
   const handleDelete = async () => {
@@ -733,3 +742,9 @@ function SidebarNode({
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+const SidebarDocumentListMemo = memo(SidebarDocumentList);
+SidebarDocumentListMemo.displayName = 'SidebarDocumentList';
+
+export { SidebarDocumentListMemo as SidebarDocumentList };

@@ -296,13 +296,6 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
   return (
     <div ref={wrapperRef} className={className}>
       <div className="relative">
-        {isEmpty && (
-          <>
-            <div className="pointer-events-none absolute top-2 left-3 z-10 text-muted-foreground select-none">
-              Enter text or type / for commands
-            </div>
-          </>
-        )}
         <BlockNoteView
           editor={editor}
           theme={theme === 'dark' ? 'dark' : 'light'}

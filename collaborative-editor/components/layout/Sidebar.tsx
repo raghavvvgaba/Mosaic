@@ -50,6 +50,22 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     }
   }, []);
 
+  // Helper function to update a single document in the tree
+  const updateDocumentInTree = useCallback((nodes: DocumentNode[], documentId: string, updatedDoc: Partial<Document>): DocumentNode[] => {
+    return nodes.map(node => {
+      if (node.id === documentId) {
+        return { ...node, ...updatedDoc };
+      }
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: updateDocumentInTree(node.children, documentId, updatedDoc)
+        };
+      }
+      return node;
+    });
+  }, []);
+
   useEffect(() => {
     if (!activeWorkspaceId || !user || authLoading) return;
 
@@ -62,14 +78,48 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
       }
     };
 
+    const handleDocumentUpdated = (event: Event) => {
+      const detail = event as CustomEvent<{
+        workspaceId: string;
+        documentId: string;
+        document: Document;
+        operation?: string;
+      }>;
+
+      if (detail.detail.workspaceId === activeWorkspaceId) {
+        // Update the specific document in all relevant state arrays
+        const { document: updatedDoc, documentId } = detail.detail;
+
+        // Update documents array
+        setDocuments(prev => prev.map(doc =>
+          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
+        ));
+
+        // Update recent documents if needed
+        setRecentDocuments(prev => prev.map(doc =>
+          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
+        ));
+
+        // Update favorite documents if needed
+        setFavoriteDocuments(prev => prev.map(doc =>
+          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
+        ));
+
+        // Update document tree
+        setDocumentTree(prev => updateDocumentInTree(prev, documentId, updatedDoc));
+      }
+    };
+
     window.addEventListener('documentsChanged', handleDataChanged);
+    window.addEventListener('documentUpdated', handleDocumentUpdated);
     window.addEventListener('activeWorkspaceChanged', handleDataChanged);
 
     return () => {
       window.removeEventListener('documentsChanged', handleDataChanged);
+      window.removeEventListener('documentUpdated', handleDocumentUpdated);
       window.removeEventListener('activeWorkspaceChanged', handleDataChanged);
     };
-  }, [activeWorkspaceId, loadDocuments, user, authLoading]);
+  }, [activeWorkspaceId, loadDocuments, user, authLoading, updateDocumentInTree]);
 
   useEffect(() => {
     // Reset loading state when user or workspace changes
