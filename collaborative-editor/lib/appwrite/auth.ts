@@ -44,7 +44,14 @@ export class AuthService {
    */
   static async signOut() {
     const { account } = getAppwrite();
-    return await account.deleteSession('current');
+    const result = await account.deleteSession('current');
+
+    // Clear user cache in documents module
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('userLoggedOut'));
+    }
+
+    return result;
   }
 
   /**
@@ -111,7 +118,14 @@ export class AuthService {
    */
   static async signOutAll() {
     const { account } = getAppwrite();
-    return await account.deleteSessions();
+    const result = await account.deleteSessions();
+
+    // Clear user cache in documents module
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('userLoggedOut'));
+    }
+
+    return result;
   }
 
   /**

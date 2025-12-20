@@ -21,9 +21,14 @@ export {
   getFavoriteDocuments,
   updateLastOpened,
   toggleFavorite,
+  getAllDocumentsMetadata,
+  getRecentDocumentsMetadata,
+  getFavoriteDocumentsMetadata,
+  getDocumentTreeMetadata,
+  getDescendantsMetadata,
 } from '../appwrite/documents';
 
-import type { Document, DocumentNode } from './types';
+import type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata } from './types';
 import { getDescendants } from '../appwrite/documents';
 
 // Helper function to check if a document can be moved
@@ -45,4 +50,4 @@ export async function canMoveDocument(
 }
 
 // Re-export types for convenience
-export type { Document, DocumentNode };
+export type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata };

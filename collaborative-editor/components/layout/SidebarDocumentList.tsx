@@ -39,7 +39,7 @@ import { ConfirmDialog } from '@/components/AlertDialog';
 import { RenameDialog } from '@/components/RenameDialog';
 import { updateDocument, deleteDocument, createDocument, moveDocument, duplicateDocument } from '@/lib/db/documents';
 import { useNavigation } from '@/contexts/NavigationContext';
-import type { DocumentFont, DocumentNode } from '@/lib/db/types';
+import type { DocumentFont, DocumentNodeMetadata } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { cn } from '@/lib/utils';
@@ -52,7 +52,7 @@ const depthPaddingClass = (depth: number) => {
 };
 
 interface SidebarDocumentListProps {
-  documents: DocumentNode[];
+  documents: DocumentNodeMetadata[];
   userId: string;
   isLoading?: boolean;
 }
@@ -63,9 +63,9 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
   const { activeWorkspaceId } = useWorkspace();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentNode | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<DocumentNodeMetadata | null>(null);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
-  const [moveTarget, setMoveTarget] = useState<DocumentNode | null>(null);
+  const [moveTarget, setMoveTarget] = useState<DocumentNodeMetadata | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [invalidDropTargets, setInvalidDropTargets] = useState<Set<string>>(new Set());
@@ -95,14 +95,14 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
   };
 
   const handleOpenInNewTab = useCallback(
-    (doc: DocumentNode) => {
+    (doc: DocumentNodeMetadata) => {
       // Simply navigate to the document (replacing current view)
       openDocument(doc.id, doc.title);
     },
     [openDocument]
   );
 
-  const handleDuplicate = useCallback(async (doc: DocumentNode) => {
+  const handleDuplicate = useCallback(async (doc: DocumentNodeMetadata) => {
     try {
       const dup = await duplicateDocument(doc.id);
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: dup.workspaceId } }));
@@ -166,7 +166,7 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
     [persistExpanded]
   );
 
-  const findAncestorIds = useCallback((nodes: DocumentNode[], targetId: string, path: string[] = []): string[] => {
+  const findAncestorIds = useCallback((nodes: DocumentNodeMetadata[], targetId: string, path: string[] = []): string[] => {
     for (const node of nodes) {
       const nextPath = [...path, node.id];
       if (node.id === targetId) {
@@ -207,7 +207,7 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
   }, [activeDocumentId, documents, findAncestorIds, persistExpanded]);
 
   const handleAddSubpage = useCallback(
-    async (parent: DocumentNode) => {
+    async (parent: DocumentNodeMetadata) => {
       if (!activeWorkspaceId) return;
 
       const newDoc = await createDocument('Untitled', activeWorkspaceId, parent.id);
@@ -237,7 +237,7 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
   const descendantMap = useMemo(() => {
     const map = new Map<string, string[]>();
 
-    const collect = (node: DocumentNode): string[] => {
+    const collect = (node: DocumentNodeMetadata): string[] => {
       const childIds = node.children.flatMap((child) => [child.id, ...collect(child)]);
       map.set(node.id, childIds);
       return childIds;
@@ -441,22 +441,22 @@ function RootDropZone({ active }: { active: boolean }) {
 }
 
 interface RootContainerProps {
-  documents: DocumentNode[];
+  documents: DocumentNodeMetadata[];
   pathname: string;
   expandedIds: Set<string>;
   toggleExpanded: (id: string) => void;
   openDocument: (id: string, title: string) => void;
-  handleAddSubpage: (doc: DocumentNode) => void;
-  handleOpenInNewTab: (doc: DocumentNode) => void;
-  setSelectedDoc: (doc: DocumentNode | null) => void;
+  handleAddSubpage: (doc: DocumentNodeMetadata) => void;
+  handleOpenInNewTab: (doc: DocumentNodeMetadata) => void;
+  setSelectedDoc: (doc: DocumentNodeMetadata | null) => void;
   setRenameDialogOpen: (open: boolean) => void;
   setDeleteDialogOpen: (open: boolean) => void;
-  setMoveTarget: (doc: DocumentNode | null) => void;
+  setMoveTarget: (doc: DocumentNodeMetadata | null) => void;
   setMoveDialogOpen: (open: boolean) => void;
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
-  handleDuplicate: (doc: DocumentNode) => void;
+  handleDuplicate: (doc: DocumentNodeMetadata) => void;
 }
 
 function RootContainer({
@@ -512,23 +512,23 @@ function RootContainer({
 }
 
 interface SidebarNodeProps {
-  doc: DocumentNode;
+  doc: DocumentNodeMetadata;
   depth: number;
   pathname: string;
   expandedIds: Set<string>;
   toggleExpanded: (id: string) => void;
   openDocument: (id: string, title: string) => void;
-  handleAddSubpage: (doc: DocumentNode) => void;
-  handleOpenInNewTab: (doc: DocumentNode) => void;
-  setSelectedDoc: (doc: DocumentNode | null) => void;
+  handleAddSubpage: (doc: DocumentNodeMetadata) => void;
+  handleOpenInNewTab: (doc: DocumentNodeMetadata) => void;
+  setSelectedDoc: (doc: DocumentNodeMetadata | null) => void;
   setRenameDialogOpen: (open: boolean) => void;
   setDeleteDialogOpen: (open: boolean) => void;
-  setMoveTarget: (doc: DocumentNode | null) => void;
+  setMoveTarget: (doc: DocumentNodeMetadata | null) => void;
   setMoveDialogOpen: (open: boolean) => void;
   invalidDropTargets: Set<string>;
   draggingId: string | null;
   fontClassMap: Record<DocumentFont, string>;
-  handleDuplicate: (doc: DocumentNode) => void;
+  handleDuplicate: (doc: DocumentNodeMetadata) => void;
 }
 
 function SidebarNode({

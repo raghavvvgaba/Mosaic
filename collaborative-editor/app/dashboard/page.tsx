@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getAllDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
-import type { Document, DocumentFont } from '@/lib/db/types';
+import { getAllDocumentsMetadata, deleteDocument, toggleFavorite } from '@/lib/db/documents';
+import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 // import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/AlertDialog';
 export default function Home() {
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -32,7 +32,7 @@ export default function Home() {
   } | null>(null);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getAllDocuments(workspaceId);
+    const docs = await getAllDocumentsMetadata(workspaceId);
     setDocuments(docs);
     setLoading(false);
   }, []);
@@ -94,7 +94,7 @@ export default function Home() {
     }
   }, [confirmConfig]);
 
-  const requestDeleteDocument = useCallback((doc: Document, e: React.MouseEvent) => {
+  const requestDeleteDocument = useCallback((doc: DocumentMetadata, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeWorkspaceId) return;
     const workspaceId = activeWorkspaceId;

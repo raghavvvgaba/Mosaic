@@ -8,8 +8,15 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarNav } from './SidebarNav';
 import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
-import { getAllDocuments, getRecentDocuments, getDeletedDocuments, getFavoriteDocuments, createDocument, getDocumentTree } from '@/lib/db/documents';
-import type { Document, DocumentNode } from '@/lib/db/types';
+import {
+  getAllDocumentsMetadata,
+  getRecentDocumentsMetadata,
+  getDeletedDocuments,
+  getFavoriteDocumentsMetadata,
+  createDocument,
+  getDocumentTreeMetadata
+} from '@/lib/db/documents';
+import type { Document, DocumentMetadata, DocumentNodeMetadata } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -23,10 +30,10 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const { user, loading: authLoading } = useAuthContext();
   const { activeWorkspaceId } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [documentTree, setDocumentTree] = useState<DocumentNode[]>([]);
-  const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
-  const [favoriteDocuments, setFavoriteDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
+  const [documentTree, setDocumentTree] = useState<DocumentNodeMetadata[]>([]);
+  const [recentDocuments, setRecentDocuments] = useState<DocumentMetadata[]>([]);
+  const [favoriteDocuments, setFavoriteDocuments] = useState<DocumentMetadata[]>([]);
   const [trashedDocuments, setTrashedDocuments] = useState<Document[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
@@ -34,11 +41,11 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     setIsLoadingDocuments(true);
     try {
       const [all, recent, favorites, trashed, tree] = await Promise.all([
-        getAllDocuments(workspaceId),
-        getRecentDocuments(workspaceId),
-        getFavoriteDocuments(workspaceId),
+        getAllDocumentsMetadata(workspaceId),
+        getRecentDocumentsMetadata(workspaceId),
+        getFavoriteDocumentsMetadata(workspaceId),
         getDeletedDocuments(workspaceId),
-        getDocumentTree(workspaceId),
+        getDocumentTreeMetadata(workspaceId),
       ]);
       setDocuments(all);
       setRecentDocuments(recent);
@@ -51,7 +58,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   }, []);
 
   // Helper function to update a single document in the tree
-  const updateDocumentInTree = useCallback((nodes: DocumentNode[], documentId: string, updatedDoc: Partial<Document>): DocumentNode[] => {
+  const updateDocumentInTree = useCallback((nodes: DocumentNodeMetadata[], documentId: string, updatedDoc: Partial<Document>): DocumentNodeMetadata[] => {
     return nodes.map(node => {
       if (node.id === documentId) {
         return { ...node, ...updatedDoc };

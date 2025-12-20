@@ -93,7 +93,10 @@ export default function DocumentPage() {
       if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
         setActiveWorkspace(doc.workspaceId, { navigate: false });
       }
-      await loadDocumentPath(doc.id);
+      // Only load document path if it has parents (nested documents)
+      if (doc.parentId) {
+        await loadDocumentPath(doc.id);
+      }
     }
     setLoading(false);
   }, [documentId, activeWorkspaceId, setActiveWorkspace, loadDocumentPath]);

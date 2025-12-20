@@ -17,8 +17,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { DocumentNode } from '@/lib/db/types';
-import { getDescendants, getDocumentTree, moveDocument } from '@/lib/db/documents';
+import type { DocumentNodeMetadata, DocumentMetadata } from '@/lib/db/types';
+import { getDescendantsMetadata, getDocumentTreeMetadata, moveDocument } from '@/lib/db/documents';
 
 const ROOT_VALUE = '__ROOT__';
 
@@ -41,7 +41,7 @@ export function MoveDocumentDialog({
   workspaceId,
   onMoved,
 }: MoveDocumentDialogProps) {
-  const [tree, setTree] = useState<DocumentNode[]>([]);
+  const [tree, setTree] = useState<DocumentNodeMetadata[]>([]);
   const [invalidIds, setInvalidIds] = useState<Set<string>>(new Set());
   const [value, setValue] = useState<string>(currentParentId ?? ROOT_VALUE);
   const [loading, setLoading] = useState(false);
@@ -56,8 +56,8 @@ export function MoveDocumentDialog({
       setLoading(true);
       try {
         const [treeData, descendants] = await Promise.all([
-          getDocumentTree(workspaceId),
-          getDescendants(documentId),
+          getDocumentTreeMetadata(workspaceId),
+          getDescendantsMetadata(documentId),
         ]);
 
         if (!mounted) return;
@@ -119,7 +119,7 @@ export function MoveDocumentDialog({
   }, [documentId, isSelectionUnchanged, onMoved, onOpenChange, value, workspaceId]);
 
   const renderOptions = useCallback(
-    (nodes: DocumentNode[], depth = 0) => {
+    (nodes: DocumentNodeMetadata[], depth = 0) => {
       return nodes.map((node) => {
         const isInvalid = invalidIds.has(node.id);
         const updatedLabel = formatDistanceToNow(new Date(node.updatedAt), { addSuffix: true });
