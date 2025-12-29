@@ -8,7 +8,7 @@ export interface Document {
   icon?: string;
   createdAt: Date;                // Maps to Appwrite's $createdAt
   updatedAt: Date;                // Maps to Appwrite's $updatedAt
-  lastOpenedAt?: Date;
+  lastChangedAt?: Date;
   isDeleted: boolean;
   isFavorite?: boolean;
   parentId?: string;
@@ -27,7 +27,7 @@ export interface DocumentMetadata {
   icon?: string;
   createdAt: Date;                // Maps to Appwrite's $createdAt
   updatedAt: Date;                // Maps to Appwrite's $updatedAt
-  lastOpenedAt?: Date;
+  lastChangedAt?: Date;
   isDeleted: boolean;
   isFavorite?: boolean;
   parentId?: string;

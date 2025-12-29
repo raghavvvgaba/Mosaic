@@ -1,11 +1,31 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { FileText, Star } from 'lucide-react';
+import { FileText, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFavoriteDocuments, toggleFavorite } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
-// import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+
+function formatShortTime(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+}
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
@@ -99,7 +119,12 @@ export default function FavoritesPage() {
                     {doc.title || 'Untitled'}
                   </h2>
                 </div>
-                {/* No updated time on favorites page */}
+                {doc.lastChangedAt && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
+                  </div>
+                )}
               </div>
               <div className="mt-auto flex items-center justify-end">
                 <Button

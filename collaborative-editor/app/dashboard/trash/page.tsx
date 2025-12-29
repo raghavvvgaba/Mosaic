@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { RotateCcw, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getDeletedDocuments, restoreDocument, permanentlyDeleteDocument } from '@/lib/db/documents';
-import type { Document, DocumentFont } from '@/lib/db/types';
+import { getDeletedDocumentsMetadata, restoreDocument, permanentlyDeleteDocument } from '@/lib/db/documents';
+import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 export default function TrashPage() {
   const router = useRouter();
     const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
@@ -35,7 +35,7 @@ export default function TrashPage() {
   };
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getDeletedDocuments(workspaceId);
+    const docs = await getDeletedDocumentsMetadata(workspaceId);
     setDocuments(docs);
     setLoading(false);
   }, []);

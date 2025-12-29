@@ -122,7 +122,7 @@ function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Docum
     icon: appwriteDoc.icon as string,
     createdAt: new Date(appwriteDoc.$createdAt as string),
     updatedAt: new Date(appwriteDoc.$updatedAt as string),
-    lastOpenedAt: appwriteDoc.lastOpenedAt ? new Date(appwriteDoc.lastOpenedAt as string) : undefined,
+    lastChangedAt: appwriteDoc.lastChangedAt ? new Date(appwriteDoc.lastChangedAt as string) : undefined,
     isDeleted: (appwriteDoc.isDeleted as boolean) || false,
     isFavorite: (appwriteDoc.isFavorite as boolean) || false,
     parentId: appwriteDoc.parentId as string,
@@ -143,7 +143,7 @@ function appwriteDocumentToDocumentMetadata(appwriteDoc: Record<string, unknown>
     icon: appwriteDoc.icon as string,
     createdAt: new Date(appwriteDoc.$createdAt as string),
     updatedAt: new Date(appwriteDoc.$updatedAt as string),
-    lastOpenedAt: appwriteDoc.lastOpenedAt ? new Date(appwriteDoc.lastOpenedAt as string) : undefined,
+    lastChangedAt: appwriteDoc.lastChangedAt ? new Date(appwriteDoc.lastChangedAt as string) : undefined,
     isDeleted: (appwriteDoc.isDeleted as boolean) || false,
     isFavorite: (appwriteDoc.isFavorite as boolean) || false,
     parentId: appwriteDoc.parentId as string,
@@ -162,7 +162,7 @@ function documentToAppwriteDocument(doc: Partial<Document>) {
     content: doc.content || '',
     workspaceId: doc.workspaceId,
     icon: doc.icon,
-    lastOpenedAt: doc.lastOpenedAt?.toISOString(),
+    lastChangedAt: doc.lastChangedAt?.toISOString(),
     isDeleted: doc.isDeleted || false,
     isFavorite: doc.isFavorite || false,
     parentId: doc.parentId,
@@ -242,7 +242,12 @@ export async function updateDocument(
 
     const appwrite = getAppwrite();
 
-    const updateData = documentToAppwriteDocument(updates);
+    // Set lastChangedAt when title or content changes
+    const shouldUpdateLastChangedAt = updates.title !== undefined || updates.content !== undefined;
+    const updateData = documentToAppwriteDocument({
+      ...updates,
+      ...(shouldUpdateLastChangedAt ? { lastChangedAt: new Date() } : {})
+    });
 
     const response = await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),
@@ -354,6 +359,45 @@ export async function getDeletedDocuments(workspaceId?: string): Promise<Documen
   );
 }
 
+// Get deleted documents metadata without content - for trash view
+// This is more efficient than getDeletedDocuments() as it doesn't fetch content
+export async function getDeletedDocumentsMetadata(workspaceId?: string): Promise<DocumentMetadata[]> {
+  try {
+    const appwrite = getAppwrite();
+
+    // Validate workspace ownership first
+    if (workspaceId) {
+      const ownership = await validateWorkspaceOwnershipForDocuments(workspaceId);
+      if (!ownership.valid) {
+        throw new Error('Workspace not found or access denied');
+      }
+    }
+
+    // Select only metadata fields, exclude content
+    const queries = [
+      Query.equal('workspaceId', [workspaceId || 'default']),
+      Query.equal('isDeleted', [true]),
+      Query.select([
+        '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
+        'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+        'ownerId', 'collaborators', 'permissions'
+      ]),
+      Query.orderDesc('$updatedAt'),
+    ];
+
+    const response = await appwrite.tablesDB.listRows({
+      databaseId: getDatabaseId(),
+      tableId: getDocumentsTableId(),
+      queries
+    });
+
+    return response.rows.map(appwriteDocumentToDocumentMetadata);
+  } catch (error) {
+    console.error('Failed to get deleted documents metadata:', error);
+    return [];
+  }
+}
+
 export async function searchDocuments(
   workspaceId: string | undefined,
   query: string
@@ -388,14 +432,14 @@ export async function getRecentDocuments(workspaceId?: string): Promise<Document
       queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
-        Query.orderDesc('lastOpenedAt'),
+        Query.orderDesc('lastChangedAt'),
         Query.limit(20),
       ]
     });
 
     return response.rows
       .map(appwriteDocumentToDocument)
-      .filter(doc => doc.lastOpenedAt);
+      .filter(doc => doc.lastChangedAt);
   } catch (error) {
     console.error('Failed to get recent documents:', error);
     return [];
@@ -458,28 +502,6 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
   } catch (error) {
     console.error('Failed to duplicate document:', error);
     throw new Error('Failed to duplicate document');
-  }
-}
-
-export async function updateLastOpened(documentId: string): Promise<void> {
-  try {
-    // Validate ownership first
-    const ownership = await validateDocumentOwnership(documentId);
-    if (!ownership.valid) {
-      // Silently fail for non-critical operation
-      return;
-    }
-
-    const appwrite = getAppwrite();
-    await appwrite.tablesDB.updateRow({
-      databaseId: getDatabaseId(),
-      tableId: getDocumentsTableId(),
-      rowId: documentId,
-      data: { lastOpenedAt: new Date().toISOString() }
-    });
-  } catch (error) {
-    console.error('Failed to update last opened:', error);
-    // Don't throw error for non-critical operation
   }
 }
 
@@ -655,7 +677,7 @@ export async function getAllDocumentsMetadata(
       Query.equal('workspaceId', [workspaceId || 'default']),
       Query.select([
         '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-        'lastOpenedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+        'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
         'ownerId', 'collaborators', 'permissions'
       ])
     ];
@@ -691,17 +713,17 @@ export async function getRecentDocumentsMetadata(workspaceId?: string): Promise<
         Query.equal('isDeleted', [false]),
         Query.select([
           '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-          'lastOpenedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
           'ownerId', 'collaborators', 'permissions'
         ]),
-        Query.orderDesc('lastOpenedAt'),
+        Query.orderDesc('lastChangedAt'),
         Query.limit(20),
       ]
     });
 
     return response.rows
       .map(appwriteDocumentToDocumentMetadata)
-      .filter(doc => doc.lastOpenedAt);
+      .filter(doc => doc.lastChangedAt);
   } catch (error) {
     console.error('Failed to get recent documents metadata:', error);
     return [];
@@ -721,7 +743,7 @@ export async function getFavoriteDocumentsMetadata(workspaceId?: string): Promis
         Query.equal('isFavorite', [true]),
         Query.select([
           '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-          'lastOpenedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
           'ownerId', 'collaborators', 'permissions'
         ]),
         Query.orderDesc('$updatedAt'),
@@ -792,4 +814,84 @@ export async function getDescendantsMetadata(documentId: string): Promise<Docume
     console.error('Failed to get descendants metadata:', error);
     return [];
   }
+}
+
+// ===== CLIENT-SIDE FILTERING HELPERS FOR PERFORMANCE =====
+// These functions allow fetching all metadata once and filtering client-side,
+// reducing multiple API calls to a single call.
+
+// Get all documents metadata (including deleted) for client-side filtering
+// This replaces the need for multiple specialized queries in the sidebar
+export async function getAllDocumentsMetadataForFiltering(
+  workspaceId?: string
+): Promise<DocumentMetadata[]> {
+  return getAllDocumentsMetadata(workspaceId, { includeDeleted: true });
+}
+
+// Filter documents by recent activity (has lastChangedAt, sorted by most recent)
+export function filterRecentDocuments(
+  documents: DocumentMetadata[],
+  limit: number = 20
+): DocumentMetadata[] {
+  return documents
+    .filter(doc => doc.lastChangedAt && !doc.isDeleted)
+    .sort((a, b) => b.lastChangedAt!.getTime() - a.lastChangedAt!.getTime())
+    .slice(0, limit);
+}
+
+// Filter documents by favorite status
+export function filterFavoriteDocuments(
+  documents: DocumentMetadata[]
+): DocumentMetadata[] {
+  return documents.filter(doc => doc.isFavorite === true && !doc.isDeleted);
+}
+
+// Filter documents by deleted status
+export function filterDeletedDocuments(
+  documents: DocumentMetadata[]
+): DocumentMetadata[] {
+  return documents.filter(doc => doc.isDeleted === true);
+}
+
+// Filter documents by non-deleted status
+export function filterNonDeletedDocuments(
+  documents: DocumentMetadata[]
+): DocumentMetadata[] {
+  return documents.filter(doc => doc.isDeleted === false);
+}
+
+// Build document tree from metadata (extracted from getDocumentTreeMetadata)
+// This is a pure function that builds the tree structure locally without API calls
+export function buildDocumentTreeFromMetadata(
+  documents: DocumentMetadata[]
+): DocumentNodeMetadata[] {
+  const nonDeletedDocs = documents.filter(doc => !doc.isDeleted);
+  const docMap = new Map<string, DocumentNodeMetadata>(
+    nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }])
+  );
+  const roots: DocumentNodeMetadata[] = [];
+
+  for (const doc of nonDeletedDocs) {
+    const node = docMap.get(doc.id)!;
+
+    if (doc.parentId && docMap.has(doc.parentId)) {
+      docMap.get(doc.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  // Sort alphabetically at each level
+  const sortTree = (nodes: DocumentNodeMetadata[]): DocumentNodeMetadata[] => {
+    return nodes.sort((a, b) => {
+      const titleA = (a.title || 'Untitled').toLowerCase();
+      const titleB = (b.title || 'Untitled').toLowerCase();
+      return titleA.localeCompare(titleB);
+    }).map(node => ({
+      ...node,
+      children: sortTree(node.children)
+    }));
+  };
+
+  return sortTree(roots);
 }

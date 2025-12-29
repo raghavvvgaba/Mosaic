@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
+import { getDocument, updateDocument, permanentlyDeleteDocument, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
@@ -103,9 +103,6 @@ export default function DocumentPage() {
 
   useEffect(() => {
     loadDocument();
-
-    // Track that this document was opened
-    updateLastOpened(documentId);
 
     // Cleanup: delete empty documents when leaving the page
     return () => {

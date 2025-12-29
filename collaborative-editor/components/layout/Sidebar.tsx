@@ -9,12 +9,13 @@ import { SidebarNav } from './SidebarNav';
 import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
 import {
-  getAllDocumentsMetadata,
-  getRecentDocumentsMetadata,
+  getAllDocumentsMetadataForFiltering,
   getDeletedDocuments,
-  getFavoriteDocumentsMetadata,
   createDocument,
-  getDocumentTreeMetadata
+  filterRecentDocuments,
+  filterFavoriteDocuments,
+  filterDeletedDocuments,
+  buildDocumentTreeFromMetadata
 } from '@/lib/db/documents';
 import type { Document, DocumentMetadata, DocumentNodeMetadata } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -34,20 +35,24 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const [documentTree, setDocumentTree] = useState<DocumentNodeMetadata[]>([]);
   const [recentDocuments, setRecentDocuments] = useState<DocumentMetadata[]>([]);
   const [favoriteDocuments, setFavoriteDocuments] = useState<DocumentMetadata[]>([]);
-  const [trashedDocuments, setTrashedDocuments] = useState<Document[]>([]);
+  const [trashedDocuments, setTrashedDocuments] = useState<DocumentMetadata[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
   const loadDocuments = useCallback(async (workspaceId: string) => {
     setIsLoadingDocuments(true);
     try {
-      const [all, recent, favorites, trashed, tree] = await Promise.all([
-        getAllDocumentsMetadata(workspaceId),
-        getRecentDocumentsMetadata(workspaceId),
-        getFavoriteDocumentsMetadata(workspaceId),
-        getDeletedDocuments(workspaceId),
-        getDocumentTreeMetadata(workspaceId),
-      ]);
-      setDocuments(all);
+      // Single API call to get all metadata (including deleted)
+      const allMetadata = await getAllDocumentsMetadataForFiltering(workspaceId);
+
+      // Client-side filtering for different views
+      const recent = filterRecentDocuments(allMetadata);
+      const favorites = filterFavoriteDocuments(allMetadata);
+      const trashed = filterDeletedDocuments(allMetadata);
+
+      // Build document tree from non-deleted documents
+      const tree = buildDocumentTreeFromMetadata(allMetadata);
+
+      setDocuments(allMetadata);
       setRecentDocuments(recent);
       setFavoriteDocuments(favorites);
       setTrashedDocuments(trashed);
@@ -79,7 +84,10 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     loadDocuments(activeWorkspaceId);
 
     const handleDataChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
+      const detail = (event as CustomEvent).detail as { workspaceId?: string; skipSidebarReload?: boolean } | undefined;
+      // Skip reload if the event specifically requests it (e.g., after optimistic update)
+      if (detail?.skipSidebarReload) return;
+
       if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
         loadDocuments(activeWorkspaceId);
       }
@@ -137,10 +145,47 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   async function handleNewDocument() {
     if (!activeWorkspaceId || !user) return;
 
-    const doc = await createDocument('Untitled', activeWorkspaceId);
-    router.push(`/dashboard/documents/${doc.id}`);
-    loadDocuments(activeWorkspaceId);
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
+    try {
+      const doc = await createDocument('Untitled', activeWorkspaceId);
+
+      // Optimistic update: Add the new document to local state immediately
+      const docMetadata: DocumentMetadata = {
+        id: doc.id,
+        title: doc.title,
+        workspaceId: doc.workspaceId,
+        icon: doc.icon,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        lastChangedAt: doc.lastChangedAt,
+        isDeleted: doc.isDeleted,
+        isFavorite: doc.isFavorite,
+        parentId: doc.parentId,
+        font: doc.font,
+        isPublic: doc.isPublic,
+        ownerId: doc.ownerId,
+        collaborators: doc.collaborators || [],
+        permissions: doc.permissions || [],
+      };
+
+      // Add to documents list (at the beginning since it's newest)
+      setDocuments(prev => [docMetadata, ...prev]);
+
+      // Add to document tree as a root (no parent) - at the beginning
+      setDocumentTree(prev => [{ ...docMetadata, children: [] }, ...prev]);
+
+      // Navigate to the new document
+      router.push(`/dashboard/documents/${doc.id}`);
+
+      // Dispatch event to notify other components (e.g., document page),
+      // but skip sidebar reload since we already updated local state
+      window.dispatchEvent(new CustomEvent('documentsChanged', {
+        detail: { workspaceId: activeWorkspaceId, skipSidebarReload: true }
+      }));
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      // Fallback: reload documents on error to ensure consistency
+      loadDocuments(activeWorkspaceId);
+    }
   }
 
   return (

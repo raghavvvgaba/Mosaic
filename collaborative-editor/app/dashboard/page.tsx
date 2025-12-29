@@ -1,17 +1,38 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { FileText, Trash2, Star } from 'lucide-react';
+import { FileText, Trash2, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getAllDocumentsMetadata, deleteDocument, toggleFavorite } from '@/lib/db/documents';
 import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
-// import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+import { formatRelativeTime } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/AlertDialog';
+
+function formatShortTime(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+}
 
 export default function Home() {
   const { openDocument } = useNavigation();
@@ -306,6 +327,12 @@ export default function Home() {
                     >
                       {doc.title || 'Untitled'}
                     </h3>
+                    {doc.lastChangedAt && (
+                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Metadata and actions */}

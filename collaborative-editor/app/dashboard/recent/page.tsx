@@ -109,7 +109,7 @@ export default function RecentPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold">Recent Documents</h1>
           <p className="text-muted-foreground mt-2">
-            Documents you&apos;ve opened recently
+            Documents you&apos;ve recently changed
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Workspace: {activeWorkspace?.name ?? 'Loading...'}
@@ -121,7 +121,7 @@ export default function RecentPage() {
             <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 mb-4">No recent documents</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Open a document to see it here
+              Edit a document to see it here
             </p>
             <Button variant="outline" onClick={() => router.push('/')}>
               Go to All Documents
@@ -150,7 +150,7 @@ export default function RecentPage() {
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>
-                        Opened {formatDistanceToNow(new Date(doc.lastOpenedAt!), { addSuffix: true })}
+                        Changed {formatDistanceToNow(new Date(doc.lastChangedAt!), { addSuffix: true })}
                       </span>
                     </div>
                   </div>
