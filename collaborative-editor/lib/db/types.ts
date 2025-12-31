@@ -100,4 +100,5 @@ export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   font: DocumentFont;
   fontSize?: number;              // Base font size (12-20px)
+  avatarId?: string;              // Avatar file ID in Storage
 }

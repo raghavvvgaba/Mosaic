@@ -156,8 +156,8 @@ export class AuthService {
     // Upload new avatar and delete old one
     const result = await StorageService.replaceAvatar(file, userId, oldAvatarId);
 
-    // Get current preferences and add avatarId
-    const currentPrefs = user.prefs || {};
+    // Update avatarId in preferences using PreferencesService
+    const currentPrefs = await PreferencesService.getPreferences();
     const newPrefs = {
       ...currentPrefs,
       avatarId: result.fileId,
@@ -178,9 +178,9 @@ export class AuthService {
     // Delete the file from storage
     await StorageService.deleteAvatar(avatarId);
 
-    // Remove avatar ID from preferences
-    const user = await this.getCurrentUser();
-    const newPrefs = { ...user.prefs };
+    // Remove avatar ID from preferences using PreferencesService
+    const currentPrefs = await PreferencesService.getPreferences();
+    const newPrefs = { ...currentPrefs };
     delete newPrefs.avatarId;
 
     await account.updatePrefs({ prefs: newPrefs });
@@ -193,7 +193,8 @@ export class AuthService {
    */
   static async getUserWithAvatar() {
     const user = await this.getCurrentUser();
-    const avatarId = user.prefs?.avatarId;
+    const preferences = await PreferencesService.getPreferences();
+    const avatarId = preferences.avatarId;
 
     return {
       ...user,

@@ -17,6 +17,7 @@ interface AuthContextType {
   updateProfile: (name: string) => Promise<void>;
   updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
   updateAvatar: (file: File) => Promise<void>;
+  deleteAvatar: () => Promise<void>;
   sendEmailVerification: () => Promise<void>;
   clearError: () => void;
 }
@@ -42,11 +43,11 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
 
   // Convert Appwrite user to our User type
   const convertAppwriteUser = async (appwriteUser: any): Promise<User> => {
-    // Fetch preferences from Appwrite
+    // Fetch preferences from Appwrite (now includes avatarId)
     const preferences = await PreferencesService.getPreferences();
 
-    // Get avatar URL from avatarId in prefs
-    const avatarId = appwriteUser.prefs?.avatarId;
+    // Get avatar URL from avatarId in preferences
+    const avatarId = preferences.avatarId;
     const avatar = avatarId ? StorageService.getAvatarPreviewUrl(avatarId) : undefined;
 
     return {
@@ -219,6 +220,36 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     }
   };
 
+  const deleteAvatar = async () => {
+    try {
+      setError(null);
+
+      // Get avatar ID before deleting
+      const avatarId = user?.avatarId;
+      if (!avatarId) {
+        throw new Error('No avatar to delete');
+      }
+
+      // Delete avatar via AuthService
+      await AuthService.deleteAvatar(avatarId);
+
+      // Update local user state to remove avatar
+      if (user) {
+        const updatedUser = {
+          ...user,
+          avatar: undefined,
+          avatarId: undefined,
+        };
+        setUser(updatedUser);
+      }
+    } catch (err: any) {
+      console.error('Avatar deletion failed:', err);
+      const errorMessage = err.message || 'Failed to delete avatar';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
   const sendEmailVerification = async () => {
     try {
       setError(null);
@@ -245,6 +276,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     updateProfile,
     updatePreferences,
     updateAvatar,
+    deleteAvatar,
     sendEmailVerification,
     clearError,
   };

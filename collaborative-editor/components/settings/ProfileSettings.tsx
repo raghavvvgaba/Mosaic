@@ -19,11 +19,12 @@ import { useState, useRef } from 'react';
 import { StorageService } from '@/lib/appwrite/storage';
 
 export function ProfileSettings() {
-  const { user, updateProfile, updateAvatar } = useAuthContext();
+  const { user, updateProfile, updateAvatar, deleteAvatar } = useAuthContext();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,9 +76,17 @@ export function ProfileSettings() {
   };
 
   const handleRemoveAvatar = async () => {
-    // TODO: Implement avatar removal
-    console.log('Remove avatar - to be implemented');
-    setIsAvatarDialogOpen(false);
+    setAvatarError(null);
+    setIsDeletingAvatar(true);
+    try {
+      await deleteAvatar();
+      setIsAvatarDialogOpen(false);
+    } catch (error: any) {
+      console.error('Failed to delete avatar:', error);
+      setAvatarError(error.message || 'Failed to delete avatar');
+    } finally {
+      setIsDeletingAvatar(false);
+    }
   };
 
   const handleExportData = () => {
@@ -181,11 +190,20 @@ export function ProfileSettings() {
               <Button
                 variant="destructive"
                 onClick={handleRemoveAvatar}
-                disabled={isUploadingAvatar}
+                disabled={isDeletingAvatar}
                 className="w-full sm:w-auto"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Photo
+                {isDeletingAvatar ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove Photo
+                  </>
+                )}
               </Button>
             )}
           </DialogFooter>

@@ -69,6 +69,7 @@ export class PreferencesService {
       theme: 'system',
       font: 'sans',
       fontSize: 16,
+      avatarId: undefined,
     };
   }
 
@@ -82,6 +83,7 @@ export class PreferencesService {
       theme: fetchedPrefs.theme ?? defaults.theme,
       font: fetchedPrefs.font ?? defaults.font,
       fontSize: fetchedPrefs.fontSize ?? defaults.fontSize,
+      avatarId: fetchedPrefs.avatarId ?? defaults.avatarId,
     };
   }
 
