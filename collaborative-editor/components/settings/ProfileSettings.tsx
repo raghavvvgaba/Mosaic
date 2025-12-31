@@ -6,14 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Download, User as UserIcon, Mail, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Camera, Download, Mail, Calendar, Loader2, Trash2, User } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { StorageService } from '@/lib/appwrite/storage';
 
 export function ProfileSettings() {
-  const { user, updateProfile } = useAuthContext();
+  const { user, updateProfile, updateAvatar } = useAuthContext();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveName = async () => {
     if (!name.trim()) return;
@@ -26,6 +39,45 @@ export function ProfileSettings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAvatarClick = () => {
+    setIsAvatarDialogOpen(true);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarError(null);
+
+    // Validate file
+    const validationError = StorageService.validateAvatarFile(file);
+    if (validationError) {
+      setAvatarError(validationError);
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      await updateAvatar(file);
+      setIsAvatarDialogOpen(false); // Close dialog after successful upload
+    } catch (error: any) {
+      console.error('Failed to upload avatar:', error);
+      setAvatarError(error.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    // TODO: Implement avatar removal
+    console.log('Remove avatar - to be implemented');
+    setIsAvatarDialogOpen(false);
   };
 
   const handleExportData = () => {
@@ -60,6 +112,86 @@ export function ProfileSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Avatar Dialog */}
+      <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile Photo</DialogTitle>
+            <DialogDescription>
+              Update your profile picture or remove it.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Large Avatar Preview */}
+          <div className="flex justify-center py-6">
+            <div className="relative">
+              <div className="w-48 h-48 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-4 border-border shadow-lg">
+                {isUploadingAvatar ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  </div>
+                ) : user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="h-24 w-24 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {avatarError && (
+            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg text-center">
+              {avatarError}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              className="w-full sm:w-auto"
+            >
+              {isUploadingAvatar ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Camera className="h-4 w-4 mr-2" />
+                  Change Photo
+                </>
+              )}
+            </Button>
+            {user.avatar && (
+              <Button
+                variant="destructive"
+                onClick={handleRemoveAvatar}
+                disabled={isUploadingAvatar}
+                className="w-full sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Photo
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Profile Card */}
       <Card>
         <CardHeader>
@@ -69,9 +201,17 @@ export function ProfileSettings() {
         <CardContent className="space-y-6">
           {/* Avatar Section */}
           <div className="flex items-start gap-6">
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20">
-                {user.avatar ? (
+            <button
+              onClick={handleAvatarClick}
+              className="relative group shrink-0"
+              disabled={isUploadingAvatar}
+            >
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20 transition-opacity group-hover:opacity-80">
+                {isUploadingAvatar ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : user.avatar ? (
                   <img
                     src={user.avatar}
                     alt={user.name}
@@ -83,15 +223,16 @@ export function ProfileSettings() {
                   </span>
                 )}
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                disabled
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-            </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-full">
+                <Camera className="h-6 w-6 text-white" />
+              </div>
+            </button>
+
+            {avatarError && (
+              <div className="flex-1">
+                <p className="text-sm text-destructive">{avatarError}</p>
+              </div>
+            )}
 
             <div className="flex-1 space-y-4">
               <div className="space-y-2">

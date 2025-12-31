@@ -19,28 +19,61 @@ const FONT_STYLES = {
 };
 
 export function AppearanceSettings() {
-  const { user } = useAuthContext();
+  const { user, updatePreferences } = useAuthContext();
   const { theme, setTheme } = useTheme();
   const [selectedFont, setSelectedFont] = useState<Font>('sans');
   const [fontSize, setFontSize] = useState(16);
+  const [isSaving, setIsSaving] = useState(false);
   const [previewText, setPreviewText] = useState('The quick brown fox jumps over the lazy dog.');
 
+  // Initialize font and fontSize from user preferences
   useEffect(() => {
-    if (user?.preferences?.font) {
-      setSelectedFont(user.preferences.font as Font);
+    if (user?.preferences) {
+      if (user.preferences.font) {
+        setSelectedFont(user.preferences.font as Font);
+      }
+      if (user.preferences.fontSize) {
+        setFontSize(user.preferences.fontSize);
+      }
     }
   }, [user]);
 
-  const handleFontChange = (font: Font) => {
-    setSelectedFont(font);
-    // TODO: Save to user preferences
-    console.log('Font changed to:', font);
+  const handleThemeChange = async (newTheme: Theme) => {
+    setTheme(newTheme);
+    try {
+      await updatePreferences({ theme: newTheme });
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+    }
   };
 
-  const handleFontSizeChange = (delta: number) => {
+  const handleFontChange = async (font: Font) => {
+    setSelectedFont(font);
+    setIsSaving(true);
+    try {
+      await updatePreferences({ font });
+    } catch (error) {
+      console.error('Failed to save font preference:', error);
+      // Revert on error
+      setSelectedFont(user?.preferences?.font as Font || 'sans');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFontSizeChange = async (delta: number) => {
     const newSize = Math.min(Math.max(fontSize + delta, 12), 20);
     setFontSize(newSize);
-    // TODO: Save to user preferences
+    setIsSaving(true);
+    try {
+      await updatePreferences({ fontSize: newSize });
+    } catch (error) {
+      console.error('Failed to save font size preference:', error);
+      // Revert on error
+      setFontSize(user?.preferences?.fontSize || 16);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getPreviewStyle = () => {
@@ -61,7 +94,7 @@ export function AppearanceSettings() {
         <CardContent>
           <RadioGroup
             value={theme}
-            onValueChange={(value) => setTheme(value as Theme)}
+            onValueChange={(value) => handleThemeChange(value as Theme)}
             className="grid grid-cols-3 gap-4"
           >
             <div>
@@ -156,7 +189,7 @@ export function AppearanceSettings() {
               variant="outline"
               size="icon"
               onClick={() => handleFontSizeChange(-1)}
-              disabled={fontSize <= 12}
+              disabled={fontSize <= 12 || isSaving}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -167,7 +200,7 @@ export function AppearanceSettings() {
               variant="outline"
               size="icon"
               onClick={() => handleFontSizeChange(1)}
-              disabled={fontSize >= 20}
+              disabled={fontSize >= 20 || isSaving}
             >
               <Plus className="h-4 w-4" />
             </Button>

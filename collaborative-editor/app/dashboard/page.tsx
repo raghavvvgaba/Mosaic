@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getAllDocumentsMetadata, deleteDocument, toggleFavorite } from '@/lib/db/documents';
 import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
-import { formatRelativeTime } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';

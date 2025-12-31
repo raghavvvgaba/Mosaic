@@ -1,4 +1,6 @@
 import { getAppwrite, ID } from './config';
+import { StorageService } from './storage';
+import { PreferencesService } from './preferences';
 
 export class AuthService {
   /**
@@ -138,5 +140,64 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Update user avatar
+   * Uploads the new avatar file, deletes the old one, and updates preferences
+   */
+  static async updateAvatar(file: File, oldAvatarId?: string) {
+    const { account } = getAppwrite();
+
+    // Get current user
+    const user = await this.getCurrentUser();
+    const userId = user.$id;
+
+    // Upload new avatar and delete old one
+    const result = await StorageService.replaceAvatar(file, userId, oldAvatarId);
+
+    // Get current preferences and add avatarId
+    const currentPrefs = user.prefs || {};
+    const newPrefs = {
+      ...currentPrefs,
+      avatarId: result.fileId,
+    };
+
+    // Update user prefs with the new avatar ID
+    await account.updatePrefs({ prefs: newPrefs });
+
+    return { fileId: result.fileId, url: result.url };
+  }
+
+  /**
+   * Delete user avatar
+   */
+  static async deleteAvatar(avatarId: string) {
+    const { account } = getAppwrite();
+
+    // Delete the file from storage
+    await StorageService.deleteAvatar(avatarId);
+
+    // Remove avatar ID from preferences
+    const user = await this.getCurrentUser();
+    const newPrefs = { ...user.prefs };
+    delete newPrefs.avatarId;
+
+    await account.updatePrefs({ prefs: newPrefs });
+
+    return { success: true };
+  }
+
+  /**
+   * Get current user with avatar URL
+   */
+  static async getUserWithAvatar() {
+    const user = await this.getCurrentUser();
+    const avatarId = user.prefs?.avatarId;
+
+    return {
+      ...user,
+      avatarUrl: avatarId ? StorageService.getAvatarPreviewUrl(avatarId) : undefined,
+    };
   }
 }

@@ -88,8 +88,10 @@ export interface User {
   id: string;                     // Maps to Appwrite's $id
   email: string;
   name: string;
-  avatar?: string;
+  avatar?: string;                // Avatar URL (for display)
+  avatarId?: string;              // Avatar file ID in Storage (for deletion)
   preferences: UserPreferences;
+  emailVerification?: boolean;    // Email verification status from Appwrite
   createdAt: Date;                // Maps to Appwrite's $createdAt
   lastLoginAt?: Date;
 }
@@ -97,13 +99,5 @@ export interface User {
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   font: DocumentFont;
-  notifications: NotificationSettings;
-}
-
-export interface NotificationSettings {
-  email: boolean;
-  push: boolean;
-  mentions: boolean;
-  comments: boolean;
-  shares: boolean;
+  fontSize?: number;              // Base font size (12-20px)
 }

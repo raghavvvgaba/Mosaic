@@ -1,17 +1,16 @@
 'use client';
 
 import { useAuthContext } from '@/contexts/AuthContext';
+import { AuthService } from '@/lib/appwrite/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Key,
   Mail,
-  Shield,
   Smartphone,
   LogOut,
   Check,
@@ -21,11 +20,12 @@ import {
 import { useState } from 'react';
 
 export function AccountSettings() {
-  const { user, signOut } = useAuthContext();
+  const { user, signOut, sendEmailVerification } = useAuthContext();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [loginAlerts, setLoginAlerts] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -35,33 +35,62 @@ export function AccountSettings() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert('Passwords do not match');
+      setErrorMessage('Passwords do not match');
       return;
     }
+    if (!currentPassword || !newPassword) {
+      setErrorMessage('Please fill in all fields');
+      return;
+    }
+
+    setErrorMessage(null);
     setIsLoading(true);
     try {
-      // TODO: Implement password change via Appwrite
-      console.log('Password change requested');
+      await AuthService.updatePassword(newPassword, currentPassword);
+      setSuccessMessage('Password updated successfully');
       setShowPasswordForm(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to change password:', error);
+      setErrorMessage(error.message || 'Failed to change password. Please check your current password.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleChangeEmail = async () => {
+    if (!newEmail || !currentPassword) {
+      setErrorMessage('Please enter new email and current password');
+      return;
+    }
+
+    setErrorMessage(null);
     setIsLoading(true);
     try {
-      // TODO: Implement email change via Appwrite
-      console.log('Email change requested:', newEmail);
+      await AuthService.updateEmail(newEmail, currentPassword);
+      setSuccessMessage('Verification email sent to your new address. Please verify to complete the change.');
       setShowEmailForm(false);
       setNewEmail('');
-    } catch (error) {
+      setCurrentPassword('');
+    } catch (error: any) {
       console.error('Failed to change email:', error);
+      setErrorMessage(error.message || 'Failed to update email. Please check your current password.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      await sendEmailVerification();
+      setSuccessMessage('Verification email sent. Please check your inbox.');
+    } catch (error: any) {
+      console.error('Failed to send verification email:', error);
+      setErrorMessage(error.message || 'Failed to send verification email.');
     } finally {
       setIsLoading(false);
     }
@@ -72,21 +101,33 @@ export function AccountSettings() {
       return;
     }
     try {
-      // TODO: Implement sign out from all devices via Appwrite
-      console.log('Sign out from all devices requested');
-      await signOut();
-    } catch (error) {
+      await AuthService.signOutAll();
+      // After signing out from all devices, redirect to home
+      window.location.href = '/';
+    } catch (error: any) {
       console.error('Failed to sign out:', error);
+      setErrorMessage(error.message || 'Failed to sign out from all devices.');
     }
   };
 
   if (!user) return null;
 
-  // TODO: Add emailVerification to User type
-  const isEmailVerified = false;
+  const isEmailVerified = user.emailVerification || false;
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <Alert variant="default" className="border-green-500 text-green-700">
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Change Password */}
       <Card>
         <CardHeader>
@@ -182,8 +223,12 @@ export function AccountSettings() {
                 Update Email
               </Button>
               {!isEmailVerified && (
-                <Button variant="outline">
-                  Resend Verification
+                <Button
+                  variant="outline"
+                  onClick={handleResendVerification}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Sending...' : 'Resend Verification'}
                 </Button>
               )}
             </div>
@@ -205,14 +250,25 @@ export function AccountSettings() {
                   placeholder="new@email.com"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="current-password-email">Current Password</Label>
+                <Input
+                  id="current-password-email"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password"
+                />
+              </div>
               <div className="flex gap-2">
-                <Button onClick={handleChangeEmail} disabled={isLoading || !newEmail}>
+                <Button onClick={handleChangeEmail} disabled={isLoading || !newEmail || !currentPassword}>
                   {isLoading ? 'Sending...' : 'Send Verification'}
                 </Button>
                 <Button
                   onClick={() => {
                     setShowEmailForm(false);
                     setNewEmail('');
+                    setCurrentPassword('');
                   }}
                   variant="ghost"
                 >
@@ -221,34 +277,6 @@ export function AccountSettings() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Login Alerts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Security Alerts
-          </CardTitle>
-          <CardDescription>Manage notifications about account activity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="login-alerts">Login Alerts</Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                Receive email notifications when someone logs into your account
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="login-alerts"
-                checked={loginAlerts}
-                onCheckedChange={(checked) => setLoginAlerts(checked as boolean)}
-              />
-            </div>
-          </div>
         </CardContent>
       </Card>
 

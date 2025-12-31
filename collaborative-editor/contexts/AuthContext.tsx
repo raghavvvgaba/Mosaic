@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { AuthService } from '@/lib/appwrite/auth';
+import { PreferencesService } from '@/lib/appwrite/preferences';
+import { StorageService } from '@/lib/appwrite/storage';
 import { createWorkspace } from '@/lib/appwrite/workspaces';
-import type { User } from '@/lib/db/types';
+import type { User, UserPreferences } from '@/lib/db/types';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +15,8 @@ interface AuthContextType {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (name: string) => Promise<void>;
+  updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
+  updateAvatar: (file: File) => Promise<void>;
   sendEmailVerification: () => Promise<void>;
   clearError: () => void;
 }
@@ -37,23 +41,22 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
   const [error, setError] = useState<string | null>(null);
 
   // Convert Appwrite user to our User type
-  const convertAppwriteUser = (appwriteUser: any): User => {
+  const convertAppwriteUser = async (appwriteUser: any): Promise<User> => {
+    // Fetch preferences from Appwrite
+    const preferences = await PreferencesService.getPreferences();
+
+    // Get avatar URL from avatarId in prefs
+    const avatarId = appwriteUser.prefs?.avatarId;
+    const avatar = avatarId ? StorageService.getAvatarPreviewUrl(avatarId) : undefined;
+
     return {
       id: appwriteUser.$id,
       email: appwriteUser.email,
       name: appwriteUser.name,
-      avatar: appwriteUser.avatar || undefined,
-      preferences: {
-        theme: 'system',
-        font: 'sans',
-        notifications: {
-          email: true,
-          push: true,
-          mentions: true,
-          comments: true,
-          shares: true,
-        },
-      },
+      avatar,
+      avatarId, // Store the ID so we can delete old avatars when uploading new ones
+      emailVerification: appwriteUser.emailVerification,
+      preferences,
       createdAt: new Date(appwriteUser.$createdAt),
       lastLoginAt: appwriteUser.emailVerification ? new Date() : undefined,
     };
@@ -69,7 +72,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         const isAuthenticated = await AuthService.isAuthenticated();
         if (isAuthenticated) {
           const appwriteUser = await AuthService.getCurrentUser();
-          const user = convertAppwriteUser(appwriteUser);
+          const user = await convertAppwriteUser(appwriteUser);
           setUser(user);
         }
       } catch (err) {
@@ -90,7 +93,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       setError(null);
 
       const { user: appwriteUser } = await AuthService.signIn(email, password);
-      const user = convertAppwriteUser(appwriteUser);
+      const user = await convertAppwriteUser(appwriteUser);
       setUser(user);
     } catch (err: any) {
       console.error('Sign in failed:', err);
@@ -108,7 +111,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       setError(null);
 
       const { user: appwriteUser } = await AuthService.signUp(name, email, password);
-      const user = convertAppwriteUser(appwriteUser);
+      const user = await convertAppwriteUser(appwriteUser);
       setUser(user);
 
       // Create personal workspace for the new user
@@ -166,6 +169,56 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     }
   };
 
+  const updatePreferences = async (updates: Partial<UserPreferences>) => {
+    try {
+      setError(null);
+
+      // Update preferences on Appwrite
+      const newPreferences = await PreferencesService.updatePreferences(updates);
+
+      // Update local user state
+      if (user) {
+        const updatedUser = {
+          ...user,
+          preferences: newPreferences,
+        };
+        setUser(updatedUser);
+      }
+    } catch (err: any) {
+      console.error('Preferences update failed:', err);
+      const errorMessage = err.message || 'Failed to update preferences';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  const updateAvatar = async (file: File) => {
+    try {
+      setError(null);
+
+      // Get old avatar ID from user for deletion
+      const oldAvatarId = user?.avatarId;
+
+      // Upload avatar via AuthService (deletes old one automatically)
+      const result = await AuthService.updateAvatar(file, oldAvatarId);
+
+      // Update local user state with new avatar URL and ID
+      if (user) {
+        const updatedUser = {
+          ...user,
+          avatar: result.url,
+          avatarId: result.fileId,
+        };
+        setUser(updatedUser);
+      }
+    } catch (err: any) {
+      console.error('Avatar update failed:', err);
+      const errorMessage = err.message || 'Failed to update avatar';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
   const sendEmailVerification = async () => {
     try {
       setError(null);
@@ -190,6 +243,8 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     signUp,
     signOut,
     updateProfile,
+    updatePreferences,
+    updateAvatar,
     sendEmailVerification,
     clearError,
   };
