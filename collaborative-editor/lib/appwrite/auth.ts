@@ -131,6 +131,14 @@ export class AuthService {
   }
 
   /**
+   * Delete a specific session
+   */
+  static async deleteSession(sessionId: string) {
+    const { account } = getAppwrite();
+    return await account.deleteSession(sessionId);
+  }
+
+  /**
    * Check if user is authenticated
    */
   static async isAuthenticated() {

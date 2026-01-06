@@ -11,16 +11,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Key,
   Mail,
-  Smartphone,
-  LogOut,
   Check,
   X,
   Info,
 } from 'lucide-react';
 import { useState } from 'react';
+import { SessionManagement } from './SessionManagement';
 
 export function AccountSettings() {
-  const { user, signOut, sendEmailVerification } = useAuthContext();
+  const { user, sendEmailVerification } = useAuthContext();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,9 +51,10 @@ export function AccountSettings() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to change password:', error);
-      setErrorMessage(error.message || 'Failed to change password. Please check your current password.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to change password. Please check your current password.';
+      setErrorMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -74,9 +74,10 @@ export function AccountSettings() {
       setShowEmailForm(false);
       setNewEmail('');
       setCurrentPassword('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to change email:', error);
-      setErrorMessage(error.message || 'Failed to update email. Please check your current password.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update email. Please check your current password.';
+      setErrorMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -88,25 +89,12 @@ export function AccountSettings() {
     try {
       await sendEmailVerification();
       setSuccessMessage('Verification email sent. Please check your inbox.');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to send verification email:', error);
-      setErrorMessage(error.message || 'Failed to send verification email.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send verification email.';
+      setErrorMessage(errorMessage);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSignOutAll = async () => {
-    if (!confirm('Are you sure you want to sign out from all devices?')) {
-      return;
-    }
-    try {
-      await AuthService.signOutAll();
-      // After signing out from all devices, redirect to home
-      window.location.href = '/';
-    } catch (error: any) {
-      console.error('Failed to sign out:', error);
-      setErrorMessage(error.message || 'Failed to sign out from all devices.');
     }
   };
 
@@ -280,73 +268,8 @@ export function AccountSettings() {
         </CardContent>
       </Card>
 
-      {/* Active Sessions - Coming Soon */}
-      <Card className="relative overflow-hidden">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5" />
-                Active Sessions
-              </CardTitle>
-              <CardDescription>View and manage your active sessions across devices</CardDescription>
-            </div>
-            <Badge variant="secondary">Coming Soon</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 opacity-50">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-            <div>
-              <div className="font-medium">Current Session</div>
-              <div className="text-sm text-muted-foreground">
-                {new Date().toLocaleDateString()} • Active now
-              </div>
-            </div>
-            <Badge variant="outline">Current</Badge>
-          </div>
-
-          <Button
-            variant="destructive"
-            className="w-full"
-            disabled
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out From All Devices
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Revoke Sessions - Coming Soon */}
-      <Card className="relative overflow-hidden">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Revoke Specific Sessions</CardTitle>
-              <CardDescription>Select specific sessions to revoke</CardDescription>
-            </div>
-            <Badge variant="secondary">Coming Soon</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="opacity-50">
-          <p className="text-sm text-muted-foreground">
-            This feature will allow you to view all active sessions and selectively revoke access from specific devices or locations.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Sign Out All Devices - Available Now */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Global Sign Out</CardTitle>
-          <CardDescription>Sign out from all devices immediately</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleSignOutAll} variant="destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out From All Devices
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Session Management */}
+      <SessionManagement />
     </div>
   );
 }
