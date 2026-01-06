@@ -505,19 +505,16 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
   }
 }
 
-export async function toggleFavorite(documentId: string): Promise<void> {
+export async function toggleFavorite(documentId: string, currentStatus: boolean): Promise<void> {
   try {
-    const doc = await getDocument(documentId);
-    if (!doc) {
-      throw new Error('Document not found');
-    }
-
+    console.log('toggleFavorite service called with:', documentId, currentStatus);
+    console.log('Service types:', typeof documentId, typeof currentStatus);
     const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),
       tableId: getDocumentsTableId(),
       rowId: documentId,
-      data: { isFavorite: !doc.isFavorite }
+      data: { isFavorite: !currentStatus }
     });
   } catch (error) {
     console.error('Failed to toggle favorite:', error);
@@ -686,7 +683,7 @@ export async function getAllDocumentsMetadata(
       queries.push(Query.equal('isDeleted', [false]));
     }
 
-    queries.push(Query.orderDesc('$updatedAt'));
+    queries.push(Query.orderDesc('lastChangedAt'));
 
     const response = await appwrite.tablesDB.listRows({
       databaseId: getDatabaseId(),

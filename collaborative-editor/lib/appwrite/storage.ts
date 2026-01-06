@@ -1,4 +1,4 @@
-import { getAppwrite, ID, Permission, Role } from './config';
+import { getAppwrite, ID, Permission, Role, appwriteConfig } from './config';
 import type { Models } from 'appwrite';
 
 /**
@@ -102,8 +102,7 @@ export class StorageService {
     width: number = 200,
     height: number = 200
   ): string {
-    const { endpoint } = getAppwrite().client;
-    const { config } = getAppwrite();
+    const endpoint = appwriteConfig.endpoint;
 
     // Get the project ID from the config
     const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!;
@@ -117,7 +116,7 @@ export class StorageService {
    * Get file view URL (for downloading)
    */
   static getAvatarViewUrl(fileId: string): string {
-    const { endpoint } = getAppwrite().client;
+    const endpoint = appwriteConfig.endpoint;
     const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!;
 
     return `${endpoint}/storage/buckets/${AVATARS_BUCKET_ID}/files/${fileId}/view?project=${projectId}`;

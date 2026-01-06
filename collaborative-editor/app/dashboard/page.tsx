@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { FileText, Trash2, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getAllDocumentsMetadata, deleteDocument, toggleFavorite } from '@/lib/db/documents';
+import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
 import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { BulkActionsToolbar } from '@/components/BulkActionsToolbar';
@@ -36,8 +36,18 @@ function formatShortTime(date: Date): string {
 export default function Home() {
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: documents, isLoading } = useDocumentsMetadata({
+    workspaceId: activeWorkspaceId ?? undefined,
+    includeDeleted: true,
+  });
+
+  // Filter out deleted documents for dashboard display
+  const activeDocuments = useMemo(() => {
+    if (!documents) return [];
+    return documents.filter(doc => !doc.isDeleted);
+  }, [documents]);
+
+  const { deleteDocument, toggleFavorite } = useDocumentMutations();
   const [greeting, setGreeting] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
@@ -50,12 +60,6 @@ export default function Home() {
     variant?: 'default' | 'destructive';
     action: () => Promise<void> | void;
   } | null>(null);
-
-  const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getAllDocumentsMetadata(workspaceId);
-    setDocuments(docs);
-    setLoading(false);
-  }, []);
 
   useEffect(() => {
     selectionModeRef.current = selectionMode;
@@ -74,19 +78,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!activeWorkspaceId) return;
-
+    // Clear selection when workspace changes
     setSelectionMode(false);
     setSelectedIds(new Set());
-    setLoading(true);
-    loadDocuments(activeWorkspaceId);
-
-    const handleDocumentsChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadDocuments(activeWorkspaceId);
-      }
-    };
 
     // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
@@ -97,13 +91,11 @@ export default function Home() {
     }
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('documentsChanged', handleDocumentsChanged);
     };
-  }, [activeWorkspaceId, loadDocuments]);
+  }, [activeWorkspaceId]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;
@@ -116,8 +108,6 @@ export default function Home() {
 
   const requestDeleteDocument = useCallback((doc: DocumentMetadata, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
     setConfirmConfig({
       title: 'Move to Trash',
       description: `Move "${doc.title || 'Untitled'}" to trash?`,
@@ -132,22 +122,17 @@ export default function Home() {
             next.delete(doc.id);
             return next;
           });
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to move document to trash:', error);
           alert('Failed to move document to trash');
         }
       },
     });
-  }, [activeWorkspaceId, loadDocuments]);
+  }, [deleteDocument]);
 
-  async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
+  async function handleToggleFavorite(e: React.MouseEvent, docId: string, currentStatus: boolean) {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    await toggleFavorite(docId);
-    loadDocuments(activeWorkspaceId);
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
+    await toggleFavorite(docId, currentStatus, activeWorkspaceId ?? undefined);
   }
 
   function handleSelectDocument(docId: string, checked: boolean) {
@@ -161,8 +146,7 @@ export default function Home() {
   }
 
   const handleBulkDelete = useCallback(() => {
-    if (selectedIds.size === 0 || !activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
+    if (selectedIds.size === 0) return;
     const idsToDelete = Array.from(selectedIds);
     setConfirmConfig({
       title: 'Move to Trash',
@@ -174,15 +158,13 @@ export default function Home() {
         try {
           await Promise.all(idsToDelete.map((id) => deleteDocument(id)));
           setSelectedIds(new Set());
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to move documents to trash:', error);
           alert('Failed to move documents to trash');
         }
       },
     });
-  }, [activeWorkspaceId, selectedIds, loadDocuments]);
+  }, [selectedIds, deleteDocument]);
 
   function handleClearSelection() {
     setSelectedIds(new Set());
@@ -197,7 +179,9 @@ export default function Home() {
   }
 
   function handleSelectAll() {
-    setSelectedIds(new Set(documents.map(doc => doc.id)));
+    if (activeDocuments) {
+      setSelectedIds(new Set(activeDocuments.map(doc => doc.id)));
+    }
   }
 
   const FONT_CLASS_MAP: Record<DocumentFont, string> = {
@@ -206,7 +190,7 @@ export default function Home() {
     mono: 'font-mono',
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Loading...</div>
@@ -215,8 +199,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full py-6">
-      <div className="w-full pl-2 pr-6 md:pl-4 md:pr-6">
+    <div className="min-h-screen bg-background p-8">
+      <div className="container mx-auto max-w-5xl">
         {/* Header Section */}
         <div className="mb-4">
           <div className="flex items-start justify-between">
@@ -228,13 +212,13 @@ export default function Home() {
               )}
               <h1 className="text-3xl font-bold tracking-tight">All Documents</h1>
               <p className="text-muted-foreground mt-2 text-sm">
-                {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+                {activeDocuments?.length ?? 0} {(activeDocuments?.length ?? 0) === 1 ? 'document' : 'documents'}
               </p>
               <p className="text-xs text-muted-foreground mt-1 opacity-70">
                 Workspace: {activeWorkspace?.name ?? 'Loading...'}
               </p>
             </div>
-            {documents.length > 0 && (
+            {(activeDocuments?.length ?? 0) > 0 && (
               <div className="flex items-center gap-2 flex-shrink-0 ml-6">
                 {selectionMode && selectedIds.size > 0 && (
                   <span className="text-sm text-muted-foreground px-3 py-1.5 bg-muted/60 rounded-xl">
@@ -264,7 +248,7 @@ export default function Home() {
           </div>
         </div>
 
-        {documents.length === 0 ? (
+        {!activeDocuments || activeDocuments.length === 0 ? (
           <div className="text-center py-24">
             <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center p-4 rounded-2xl transition-all duration-200 bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)] hover:transform hover:-translate-y-0.5">
               <FileText className="w-12 h-12 text-muted-foreground/60" />
@@ -275,35 +259,41 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {documents.map(doc => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {activeDocuments.map(doc => {
               const isSelected = selectionMode && selectedIds.has(doc.id);
               return (
               <div
                 key={doc.id}
                 className={cn(
-                  'p-4 rounded-2xl transition-all duration-200 group overflow-hidden h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background',
+                  'p-6 rounded-2xl transition-all duration-200 group overflow-hidden h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background flex flex-col',
                   'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
-                  'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
-                  'hover:transform hover:-translate-y-0.5',
+                  !selectionMode && 'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
+                  !selectionMode && 'hover:transform hover:-translate-y-0.5',
                   'cursor-pointer',
                   isSelected && 'ring-2 ring-primary/50',
                   FONT_CLASS_MAP[doc.font ?? 'sans']
                 )}
-                tabIndex={0}
+                onClick={(e) => {
+                  if (selectionMode) {
+                    e.stopPropagation();
+                    handleSelectDocument(doc.id, !selectedIds.has(doc.id));
+                  } else {
+                    openDocument(doc.id, doc.title);
+                  }
+                }}
               >
                 {/* Selection checkbox at top right */}
                 {selectionMode && (
-                  <div
-                    className="flex justify-end -mt-1 -mr-1 mb-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="flex justify-end -mt-4 -mr-4 mb-2">
                     <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                      checked={selectedIds.has(doc.id)}
+                      onCheckedChange={(checked) => {
+                        // Checkbox state is managed by parent click
+                      }}
                       className={cn(
-                        'size-4 rounded border transition-colors',
-                        isSelected
+                        'size-4 rounded border transition-colors pointer-events-none',
+                        selectedIds.has(doc.id)
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border/70 bg-background/50'
                       )}
@@ -312,52 +302,52 @@ export default function Home() {
                 )}
 
                 {/* Main content */}
-                <div
-                  className="h-full flex flex-col justify-center"
-                  onClick={() => openDocument(doc.id, doc.title)}
-                >
-                  {/* Inset content area */}
-                  <div className="p-3 rounded-xl bg-[rgba(255,255,255,0.02)] -m-1 transition-all duration-300 border border-transparent hover:bg-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.08)] hover:shadow-[inset_0_1px_3px_rgba(0,0,0,0.25)] hover:scale-[1.01] cursor-pointer">
-                    <h3
-                      className={cn(
-                        'text-center font-medium text-sm line-clamp-2 text-slate-200 group-hover:text-primary transition-colors',
-                        FONT_CLASS_MAP[doc.font ?? 'sans']
-                      )}
-                    >
-                      {doc.title || 'Untitled'}
-                    </h3>
-                    {doc.lastChangedAt && (
-                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
-                      </div>
+                <div className="flex-1 flex flex-col justify-center">
+                  <h3
+                    className={cn(
+                      'text-center font-medium text-sm line-clamp-2 text-slate-200 transition-colors',
+                      !selectionMode && 'group-hover:text-primary',
+                      FONT_CLASS_MAP[doc.font ?? 'sans']
                     )}
-                  </div>
+                  >
+                    {doc.title || 'Untitled'}
+                  </h3>
+                  {doc.lastChangedAt && (
+                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
+                    </div>
+                  )}
+                </div>
 
-                  {/* Metadata and actions */}
-                  <div className="flex items-center justify-end mt-3">
-
-                    {!selectionMode && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => handleToggleFavorite(e, doc.id)}
-                          className={`h-6 w-6 transition-all ${doc.isFavorite ? 'text-yellow-500 opacity-100' : 'hover:bg-accent/20'}`}
-                        >
-                          <Star className={`w-3 h-3 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => requestDeleteDocument(doc, e)}
-                          className="h-6 w-6 text-destructive hover:bg-destructive/10 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                {/* Metadata and actions */}
+                <div className="flex items-center justify-end">
+                  {!selectionMode && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleFavorite(e, doc.id, doc.isFavorite ?? false);
+                        }}
+                        className={`h-6 w-6 transition-all ${doc.isFavorite ? 'text-yellow-500 opacity-100' : 'hover:bg-accent/20'}`}
+                      >
+                        <Star className={`w-3 h-3 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          requestDeleteDocument(doc, e);
+                        }}
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10 transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               );

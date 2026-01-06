@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { searchDocuments } from '@/lib/db/documents';
+import { useDocumentSearch } from '@/hooks/swr';
 import type { Document } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -16,76 +16,53 @@ interface SearchBarProps {
 
 export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Document[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useAuthContext();
 
-  // Debounced search function
-  const performSearch = useCallback(async (workspaceId: string, searchQuery: string) => {
-    if (!workspaceId || !user) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
+  // Use SWR hook for document search
+  const { data: searchResults } = useDocumentSearch(debouncedQuery, { workspaceId: activeWorkspaceId ?? undefined });
 
-    if (searchQuery.length > 1) {
-      try {
-        const docs = await searchDocuments(workspaceId, searchQuery);
-        // Filter results by user ownership and permissions
-        const filteredDocs = docs.filter((doc) => {
-          // Show documents owned by the user
-          if (doc.ownerId === user.id) return true;
+  // Filter results by user ownership and permissions
+  const results = useMemo(() => {
+    if (!searchResults || !user) return [];
+    return searchResults.filter((doc) => {
+      // Show documents owned by the user
+      if (doc.ownerId === user.id) return true;
 
-          // Show documents where user is in collaborators list
-          if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === user.id)) {
-            return true;
-          }
-
-          // Show documents with user permissions
-          if (doc.permissions && doc.permissions.some((perm) => perm.userId === user.id)) {
-            return true;
-          }
-
-          return false;
-        });
-        setResults(filteredDocs);
-        setIsOpen(true);
-      } catch (error) {
-        console.error('Search failed:', error);
-        setResults([]);
-        setIsOpen(false);
+      // Show documents where user is in collaborators list
+      if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === user.id)) {
+        return true;
       }
-    } else {
-      setResults([]);
-      setIsOpen(false);
-    }
-  }, [user]);
 
+      // Show documents with user permissions
+      if (doc.permissions && doc.permissions.some((perm) => perm.userId === user.id)) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [searchResults, user]);
+
+  const isOpen = query.length > 1 && results.length >= 0;
+
+  // Debounce the search query
   useEffect(() => {
-    if (!activeWorkspaceId) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
     const timeoutId = setTimeout(() => {
-      performSearch(activeWorkspaceId, query);
+      setDebouncedQuery(query);
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [query, activeWorkspaceId, performSearch]);
+  }, [query]);
 
   function handleResultClick(doc: Document) {
     onResultClick(doc);
     setQuery('');
-    setIsOpen(false);
     onClose?.();
   }
 
   function handleClose() {
     setQuery('');
-    setIsOpen(false);
     onClose?.();
   }
 

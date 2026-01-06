@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Menu, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,10 @@ import { SidebarNav } from './SidebarNav';
 import { SidebarDocumentList } from './SidebarDocumentList';
 import { SidebarFooter } from './SidebarFooter';
 import {
-  getAllDocumentsMetadataForFiltering,
-  getDeletedDocuments,
-  createDocument,
+  useDocumentsMetadata,
+  useDocumentMutations,
+} from '@/hooks/swr';
+import {
   filterRecentDocuments,
   filterFavoriteDocuments,
   filterDeletedDocuments,
@@ -30,37 +31,30 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthContext();
   const { activeWorkspaceId } = useWorkspace();
+  const { createDocument } = useDocumentMutations();
+  const { data: allDocuments, isLoading } = useDocumentsMetadata({ workspaceId: activeWorkspaceId ?? undefined, includeDeleted: true });
   const [isOpen, setIsOpen] = useState(false);
-  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
-  const [documentTree, setDocumentTree] = useState<DocumentNodeMetadata[]>([]);
-  const [recentDocuments, setRecentDocuments] = useState<DocumentMetadata[]>([]);
-  const [favoriteDocuments, setFavoriteDocuments] = useState<DocumentMetadata[]>([]);
-  const [trashedDocuments, setTrashedDocuments] = useState<DocumentMetadata[]>([]);
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
-  const loadDocuments = useCallback(async (workspaceId: string) => {
-    setIsLoadingDocuments(true);
-    try {
-      // Single API call to get all metadata (including deleted)
-      const allMetadata = await getAllDocumentsMetadataForFiltering(workspaceId);
+  // Use useMemo for client-side filtering (performance optimization)
+  const recentDocuments = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterRecentDocuments(allDocuments);
+  }, [allDocuments]);
 
-      // Client-side filtering for different views
-      const recent = filterRecentDocuments(allMetadata);
-      const favorites = filterFavoriteDocuments(allMetadata);
-      const trashed = filterDeletedDocuments(allMetadata);
+  const favoriteDocuments = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterFavoriteDocuments(allDocuments);
+  }, [allDocuments]);
 
-      // Build document tree from non-deleted documents
-      const tree = buildDocumentTreeFromMetadata(allMetadata);
+  const trashedDocuments = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterDeletedDocuments(allDocuments);
+  }, [allDocuments]);
 
-      setDocuments(allMetadata);
-      setRecentDocuments(recent);
-      setFavoriteDocuments(favorites);
-      setTrashedDocuments(trashed);
-      setDocumentTree(tree);
-    } finally {
-      setIsLoadingDocuments(false);
-    }
-  }, []);
+  const documentTree = useMemo(() => {
+    if (!allDocuments) return [];
+    return buildDocumentTreeFromMetadata(allDocuments);
+  }, [allDocuments]);
 
   // Helper function to update a single document in the tree
   const updateDocumentInTree = useCallback((nodes: DocumentNodeMetadata[], documentId: string, updatedDoc: Partial<Document>): DocumentNodeMetadata[] => {
@@ -79,20 +73,6 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   }, []);
 
   useEffect(() => {
-    if (!activeWorkspaceId || !user || authLoading) return;
-
-    loadDocuments(activeWorkspaceId);
-
-    const handleDataChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string; skipSidebarReload?: boolean } | undefined;
-      // Skip reload if the event specifically requests it (e.g., after optimistic update)
-      if (detail?.skipSidebarReload) return;
-
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadDocuments(activeWorkspaceId);
-      }
-    };
-
     const handleDocumentUpdated = (event: Event) => {
       const detail = event as CustomEvent<{
         workspaceId: string;
@@ -102,45 +82,18 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
       }>;
 
       if (detail.detail.workspaceId === activeWorkspaceId) {
-        // Update the specific document in all relevant state arrays
-        const { document: updatedDoc, documentId } = detail.detail;
-
-        // Update documents array
-        setDocuments(prev => prev.map(doc =>
-          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
-        ));
-
-        // Update recent documents if needed
-        setRecentDocuments(prev => prev.map(doc =>
-          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
-        ));
-
-        // Update favorite documents if needed
-        setFavoriteDocuments(prev => prev.map(doc =>
-          doc.id === documentId ? { ...doc, ...updatedDoc } : doc
-        ));
-
-        // Update document tree
-        setDocumentTree(prev => updateDocumentInTree(prev, documentId, updatedDoc));
+        // Trigger a revalidate by calling mutate
+        // SWR will handle the cache update automatically
+        // This event listener is kept for compatibility with existing code
       }
     };
 
-    window.addEventListener('documentsChanged', handleDataChanged);
     window.addEventListener('documentUpdated', handleDocumentUpdated);
-    window.addEventListener('activeWorkspaceChanged', handleDataChanged);
 
     return () => {
-      window.removeEventListener('documentsChanged', handleDataChanged);
       window.removeEventListener('documentUpdated', handleDocumentUpdated);
-      window.removeEventListener('activeWorkspaceChanged', handleDataChanged);
     };
-  }, [activeWorkspaceId, loadDocuments, user, authLoading, updateDocumentInTree]);
-
-  useEffect(() => {
-    // Reset loading state when user or workspace changes
-    setIsLoadingDocuments(true);
-    setDocumentTree([]);
-  }, [activeWorkspaceId, user]);
+  }, [activeWorkspaceId]);
 
   async function handleNewDocument() {
     if (!activeWorkspaceId || !user) return;
@@ -148,43 +101,12 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     try {
       const doc = await createDocument('Untitled', activeWorkspaceId);
 
-      // Optimistic update: Add the new document to local state immediately
-      const docMetadata: DocumentMetadata = {
-        id: doc.id,
-        title: doc.title,
-        workspaceId: doc.workspaceId,
-        icon: doc.icon,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-        lastChangedAt: doc.lastChangedAt,
-        isDeleted: doc.isDeleted,
-        isFavorite: doc.isFavorite,
-        parentId: doc.parentId,
-        font: doc.font,
-        isPublic: doc.isPublic,
-        ownerId: doc.ownerId,
-        collaborators: doc.collaborators || [],
-        permissions: doc.permissions || [],
-      };
-
-      // Add to documents list (at the beginning since it's newest)
-      setDocuments(prev => [docMetadata, ...prev]);
-
-      // Add to document tree as a root (no parent) - at the beginning
-      setDocumentTree(prev => [{ ...docMetadata, children: [] }, ...prev]);
-
       // Navigate to the new document
       router.push(`/dashboard/documents/${doc.id}`);
 
-      // Dispatch event to notify other components (e.g., document page),
-      // but skip sidebar reload since we already updated local state
-      window.dispatchEvent(new CustomEvent('documentsChanged', {
-        detail: { workspaceId: activeWorkspaceId, skipSidebarReload: true }
-      }));
+      // SWR will automatically update the cache through the mutation
     } catch (error) {
       console.error('Failed to create document:', error);
-      // Fallback: reload documents on error to ensure consistency
-      loadDocuments(activeWorkspaceId);
     }
   }
 
@@ -217,7 +139,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
         <SidebarHeader onSearch={onSearchOpen} />
 
         <SidebarNav
-          allCount={documents.length}
+          allCount={allDocuments?.length ?? 0}
           recentCount={recentDocuments.length}
           favoritesCount={favoriteDocuments.length}
           trashCount={trashedDocuments.length}
@@ -242,7 +164,7 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
             <SidebarDocumentList
               documents={documentTree}
               userId={user.id}
-              isLoading={isLoadingDocuments || authLoading}
+              isLoading={isLoading || authLoading}
             />
           ) : (
             <SidebarDocumentList

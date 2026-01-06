@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FolderPlus, CornerUpLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { DocumentNodeMetadata, DocumentMetadata } from '@/lib/db/types';
-import { getDescendantsMetadata, getDocumentTreeMetadata, moveDocument } from '@/lib/db/documents';
+import { useDocumentTreeMetadata, useDocumentDescendants, useDocumentMutations } from '@/hooks/swr';
 
 const ROOT_VALUE = '__ROOT__';
 
@@ -41,51 +41,28 @@ export function MoveDocumentDialog({
   workspaceId,
   onMoved,
 }: MoveDocumentDialogProps) {
-  const [tree, setTree] = useState<DocumentNodeMetadata[]>([]);
-  const [invalidIds, setInvalidIds] = useState<Set<string>>(new Set());
+  const { data: tree } = useDocumentTreeMetadata({ workspaceId });
+  const { data: descendants } = useDocumentDescendants(documentId);
+  const { moveDocument } = useDocumentMutations();
   const [value, setValue] = useState<string>(currentParentId ?? ROOT_VALUE);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  // Memoize invalid IDs based on descendants data
+  const invalidIds = useMemo(() => {
+    if (!descendants) return new Set<string>();
+    return new Set<string>([documentId, ...descendants.map((doc) => doc.id)]);
+  }, [descendants, documentId]);
 
-    let mounted = true;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const [treeData, descendants] = await Promise.all([
-          getDocumentTreeMetadata(workspaceId),
-          getDescendantsMetadata(documentId),
-        ]);
-
-        if (!mounted) return;
-
-        const invalid = new Set<string>([documentId, ...descendants.map((doc) => doc.id)]);
-        setTree(treeData);
-        setInvalidIds(invalid);
-        setValue(currentParentId ?? ROOT_VALUE);
-      } catch (error) {
-        console.error('Failed to load move dialog data:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
+  // Reset value when dialog reopens with potentially different currentParentId
+  useMemo(() => {
+    if (open) {
+      setValue(currentParentId ?? ROOT_VALUE);
     }
+  }, [open, currentParentId]);
 
-    load();
-
-    return () => {
-      mounted = false;
-    };
-  }, [open, workspaceId, documentId, currentParentId]);
-
-  useEffect(() => {
+  // Reset submitting state when dialog closes
+  useMemo(() => {
     if (!open) {
-      setTree([]);
-      setInvalidIds(new Set());
       setSubmitting(false);
     }
   }, [open]);
@@ -106,9 +83,12 @@ export function MoveDocumentDialog({
 
     setSubmitting(true);
     try {
-      await moveDocument(documentId, workspaceId, targetParentId || undefined);
+      await moveDocument(
+        documentId,
+        workspaceId,
+        targetParentId || undefined
+      );
       onMoved?.(targetParentId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to move document:', error);
@@ -116,7 +96,7 @@ export function MoveDocumentDialog({
     } finally {
       setSubmitting(false);
     }
-  }, [documentId, isSelectionUnchanged, onMoved, onOpenChange, value, workspaceId]);
+  }, [documentId, isSelectionUnchanged, moveDocument, onMoved, onOpenChange, value, workspaceId]);
 
   const renderOptions = useCallback(
     (nodes: DocumentNodeMetadata[], depth = 0) => {
@@ -182,7 +162,7 @@ export function MoveDocumentDialog({
             <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Destination</Label>
           </div>
 
-          {loading ? (
+          {!tree ? (
             <div className="py-12 text-center text-muted-foreground">
               <div className="w-8 h-8 mx-auto mb-3 opacity-50 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
               <p className="text-sm">Loading pages…</p>
@@ -212,7 +192,7 @@ export function MoveDocumentDialog({
           <Button variant="glass" onClick={() => onOpenChange(false)} disabled={submitting} className="h-10">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || submitting || isSelectionUnchanged} className="h-10">
+          <Button onClick={handleSubmit} disabled={!tree || submitting || isSelectionUnchanged} className="h-10">
             Move
           </Button>
         </DialogFooter>

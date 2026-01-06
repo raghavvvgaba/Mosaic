@@ -1,16 +1,37 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getRecentDocuments, deleteDocument, toggleFavorite } from '@/lib/db/documents';
-import type { Document, DocumentFont } from '@/lib/db/types';
+import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
+import { filterRecentDocuments } from '@/lib/db/documents';
+import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { cn } from '@/lib/utils';
+
+function formatShortTime(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+}
 
 export default function RecentPage() {
   const FONT_CLASS_MAP: Record<DocumentFont, string> = {
@@ -21,8 +42,16 @@ export default function RecentPage() {
   const router = useRouter();
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: allDocuments, isLoading } = useDocumentsMetadata({
+    workspaceId: activeWorkspaceId ?? undefined,
+    includeDeleted: true,
+  });
+  const { deleteDocument, toggleFavorite } = useDocumentMutations();
+
+  const documents = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterRecentDocuments(allDocuments);
+  }, [allDocuments]);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
     description: string;
@@ -31,29 +60,6 @@ export default function RecentPage() {
     variant?: 'default' | 'destructive';
     action: () => Promise<void> | void;
   } | null>(null);
-
-  const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getRecentDocuments(workspaceId);
-    setDocuments(docs);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
-
-    setLoading(true);
-    loadDocuments(activeWorkspaceId);
-
-    const handleDocumentsChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadDocuments(activeWorkspaceId);
-      }
-    };
-
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
-    return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [activeWorkspaceId, loadDocuments]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;
@@ -64,10 +70,8 @@ export default function RecentPage() {
     }
   }, [confirmConfig]);
 
-  const requestDeleteDocument = useCallback((doc: Document, e: React.MouseEvent) => {
+  const requestDeleteDocument = useCallback((doc: DocumentMetadata, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
     setConfirmConfig({
       title: 'Move to Trash',
       description: `Move "${doc.title || 'Untitled'}" to trash?`,
@@ -77,25 +81,20 @@ export default function RecentPage() {
       action: async () => {
         try {
           await deleteDocument(doc.id);
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to move document to trash:', error);
           alert('Failed to move document to trash');
         }
       },
     });
-  }, [activeWorkspaceId, loadDocuments]);
+  }, [deleteDocument]);
 
-  async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
+  async function handleToggleFavorite(e: React.MouseEvent, docId: string, currentStatus: boolean) {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    await toggleFavorite(docId);
-    loadDocuments(activeWorkspaceId);
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
+    await toggleFavorite(docId, currentStatus, activeWorkspaceId ?? undefined);
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Loading...</div>
@@ -116,7 +115,7 @@ export default function RecentPage() {
           </p>
         </div>
 
-        {documents.length === 0 ? (
+        {!documents || documents.length === 0 ? (
           <div className="text-center py-16">
             <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 mb-4">No recent documents</p>
@@ -133,43 +132,48 @@ export default function RecentPage() {
               <div
                 key={doc.id}
                 onClick={() => openDocument(doc.id, doc.title)}
-                className="relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden hover:border-primary/50 hover:shadow-lg"
+                className={cn(
+                  'p-6 rounded-2xl transition-all duration-200 group overflow-hidden h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background flex flex-col cursor-pointer',
+                  'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
+                  'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
+                  'hover:transform hover:-translate-y-0.5',
+                  FONT_CLASS_MAP[doc.font ?? 'sans']
+                )}
               >
-                <div className="p-6 h-40 flex flex-col">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-muted-foreground" />
-                      <h2
-                        className={cn(
-                          'text-xl font-semibold group-hover:text-primary transition-colors',
-                          FONT_CLASS_MAP[doc.font ?? 'sans']
-                        )}
-                      >
-                        {doc.title || 'Untitled'}
-                      </h2>
+                <div className="flex-1 flex flex-col justify-center">
+                  <h3
+                    className={cn(
+                      'text-center font-medium text-sm line-clamp-2 text-slate-200 group-hover:text-primary transition-colors',
+                      FONT_CLASS_MAP[doc.font ?? 'sans']
+                    )}
+                  >
+                    {doc.title || 'Untitled'}
+                  </h3>
+                  {doc.lastChangedAt && (
+                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>
-                        Changed {formatDistanceToNow(new Date(doc.lastChangedAt!), { addSuffix: true })}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-auto flex items-center justify-end gap-1">
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleToggleFavorite(e, doc.id)}
-                      className={`${doc.isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity ${doc.isFavorite ? 'text-yellow-500' : ''}`}
+                      size="icon-sm"
+                      onClick={(e) => handleToggleFavorite(e, doc.id, doc.isFavorite ?? false)}
+                      className={`h-6 w-6 transition-all ${doc.isFavorite ? 'text-yellow-500 opacity-100' : 'hover:bg-accent/20'}`}
                     >
-                      <Star className={`w-4 h-4 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
+                      <Star className={`w-3 h-3 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       onClick={(e) => requestDeleteDocument(doc, e)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-6 w-6 text-destructive hover:bg-destructive/10 transition-all"
                     >
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>

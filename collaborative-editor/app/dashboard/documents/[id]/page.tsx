@@ -5,15 +5,15 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
 import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
+import { useDocument, useDocumentPath, useDocumentMutations } from '@/hooks/swr';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
@@ -59,12 +59,14 @@ export default function DocumentPage() {
   const documentId = params.id as string;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
-  
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: document, isLoading, mutate } = useDocument(documentId);
+  const { data: documentPath } = useDocumentPath(documentId);
+  const { updateDocument, updateDocumentTitleOnly, duplicateDocument, toggleFavorite, deleteDocument, createDocument, permanentlyDeleteDocument } = useDocumentMutations();
+
   const [saving, setSaving] = useState(false);
+  const [titleSaving, setTitleSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [documentPath, setDocumentPath] = useState<Document[]>([]);
+  const [localTitle, setLocalTitle] = useState<string>('');
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
@@ -79,32 +81,22 @@ export default function DocumentPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [titleGenerating, setTitleGenerating] = useState(false);
 
-  const loadDocumentPath = useCallback(async (id: string) => {
-    const path = await getDocumentPath(id);
-    setDocumentPath(path);
-  }, []);
-
-  const loadDocument = useCallback(async () => {
-    const doc = await getDocument(documentId);
-    if (doc) {
-      setDocument(doc);
-      documentRef.current = doc;
-      setLastSaved(doc.updatedAt);
-      if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
-        setActiveWorkspace(doc.workspaceId, { navigate: false });
-      }
-      // Only load document path if it has parents (nested documents)
-      if (doc.parentId) {
-        await loadDocumentPath(doc.id);
+  // Sync documentRef with SWR data and set workspace
+  useEffect(() => {
+    if (document) {
+      documentRef.current = document;
+      setLastSaved(document.updatedAt);
+      // Only update local title if it's different from current document title
+      // This prevents overwriting user's typing while they're still typing
+      setLocalTitle(document.title);
+      if (!activeWorkspaceId || activeWorkspaceId !== document.workspaceId) {
+        setActiveWorkspace(document.workspaceId, { navigate: false });
       }
     }
-    setLoading(false);
-  }, [documentId, activeWorkspaceId, setActiveWorkspace, loadDocumentPath]);
+  }, [document, activeWorkspaceId, setActiveWorkspace]);
 
+  // Cleanup: delete empty documents when leaving the page
   useEffect(() => {
-    loadDocument();
-
-    // Cleanup: delete empty documents when leaving the page
     return () => {
       const checkAndDeleteEmpty = async () => {
         if (documentRef.current) {
@@ -117,11 +109,11 @@ export default function DocumentPage() {
       };
       checkAndDeleteEmpty();
     };
-  }, [documentId, loadDocument]);
+  }, [documentId]);
 
   // (Minimal rebuild) Removed auto-title timers and retries
 
-  
+ 
 
 
   function isDocumentEmpty(doc: Document): boolean {
@@ -146,38 +138,42 @@ export default function DocumentPage() {
 
   // Debounced function to save the title
   const debouncedSaveTitle = useDebouncedCallback(
-    async (newTitle: string, doc: Document) => {
-      await handleSave({ title: newTitle });
-      void loadDocumentPath(documentId);
-      // Notify other components that this specific document has changed
-      window.dispatchEvent(new CustomEvent('documentUpdated', {
-        detail: {
-          workspaceId: doc.workspaceId,
-          documentId: doc.id,
-          document: { ...doc, title: newTitle },
-          operation: 'title'
+    async (newTitle: string) => {
+      if (documentRef.current) {
+        setTitleSaving(true);
+        try {
+          // Use optimized title-only update that doesn't trigger global cache invalidation
+          await updateDocumentTitleOnly(documentId, newTitle);
+          // NO global event dispatch - sidebar will update when user navigates away
+          // or through SWR's automatic cache updates
+          setLastSaved(new Date());
+        } catch (error) {
+          console.error('Failed to save title:', error);
+          // Rollback on error
+          setLocalTitle(documentRef.current.title);
+        } finally {
+          setTitleSaving(false);
         }
-      }));
+      }
     },
-    500 // 500ms debounce delay
+    1000 // 1000ms debounce delay - balances responsiveness with performance
   );
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newTitle = e.target.value;
-    if (document) {
-      const updatedDoc = { ...document, title: newTitle };
-      setDocument(updatedDoc);
-      documentRef.current = updatedDoc;
-
-      // Debounced save
-      debouncedSaveTitle(newTitle, document);
+    // Update local state immediately for responsive typing
+    setLocalTitle(newTitle);
+    // Update ref for optimistic updates
+    if (documentRef.current) {
+      documentRef.current = { ...documentRef.current, title: newTitle };
     }
+    // Debounced save
+    debouncedSaveTitle(newTitle);
   }
 
   async function handleContentSave(content: string) {
-    if (document) {
-      const updatedDoc = { ...document, content };
-      documentRef.current = updatedDoc;
+    if (documentRef.current) {
+      documentRef.current = { ...documentRef.current, content };
     }
     await handleSave({ content });
   }
@@ -194,7 +190,6 @@ export default function DocumentPage() {
         return;
       }
       await updateDocument(current.id, { title });
-      setDocument((d) => (d ? { ...d, title } as Document : d));
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
     } catch (e) {
       console.error('Generate title failed:', e);
@@ -202,7 +197,7 @@ export default function DocumentPage() {
     } finally {
       setTitleGenerating(false);
     }
-  }, []);
+  }, [updateDocument]);
 
   async function handleSave(updates: Partial<Document>) {
     setSaving(true);
@@ -219,37 +214,45 @@ export default function DocumentPage() {
   const handleDuplicate = useCallback(async () => {
     try {
       const duplicate = await duplicateDocument(documentId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: duplicate.workspaceId } }));
       openDocument(duplicate.id, duplicate.title);
     } catch (error) {
       console.error('Duplicate failed:', error);
       alert('Failed to duplicate document');
     }
-  }, [documentId, openDocument]);
+  }, [documentId, openDocument, duplicateDocument]);
 
   const handleToggleFavorite = useCallback(async () => {
     try {
-      await toggleFavorite(documentId);
-      setDocument((current) => {
-        if (!current) return current;
-        const updated = { ...current, isFavorite: !current.isFavorite };
-        documentRef.current = updated;
-        return updated;
-      });
-      if (documentRef.current) {
-        window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
-      }
+      if (!documentRef.current) return;
+
+      // Store original state for potential rollback
+      const originalStatus = documentRef.current.isFavorite ?? false;
+      const newStatus = !originalStatus;
+
+      // Optimistic UI update - update local state immediately
+      documentRef.current = { ...documentRef.current, isFavorite: newStatus };
+
+      // API call with workspaceId for proper cache updates
+      await toggleFavorite(documentId, originalStatus, activeWorkspaceId ?? undefined);
+
+      // Dispatch event to update other components
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
     } catch (error) {
+      // Rollback local state on error
+      if (documentRef.current) {
+        documentRef.current = { ...documentRef.current, isFavorite: !documentRef.current.isFavorite };
+      }
       console.error('Toggle favorite failed:', error);
+      alert('Failed to toggle favorite');
     }
-  }, [documentId]);
+  }, [documentId, toggleFavorite, activeWorkspaceId]);
 
   const handleFontChange = useCallback(async (font: DocumentFont) => {
     const current = documentRef.current;
     if (!current) return;
 
+    // Optimistic update - update the ref
     const updatedDoc: Document = { ...current, font };
-    setDocument(updatedDoc);
     documentRef.current = updatedDoc;
 
     try {
@@ -259,7 +262,7 @@ export default function DocumentPage() {
       console.error('Failed to update font:', error);
       alert('Failed to update font');
     }
-  }, []);
+  }, [updateDocument]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;
@@ -316,13 +319,13 @@ export default function DocumentPage() {
       const current = documentRef.current;
       if (!current) return;
       if (!detail || !detail.workspaceId || detail.workspaceId === current.workspaceId) {
-        void loadDocument();
+        void mutate();
       }
     }
 
     window.addEventListener('documentsChanged', handleDocumentsChanged);
     return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [loadDocument]);
+  }, [mutate]);
 
   // Handle keyboard shortcut events
   useEffect(() => {
@@ -411,7 +414,7 @@ export default function DocumentPage() {
     return Math.ceil(wordCount / 200); // Average reading speed: 200 words per minute
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-gray-500">Loading document...</div>
@@ -448,7 +451,7 @@ export default function DocumentPage() {
       <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="px-8 py-4 space-y-3">
-          {documentPath.length > 0 && (
+          {documentPath && documentPath.length > 0 && (
             <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {documentPath.map((node, index) => (
                 <div key={node.id} className="flex items-center gap-2">
@@ -468,13 +471,20 @@ export default function DocumentPage() {
           {/* Title bar */}
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
-              <input
-                type="text"
-                value={document.title}
-                onChange={handleTitleChange}
-                className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
-                placeholder="Untitled"
-              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={localTitle}
+                  onChange={handleTitleChange}
+                  className="w-full text-2xl font-bold border-none outline-none bg-transparent pr-8"
+                  placeholder="Untitled"
+                />
+                {titleSaving && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+                    Saving...
+                  </div>
+                )}
+              </div>
 
             {/* Moved New subpage into dropdown */}
 
@@ -627,13 +637,12 @@ export default function DocumentPage() {
           workspaceId={document.workspaceId}
           onMoved={(newParentId) => {
             setMoveDialogOpen(false);
-            setDocument((current) => {
-              if (!current) return current;
-              const updated = { ...current, parentId: newParentId ?? undefined };
-              documentRef.current = updated;
-              return updated;
-            });
-            void loadDocument();
+            // Update the document ref optimistically
+            if (documentRef.current) {
+              documentRef.current = { ...documentRef.current, parentId: newParentId ?? undefined };
+            }
+            // Revalidate the document data
+            void mutate();
           }}
         />
       )}

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { FileText, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getFavoriteDocuments, toggleFavorite } from '@/lib/db/documents';
-import type { Document, DocumentFont } from '@/lib/db/types';
+import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
+import { filterFavoriteDocuments } from '@/lib/db/documents';
+import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 
 function formatShortTime(date: Date): string {
@@ -33,39 +34,23 @@ import { cn } from '@/lib/utils';
 export default function FavoritesPage() {
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const { data: allDocuments, isLoading } = useDocumentsMetadata({
+    workspaceId: activeWorkspaceId ?? undefined,
+    includeDeleted: true,
+  });
+  const { toggleFavorite } = useDocumentMutations();
 
-  const loadFavorites = useCallback(async (workspaceId: string) => {
-    const docs = await getFavoriteDocuments(workspaceId);
-    setDocuments(docs);
-  }, []);
+  const documents = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterFavoriteDocuments(allDocuments);
+  }, [allDocuments]);
 
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
-
-    setDocuments([]);
-    loadFavorites(activeWorkspaceId);
-
-    const handleDocumentsChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadFavorites(activeWorkspaceId);
-      }
-    };
-
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
-    return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [activeWorkspaceId, loadFavorites]);
-
-  async function handleToggleFavorite(e: React.MouseEvent, docId: string) {
+  async function handleToggleFavorite(e: React.MouseEvent, docId: string, currentStatus: boolean) {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    await toggleFavorite(docId);
-    loadFavorites(activeWorkspaceId);
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
+    await toggleFavorite(docId, currentStatus, activeWorkspaceId ?? undefined);
   }
 
-  function handleDocumentClick(doc: Document) {
+  function handleDocumentClick(doc: DocumentMetadata) {
     openDocument(doc.id, doc.title);
   }
 
@@ -75,14 +60,22 @@ export default function FavoritesPage() {
     mono: 'font-mono',
   };
 
-  if (documents.length === 0) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!documents || documents.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-8">
         <h1 className="text-3xl font-bold mb-2">Favorites</h1>
         <p className="text-muted-foreground mb-8">
           Your starred documents will appear here
         </p>
-        
+
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Star className="w-12 h-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground">No favorite documents yet</p>
@@ -130,7 +123,7 @@ export default function FavoritesPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => handleToggleFavorite(e, doc.id)}
+                  onClick={(e) => handleToggleFavorite(e, doc.id, doc.isFavorite ?? false)}
                   className={`${doc.isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity text-yellow-500`}
                 >
                   <Star className={`w-4 h-4 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { RotateCcw, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getDeletedDocumentsMetadata, restoreDocument, permanentlyDeleteDocument } from '@/lib/db/documents';
+import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
+import { filterDeletedDocuments } from '@/lib/db/documents';
 import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -14,11 +15,20 @@ import { cn } from '@/lib/utils';
 
 export default function TrashPage() {
   const router = useRouter();
-    const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { data: allDocuments, isLoading } = useDocumentsMetadata({
+    workspaceId: activeWorkspaceId ?? undefined,
+    includeDeleted: true,
+  });
+  const { restoreDocument, permanentlyDeleteDocument } = useDocumentMutations();
+
+  const documents = useMemo(() => {
+    if (!allDocuments) return [];
+    return filterDeletedDocuments(allDocuments);
+  }, [allDocuments]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const selectionModeRef = useRef(selectionMode);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
     description: string;
@@ -34,12 +44,6 @@ export default function TrashPage() {
     mono: 'font-mono',
   };
 
-  const loadDocuments = useCallback(async (workspaceId: string) => {
-    const docs = await getDeletedDocumentsMetadata(workspaceId);
-    setDocuments(docs);
-    setLoading(false);
-  }, []);
-
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;
     try {
@@ -50,48 +54,33 @@ export default function TrashPage() {
   }, [confirmConfig]);
 
   useEffect(() => {
-    if (!activeWorkspaceId) return;
+    selectionModeRef.current = selectionMode;
+  }, [selectionMode]);
 
+  useEffect(() => {
+    // Clear selection when workspace changes
     setSelectionMode(false);
     setSelectedIds(new Set());
-    setLoading(true);
-    loadDocuments(activeWorkspaceId);
 
     // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && selectionMode) {
+      if (e.key === 'Escape' && selectionModeRef.current) {
         setSelectionMode(false);
         setSelectedIds(new Set());
       }
     }
 
-    const handleDocumentsChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
-      if (!detail || !detail.workspaceId || detail.workspaceId === activeWorkspaceId) {
-        loadDocuments(activeWorkspaceId);
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('documentsChanged', handleDocumentsChanged);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('documentsChanged', handleDocumentsChanged);
-    };
-  }, [selectionMode, activeWorkspaceId, loadDocuments]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeWorkspaceId]);
 
   async function handleRestore(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
     await restoreDocument(id);
-    loadDocuments(activeWorkspaceId);
-    window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: activeWorkspaceId } }));
   }
 
   const handlePermanentDelete = useCallback((id: string, title: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
     setConfirmConfig({
       title: 'Delete Forever',
       description: `Permanently delete "${title || 'Untitled'}"? This cannot be undone.`,
@@ -101,19 +90,16 @@ export default function TrashPage() {
       action: async () => {
         try {
           await permanentlyDeleteDocument(id);
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to delete document permanently:', error);
           alert('Failed to delete document permanently');
         }
       },
     });
-  }, [activeWorkspaceId, loadDocuments]);
+  }, [permanentlyDeleteDocument]);
 
   const handleEmptyTrash = useCallback(() => {
-    if (documents.length === 0 || !activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
+    if (!documents || documents.length === 0) return;
     const ids = documents.map((doc) => doc.id);
     setConfirmConfig({
       title: 'Empty Trash',
@@ -124,19 +110,16 @@ export default function TrashPage() {
       action: async () => {
         try {
           await Promise.all(ids.map((id) => permanentlyDeleteDocument(id)));
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to empty trash:', error);
           alert('Failed to empty trash');
         }
       },
     });
-  }, [documents, activeWorkspaceId, loadDocuments]);
+  }, [documents, permanentlyDeleteDocument]);
 
   const handleRestoreAll = useCallback(() => {
-    if (documents.length === 0 || !activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
+    if (!documents || documents.length === 0) return;
     const ids = documents.map((doc) => doc.id);
     setConfirmConfig({
       title: 'Restore All',
@@ -147,15 +130,13 @@ export default function TrashPage() {
       action: async () => {
         try {
           await Promise.all(ids.map((id) => restoreDocument(id)));
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to restore documents:', error);
           alert('Failed to restore documents');
         }
       },
     });
-  }, [documents, activeWorkspaceId, loadDocuments]);
+  }, [documents, restoreDocument]);
 
   function handleSelectDocument(docId: string, checked: boolean) {
     const newSelected = new Set(selectedIds);
@@ -175,7 +156,9 @@ export default function TrashPage() {
   }
 
   function handleSelectAll() {
-    setSelectedIds(new Set(documents.map(doc => doc.id)));
+    if (documents) {
+      setSelectedIds(new Set(documents.map(doc => doc.id)));
+    }
   }
 
   function handleClearSelection() {
@@ -183,8 +166,7 @@ export default function TrashPage() {
   }
 
   const handleBulkRestore = useCallback(() => {
-    if (selectedIds.size === 0 || !activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
+    if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
     setConfirmConfig({
       title: 'Restore Documents',
@@ -196,19 +178,16 @@ export default function TrashPage() {
           await Promise.all(ids.map((id) => restoreDocument(id)));
           setSelectedIds(new Set());
           setSelectionMode(false);
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to restore selected documents:', error);
           alert('Failed to restore selected documents');
         }
       },
     });
-  }, [activeWorkspaceId, selectedIds, loadDocuments]);
+  }, [selectedIds, restoreDocument]);
 
   const handleBulkDelete = useCallback(() => {
-    if (selectedIds.size === 0 || !activeWorkspaceId) return;
-    const workspaceId = activeWorkspaceId;
+    if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
     setConfirmConfig({
       title: 'Delete Forever',
@@ -221,17 +200,15 @@ export default function TrashPage() {
           await Promise.all(ids.map((id) => permanentlyDeleteDocument(id)));
           setSelectedIds(new Set());
           setSelectionMode(false);
-          await loadDocuments(workspaceId);
-          window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId } }));
         } catch (error) {
           console.error('Failed to delete selected documents permanently:', error);
           alert('Failed to delete selected documents');
         }
       },
     });
-  }, [activeWorkspaceId, selectedIds, loadDocuments]);
+  }, [selectedIds, permanentlyDeleteDocument]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Loading...</div>
@@ -246,13 +223,13 @@ export default function TrashPage() {
           <div>
             <h1 className="text-4xl font-bold">Trash</h1>
             <p className="text-muted-foreground mt-2">
-              {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+              {documents?.length ?? 0} {(documents?.length ?? 0) === 1 ? 'document' : 'documents'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Workspace: {activeWorkspace?.name ?? 'Loading...'}
             </p>
           </div>
-          {documents.length > 0 && (
+          {documents && documents.length > 0 && (
             <div className="flex items-center gap-2">
               {selectionMode && selectedIds.size > 0 && (
                 <span className="text-sm text-muted-foreground">
@@ -291,7 +268,7 @@ export default function TrashPage() {
           )}
         </div>
 
-        {documents.length === 0 ? (
+        {!documents || documents.length === 0 ? (
           <div className="text-center py-16">
             <Trash2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 mb-4">Trash is empty</p>
