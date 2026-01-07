@@ -13,11 +13,12 @@ import { filterSuggestionItems } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { uploadImageToBase64, validateImageFile } from '@/lib/editor/image-upload';
+import { StorageService } from '@/lib/appwrite/storage';
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles, X } from 'lucide-react';
 import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
+import { toast } from 'sonner';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -92,6 +93,10 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
   const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [isEmpty, setIsEmpty] = useState<boolean>(true);
+  const [imageUpload, setImageUpload] = useState({
+    loading: false,
+    error: null as string | null,
+  });
   const fontKey = font ?? 'sans';
   const fontFamilies = useMemo<Record<DocumentFont, string>>(
     () => ({
@@ -102,17 +107,38 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     []
   );
   const fontFamily = fontFamilies[fontKey];
-  
+
+  // Show toast notifications for image upload status
+  useEffect(() => {
+    if (imageUpload.loading) {
+      const toastId = toast.loading('Uploading image...');
+
+      // Handle toast state when upload completes or fails
+      return () => {
+        if (!imageUpload.loading && !imageUpload.error) {
+          toast.success('Image uploaded successfully', { id: toastId });
+        } else if (imageUpload.error) {
+          toast.error(imageUpload.error, { id: toastId });
+        } else {
+          toast.dismiss(toastId);
+        }
+      };
+    }
+  }, [imageUpload.loading, imageUpload.error]);
+
   const editor = useCreateBlockNote({
     initialContent: initialContent 
       ? JSON.parse(initialContent) 
       : undefined,
     uploadFile: async (file: File) => {
+      setImageUpload({ loading: true, error: null });
       try {
-        validateImageFile(file);
-        const base64Url = await uploadImageToBase64(file);
-        return base64Url;
-      } catch (error) {
+        const imageUrl = await StorageService.uploadDocumentImage(file);
+        setImageUpload({ loading: false, error: null });
+        return imageUrl;
+      } catch (error: any) {
+        const errorMessage = error.message || 'Failed to upload image';
+        setImageUpload({ loading: false, error: errorMessage });
         console.error('Image upload failed:', error);
         throw error;
       }
@@ -174,6 +200,13 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         node.style.setProperty('font-family', fontFamily, 'important');
       });
   }, [fontFamily]);
+
+  // Flush pending saves on unmount to prevent data loss
+  useEffect(() => {
+    return () => {
+      debouncedSave.flush();
+    };
+  }, [debouncedSave]);
 
   useImperativeHandle(ref, () => ({
     insertTextAtCursor(text: string) {
