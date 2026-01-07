@@ -499,16 +499,23 @@ export default function DocumentPage() {
 
             <SaveStatusIcon saving={saving} lastSaved={lastSaved} />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleGenerateTitle()}
-              disabled={titleGenerating}
-              className="flex items-center gap-1"
-            >
-              <Sparkles className="w-4 h-4" />
-              {titleGenerating ? 'Generating…' : 'Generate'}
-            </Button>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleGenerateTitle()}
+                  disabled={titleGenerating}
+                  className="flex items-center gap-1"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {titleGenerating ? 'Generating…' : 'Title'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Generate title based on note content</p>
+              </TooltipContent>
+            </Tooltip>
 
   
             <ExportButton document={document} />

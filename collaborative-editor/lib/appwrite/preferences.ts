@@ -66,7 +66,7 @@ export class PreferencesService {
    */
   private static getDefaultPreferences(): UserPreferences {
     return {
-      theme: 'system',
+      theme: 'dark',
       font: 'sans',
       fontSize: 16,
       avatarId: undefined,

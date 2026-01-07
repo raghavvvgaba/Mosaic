@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Wand2, Languages, FileText, Zap, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface AIAssistantButtonProps {
   onImproveWriting?: () => void;
@@ -132,15 +133,23 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   ];
 
   return (
-    <>
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-[#ffb86b] hover:bg-[#ffa851] text-gray-900 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${isOpen ? 'z-[60]' : 'z-40'}`}
-        aria-label="AI Assistant"
-      >
-        <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
-      </button>
+    <TooltipProvider delayDuration={200}>
+      <>
+        {/* Floating Action Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={`fixed bottom-6 right-6 w-14 h-14 bg-[#ffb86b] hover:bg-[#ffa851] text-gray-900 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${isOpen ? 'z-[60]' : 'z-40'}`}
+              aria-label="AI Assistant"
+            >
+              <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Mosaic AI</p>
+          </TooltipContent>
+        </Tooltip>
 
       {/* Chat Window */}
       {isOpen && (
@@ -245,6 +254,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
           </div>
         </div>
       )}
-    </>
+      </>
+    </TooltipProvider>
   );
 };

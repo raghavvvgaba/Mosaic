@@ -157,21 +157,23 @@ function appwriteDocumentToDocumentMetadata(appwriteDoc: Record<string, unknown>
 
 // Helper function to convert Document to Appwrite format
 function documentToAppwriteDocument(doc: Partial<Document>) {
-  return {
-    title: doc.title,
-    content: doc.content || '',
-    workspaceId: doc.workspaceId,
-    icon: doc.icon,
-    lastChangedAt: doc.lastChangedAt?.toISOString(),
-    isDeleted: doc.isDeleted || false,
-    isFavorite: doc.isFavorite || false,
-    parentId: doc.parentId,
-    font: doc.font,
-    isPublic: doc.isPublic || false,
-    ownerId: doc.ownerId,
-    collaborators: doc.collaborators || [],
-    permissions: doc.permissions || [],
-  };
+  const result: any = {};
+
+  if (doc.title !== undefined) result.title = doc.title;
+  if (doc.content !== undefined) result.content = doc.content;
+  if (doc.workspaceId !== undefined) result.workspaceId = doc.workspaceId;
+  if (doc.icon !== undefined) result.icon = doc.icon;
+  if (doc.lastChangedAt !== undefined) result.lastChangedAt = doc.lastChangedAt?.toISOString();
+  if (doc.isDeleted !== undefined) result.isDeleted = doc.isDeleted;
+  if (doc.isFavorite !== undefined) result.isFavorite = doc.isFavorite;
+  if (doc.parentId !== undefined) result.parentId = doc.parentId;
+  if (doc.font !== undefined) result.font = doc.font;
+  if (doc.isPublic !== undefined) result.isPublic = doc.isPublic;
+  if (doc.ownerId !== undefined) result.ownerId = doc.ownerId;
+  if (doc.collaborators !== undefined) result.collaborators = doc.collaborators || [];
+  if (doc.permissions !== undefined) result.permissions = doc.permissions || [];
+
+  return result;
 }
 
 export async function createDocument(
