@@ -142,10 +142,9 @@ export default function DocumentPage() {
       if (documentRef.current) {
         setTitleSaving(true);
         try {
-          // Use optimized title-only update that doesn't trigger global cache invalidation
-          await updateDocumentTitleOnly(documentId, newTitle);
-          // NO global event dispatch - sidebar will update when user navigates away
-          // or through SWR's automatic cache updates
+          // Send complete document state to prevent race conditions with content updates
+          documentRef.current = { ...documentRef.current, title: newTitle };
+          await updateDocument(documentId, { ...documentRef.current });
           setLastSaved(new Date());
         } catch (error) {
           console.error('Failed to save title:', error);
@@ -174,8 +173,9 @@ export default function DocumentPage() {
   async function handleContentSave(content: string) {
     if (documentRef.current) {
       documentRef.current = { ...documentRef.current, content };
+      // Send complete document state to prevent race conditions with title updates
+      await handleSave({ ...documentRef.current });
     }
-    await handleSave({ content });
   }
 
   // Minimal manual generate-title flow

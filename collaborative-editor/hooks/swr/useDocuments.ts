@@ -689,6 +689,7 @@ export function useDocumentMutations() {
 
   /**
    * Update a document
+   * Uses selective cache updates based on what fields changed
    */
   const { trigger: updateDocumentTrigger, isMutating: isUpdating } = useSWRMutation<
     Document,
@@ -698,13 +699,66 @@ export function useDocumentMutations() {
   >(
     keys.documentsKey(),
     async (_key: unknown, { arg }: { arg: { documentId: string; updates: Partial<Document> } }) => {
-      const result = await documentService.updateDocument(arg.documentId, arg.updates);
+      const { documentId, updates } = arg;
+      const result = await documentService.updateDocument(documentId, updates);
 
       // Optimistically update the specific document cache
-      mutate(keys.documentKey(arg.documentId), result, { revalidate: false });
+      mutate(keys.documentKey(documentId), result, { revalidate: false });
 
-      // Invalidate all document caches to reflect changes
-      invalidateDocuments();
+      // Determine if this update affects metadata (fields shown in lists/trees)
+      const affectsMetadata = updates.title !== undefined ||
+                             updates.isFavorite !== undefined ||
+                             updates.parentId !== undefined ||
+                             updates.workspaceId !== undefined ||
+                             updates.isDeleted !== undefined;
+
+      if (affectsMetadata) {
+        // Selectively update metadata caches without re-fetching
+        const updateDocMetadata = (docs: DocumentMetadata[] | Document[] | undefined) => {
+          if (!docs) return docs;
+          return docs.map(doc =>
+            doc.id === documentId ? { ...doc, ...updates } : doc
+          );
+        };
+
+        // Update all metadata caches for the workspace
+        const workspaceId = result.workspaceId;
+        mutate(keys.documentsMetadataKey(workspaceId, false), updateDocMetadata, { revalidate: false });
+        mutate(keys.documentsMetadataKey(workspaceId, true), updateDocMetadata, { revalidate: false });
+        mutate(keys.documentTreeMetadataKey(workspaceId), updateDocMetadata, { revalidate: false });
+        mutate(keys.recentDocumentsMetadataKey(workspaceId), updateDocMetadata, { revalidate: false });
+
+        // Update favorites cache if favorite status changed
+        if (updates.isFavorite !== undefined) {
+          if (updates.isFavorite) {
+            // Adding to favorites - revalidate to get full document data
+            mutate(keys.favoriteDocumentsMetadataKey(workspaceId));
+          } else {
+            // Removing from favorites - optimistically remove
+            const removeFromFavorites = (docs: DocumentMetadata[] | Document[] | undefined) => {
+              if (!docs) return docs;
+              return docs.filter(doc => doc.id !== documentId);
+            };
+            mutate(keys.favoriteDocumentsMetadataKey(workspaceId), removeFromFavorites, { revalidate: false });
+          }
+        }
+
+        // Update deleted cache if delete status changed
+        if (updates.isDeleted !== undefined) {
+          if (updates.isDeleted) {
+            // Document was deleted - revalidate deleted documents
+            mutate(keys.deletedDocumentsMetadataKey(workspaceId));
+          } else {
+            // Document was restored - remove from deleted
+            const removeFromDeleted = (docs: DocumentMetadata[] | Document[] | undefined) => {
+              if (!docs) return docs;
+              return docs.filter(doc => doc.id !== documentId);
+            };
+            mutate(keys.deletedDocumentsMetadataKey(workspaceId), removeFromDeleted, { revalidate: false });
+          }
+        }
+      }
+      // If content-only update, skip all cache invalidation - no need to update lists/trees
 
       return result;
     }
