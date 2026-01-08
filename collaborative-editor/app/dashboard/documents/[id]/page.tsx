@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { getDocument, updateDocument, permanentlyDeleteDocument, updateLastOpened, duplicateDocument, toggleFavorite, deleteDocument, createDocument, getDocumentPath } from '@/lib/db/documents';
+import { useDocument, useDocumentPath, useDocumentMutations } from '@/hooks/swr';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
@@ -23,18 +24,49 @@ import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 import { generateTitleFromBlocks } from '@/lib/ai/title';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+
+// Save status icon component
+function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Date | null }) {
+  const getTooltipText = () => {
+    if (saving) return 'Saving...';
+    if (!lastSaved) return 'Not saved yet';
+    return `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`;
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#ffb86b' }} />
+          ) : lastSaved ? (
+            <CircleCheck className="w-4 h-4" style={{ color: '#4ade80' }} />
+          ) : (
+            <Save className="w-4 h-4 text-muted-foreground" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="text-xs">{getTooltipText()}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params.id as string;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
-  
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: document, isLoading, mutate } = useDocument(documentId);
+  const { data: documentPath } = useDocumentPath(documentId);
+  const { updateDocument, updateDocumentTitleOnly, duplicateDocument, toggleFavorite, deleteDocument, createDocument, permanentlyDeleteDocument } = useDocumentMutations();
+
   const [saving, setSaving] = useState(false);
+  const [titleSaving, setTitleSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [documentPath, setDocumentPath] = useState<Document[]>([]);
+  const [localTitle, setLocalTitle] = useState<string>('');
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
@@ -49,32 +81,22 @@ export default function DocumentPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [titleGenerating, setTitleGenerating] = useState(false);
 
-  const loadDocumentPath = useCallback(async (id: string) => {
-    const path = await getDocumentPath(id);
-    setDocumentPath(path);
-  }, []);
-
-  const loadDocument = useCallback(async () => {
-    const doc = await getDocument(documentId);
-    if (doc) {
-      setDocument(doc);
-      documentRef.current = doc;
-      setLastSaved(doc.updatedAt);
-      if (!activeWorkspaceId || activeWorkspaceId !== doc.workspaceId) {
-        setActiveWorkspace(doc.workspaceId, { navigate: false });
-      }
-      await loadDocumentPath(doc.id);
-    }
-    setLoading(false);
-  }, [documentId, activeWorkspaceId, setActiveWorkspace, loadDocumentPath]);
-
+  // Sync documentRef with SWR data and set workspace
   useEffect(() => {
-    loadDocument();
+    if (document) {
+      documentRef.current = document;
+      setLastSaved(document.updatedAt);
+      // Only update local title if it's different from current document title
+      // This prevents overwriting user's typing while they're still typing
+      setLocalTitle(document.title);
+      if (!activeWorkspaceId || activeWorkspaceId !== document.workspaceId) {
+        setActiveWorkspace(document.workspaceId, { navigate: false });
+      }
+    }
+  }, [document, activeWorkspaceId, setActiveWorkspace]);
 
-    // Track that this document was opened
-    updateLastOpened(documentId);
-
-    // Cleanup: delete empty documents when leaving the page
+  // Cleanup: delete empty documents when leaving the page
+  useEffect(() => {
     return () => {
       const checkAndDeleteEmpty = async () => {
         if (documentRef.current) {
@@ -87,11 +109,11 @@ export default function DocumentPage() {
       };
       checkAndDeleteEmpty();
     };
-  }, [documentId, loadDocument]);
+  }, [documentId]);
 
   // (Minimal rebuild) Removed auto-title timers and retries
 
-  
+ 
 
 
   function isDocumentEmpty(doc: Document): boolean {
@@ -114,23 +136,46 @@ export default function DocumentPage() {
     return hasNoTitle && hasNoContent;
   }
 
-  async function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Debounced function to save the title
+  const debouncedSaveTitle = useDebouncedCallback(
+    async (newTitle: string) => {
+      if (documentRef.current) {
+        setTitleSaving(true);
+        try {
+          // Send complete document state to prevent race conditions with content updates
+          documentRef.current = { ...documentRef.current, title: newTitle };
+          await updateDocument(documentId, { ...documentRef.current });
+          setLastSaved(new Date());
+        } catch (error) {
+          console.error('Failed to save title:', error);
+          // Rollback on error
+          setLocalTitle(documentRef.current.title);
+        } finally {
+          setTitleSaving(false);
+        }
+      }
+    },
+    1000 // 1000ms debounce delay - balances responsiveness with performance
+  );
+
+  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newTitle = e.target.value;
-    if (document) {
-      const updatedDoc = { ...document, title: newTitle };
-      setDocument(updatedDoc);
-      documentRef.current = updatedDoc;
-      await handleSave({ title: newTitle });
-      void loadDocumentPath(documentId);
+    // Update local state immediately for responsive typing
+    setLocalTitle(newTitle);
+    // Update ref for optimistic updates
+    if (documentRef.current) {
+      documentRef.current = { ...documentRef.current, title: newTitle };
     }
+    // Debounced save
+    debouncedSaveTitle(newTitle);
   }
 
   async function handleContentSave(content: string) {
-    if (document) {
-      const updatedDoc = { ...document, content };
-      documentRef.current = updatedDoc;
+    if (documentRef.current) {
+      documentRef.current = { ...documentRef.current, content };
+      // Send complete document state to prevent race conditions with title updates
+      await handleSave({ ...documentRef.current });
     }
-    await handleSave({ content });
   }
 
   // Minimal manual generate-title flow
@@ -145,7 +190,6 @@ export default function DocumentPage() {
         return;
       }
       await updateDocument(current.id, { title });
-      setDocument((d) => (d ? { ...d, title } as Document : d));
       window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
     } catch (e) {
       console.error('Generate title failed:', e);
@@ -153,7 +197,7 @@ export default function DocumentPage() {
     } finally {
       setTitleGenerating(false);
     }
-  }, []);
+  }, [updateDocument]);
 
   async function handleSave(updates: Partial<Document>) {
     setSaving(true);
@@ -170,37 +214,45 @@ export default function DocumentPage() {
   const handleDuplicate = useCallback(async () => {
     try {
       const duplicate = await duplicateDocument(documentId);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: duplicate.workspaceId } }));
       openDocument(duplicate.id, duplicate.title);
     } catch (error) {
       console.error('Duplicate failed:', error);
       alert('Failed to duplicate document');
     }
-  }, [documentId, openDocument]);
+  }, [documentId, openDocument, duplicateDocument]);
 
   const handleToggleFavorite = useCallback(async () => {
     try {
-      await toggleFavorite(documentId);
-      setDocument((current) => {
-        if (!current) return current;
-        const updated = { ...current, isFavorite: !current.isFavorite };
-        documentRef.current = updated;
-        return updated;
-      });
-      if (documentRef.current) {
-        window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
-      }
+      if (!documentRef.current) return;
+
+      // Store original state for potential rollback
+      const originalStatus = documentRef.current.isFavorite ?? false;
+      const newStatus = !originalStatus;
+
+      // Optimistic UI update - update local state immediately
+      documentRef.current = { ...documentRef.current, isFavorite: newStatus };
+
+      // API call with workspaceId for proper cache updates
+      await toggleFavorite(documentId, originalStatus, activeWorkspaceId ?? undefined);
+
+      // Dispatch event to update other components
+      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: documentRef.current.workspaceId } }));
     } catch (error) {
+      // Rollback local state on error
+      if (documentRef.current) {
+        documentRef.current = { ...documentRef.current, isFavorite: !documentRef.current.isFavorite };
+      }
       console.error('Toggle favorite failed:', error);
+      alert('Failed to toggle favorite');
     }
-  }, [documentId]);
+  }, [documentId, toggleFavorite, activeWorkspaceId]);
 
   const handleFontChange = useCallback(async (font: DocumentFont) => {
     const current = documentRef.current;
     if (!current) return;
 
+    // Optimistic update - update the ref
     const updatedDoc: Document = { ...current, font };
-    setDocument(updatedDoc);
     documentRef.current = updatedDoc;
 
     try {
@@ -210,7 +262,7 @@ export default function DocumentPage() {
       console.error('Failed to update font:', error);
       alert('Failed to update font');
     }
-  }, []);
+  }, [updateDocument]);
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmConfig) return;
@@ -267,13 +319,13 @@ export default function DocumentPage() {
       const current = documentRef.current;
       if (!current) return;
       if (!detail || !detail.workspaceId || detail.workspaceId === current.workspaceId) {
-        void loadDocument();
+        void mutate();
       }
     }
 
     window.addEventListener('documentsChanged', handleDocumentsChanged);
     return () => window.removeEventListener('documentsChanged', handleDocumentsChanged);
-  }, [loadDocument]);
+  }, [mutate]);
 
   // Handle keyboard shortcut events
   useEffect(() => {
@@ -362,7 +414,7 @@ export default function DocumentPage() {
     return Math.ceil(wordCount / 200); // Average reading speed: 200 words per minute
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-gray-500">Loading document...</div>
@@ -395,10 +447,11 @@ export default function DocumentPage() {
   ];
 
   return (
-    <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
+    <TooltipProvider>
+      <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
       <header className="border-b bg-background sticky top-0 z-10">
-        <div className="p-4 space-y-3">
-          {documentPath.length > 0 && (
+        <div className="px-8 py-4 space-y-3">
+          {documentPath && documentPath.length > 0 && (
             <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {documentPath.map((node, index) => (
                 <div key={node.id} className="flex items-center gap-2">
@@ -416,14 +469,22 @@ export default function DocumentPage() {
           )}
 
           {/* Title bar */}
-          <div className="flex items-center gap-4">
-            <input
-              type="text"
-              value={document.title}
-              onChange={handleTitleChange}
-              className="flex-1 text-2xl font-bold border-none outline-none bg-transparent"
-              placeholder="Untitled"
-            />
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={localTitle}
+                  onChange={handleTitleChange}
+                  className="w-full text-2xl font-bold border-none outline-none bg-transparent pr-8"
+                  placeholder="Untitled"
+                />
+                {titleSaving && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+                    Saving...
+                  </div>
+                )}
+              </div>
 
             {/* Moved New subpage into dropdown */}
 
@@ -436,35 +497,27 @@ export default function DocumentPage() {
               <Star className={`w-4 h-4 ${document.isFavorite ? 'fill-yellow-500' : ''}`} />
             </Button>
 
-            <div className="text-sm text-muted-foreground whitespace-nowrap">
-              {saving ? (
-                'Saving...'
-              ) : lastSaved ? (
-                `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
-              ) : null}
-            </div>
+            <SaveStatusIcon saving={saving} lastSaved={lastSaved} />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAiOpen(true)}
-              className="flex items-center gap-1"
-            >
-              <Sparkles className="w-4 h-4" />
-              AI Draft
-            </Button>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleGenerateTitle()}
+                  disabled={titleGenerating}
+                  className="flex items-center gap-1"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {titleGenerating ? 'Generating…' : 'Title'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Generate title based on note content</p>
+              </TooltipContent>
+            </Tooltip>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleGenerateTitle()}
-              disabled={titleGenerating}
-              className="flex items-center gap-1"
-            >
-              <Sparkles className="w-4 h-4" />
-              {titleGenerating ? 'Titling…' : 'Generate title'}
-            </Button>
-
+  
             <ExportButton document={document} />
             
             <DropdownMenu>
@@ -474,12 +527,6 @@ export default function DocumentPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">AI</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setAiOpen(true)}>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Draft…
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
                 <div className="px-1 py-2">
                   <div className="grid grid-cols-3 gap-2">
@@ -534,28 +581,43 @@ export default function DocumentPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
-        </div>
-        
-        {/* Stats bar */}
-        <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{wordCount} words</span>
-          <span>•</span>
-          <span>{readingTime} min read</span>
         </div>
       </header>
 
-      <div className="flex-1">
-        <div className="max-w-4xl mx-auto p-8">
-          <BlockEditor
-            ref={editorRef}
-            documentId={documentId}
-            initialContent={document.content}
-            onSave={handleContentSave}
-            className={FONT_CLASS_MAP[documentFont]}
-            font={documentFont}
-            onOpenAIDraft={() => setAiOpen(true)}
-          />
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1">
+          <div className="max-w-4xl mx-auto p-8">
+            <BlockEditor
+              ref={editorRef}
+              documentId={documentId}
+              initialContent={document.content}
+              onSave={handleContentSave}
+              className={FONT_CLASS_MAP[documentFont]}
+              font={documentFont}
+              onOpenAIDraft={() => setAiOpen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Stats bar at bottom */}
+        <div className="border-t bg-muted/30 px-8 py-1.5">
+          <div className="max-w-4xl mx-auto flex items-center justify-start gap-2 sm:gap-4 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">{wordCount} words</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">{readingTime} min read</span>
+            <span className="hidden sm:inline">•</span>
+            <span>
+              {saving ? (
+                'Saving...'
+              ) : lastSaved ? (
+                `Last saved: ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+              ) : (
+                'Not saved'
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -582,13 +644,12 @@ export default function DocumentPage() {
           workspaceId={document.workspaceId}
           onMoved={(newParentId) => {
             setMoveDialogOpen(false);
-            setDocument((current) => {
-              if (!current) return current;
-              const updated = { ...current, parentId: newParentId ?? undefined };
-              documentRef.current = updated;
-              return updated;
-            });
-            void loadDocument();
+            // Update the document ref optimistically
+            if (documentRef.current) {
+              documentRef.current = { ...documentRef.current, parentId: newParentId ?? undefined };
+            }
+            // Revalidate the document data
+            void mutate();
           }}
         />
       )}
@@ -605,6 +666,7 @@ export default function DocumentPage() {
           editorRef.current?.insertTextAtCursor(text)
         }}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

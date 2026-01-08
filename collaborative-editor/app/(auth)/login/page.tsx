@@ -34,47 +34,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0d141c] to-[#101a24] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to home */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors glass px-4 py-2 rounded-xl inline-flex"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to app
         </Link>
 
-        <Card className="shadow-lg border">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Lock className="h-6 w-6 text-primary" />
+        <Card className="neu-card border-0 shadow-2xl">
+          <CardHeader className="text-center pb-6">
+            <div className="mx-auto w-16 h-16 neu-card flex items-center justify-center mb-6">
+              <Lock className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
+            <CardDescription className="text-base mt-2">
               Sign in to access your documents and workspaces
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 space-y-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="neu-inset border-0">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-12 h-11"
                     required
                     disabled={isLoading}
                   />
@@ -82,16 +82,16 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-12 h-11"
                     required
                     disabled={isLoading}
                   />
@@ -100,14 +100,14 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 text-base font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 Don&apos;t have an account?{' '}
                 <Link
@@ -120,25 +120,25 @@ export default function LoginPage() {
             </div>
 
             {/* Features reminder */}
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-medium text-sm text-foreground mb-3">
+            <div className="pt-6 border-t border-border/30">
+              <h3 className="font-medium text-sm text-foreground mb-4">
                 Your account includes:
               </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
-                  Realtime Collaboration 
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-center gap-3">
+                  <div className="h-2 w-2 bg-primary rounded-full" />
+                  Realtime Collaboration
                 </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
+                <li className="flex items-center gap-3">
+                  <div className="h-2 w-2 bg-primary rounded-full" />
                   Cloud sync across all devices
                 </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
+                <li className="flex items-center gap-3">
+                  <div className="h-2 w-2 bg-primary rounded-full" />
                   Shared Workspaces
                 </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
+                <li className="flex items-center gap-3">
+                  <div className="h-2 w-2 bg-primary rounded-full" />
                   AI-Powered Enchancements
                 </li>
               </ul>

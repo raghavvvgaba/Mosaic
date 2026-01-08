@@ -55,15 +55,15 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#0d141c] to-[#101a24]">
       <Sidebar
         onSearchOpen={() => setSearchOpen(true)}
         onShowShortcuts={() => setShortcutsOpen(true)}
       />
 
       {/* Main content area */}
-      <div className="flex-1 md:ml-64 flex flex-col">
-        <main className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col">
+        <main className="flex-1 overflow-auto pl-0 pr-6 py-6 md:pl-4">
           {children}
         </main>
       </div>

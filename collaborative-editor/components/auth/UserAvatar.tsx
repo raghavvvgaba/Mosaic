@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface UserAvatarProps {
   className?: string;
@@ -19,6 +20,7 @@ interface UserAvatarProps {
 
 export function UserAvatar({ className }: UserAvatarProps) {
   const { user, signOut, loading } = useAuthContext();
+  const { navigateToPage } = useNavigation();
 
   if (loading) {
     return (
@@ -80,7 +82,7 @@ export function UserAvatar({ className }: UserAvatarProps) {
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigateToPage('/dashboard/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>

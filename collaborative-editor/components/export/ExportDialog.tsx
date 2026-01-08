@@ -71,11 +71,13 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Download className="w-5 h-5" />
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="glass w-10 h-10 rounded-xl flex items-center justify-center">
+              <Download className="w-5 h-5 text-primary" />
+            </div>
             Export Document
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base">
             Choose a format and filename for your export
           </DialogDescription>
         </DialogHeader>
@@ -83,27 +85,31 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
         <div className="space-y-6 py-4">
           {/* Format Selection */}
           <div className="space-y-3">
-            <Label>Format</Label>
+            <Label className="text-sm font-medium">Format</Label>
             <RadioGroup value={format} onValueChange={(value: 'markdown' | 'pdf') => setFormat(value)}>
-              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+              <div className="flex items-center space-x-3 neu-card p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
                 <RadioGroupItem value="markdown" id="markdown" />
                 <Label htmlFor="markdown" className="flex items-center gap-3 cursor-pointer flex-1">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="glass w-10 h-10 rounded-lg flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-blue-500" />
+                  </div>
                   <div className="flex-1">
-                    <div className="font-medium">Markdown</div>
+                    <div className="font-semibold">Markdown</div>
                     <div className="text-sm text-muted-foreground">
                       Best for code, documentation, and version control
                     </div>
                   </div>
                 </Label>
               </div>
-              
-              <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+
+              <div className="flex items-center space-x-3 neu-card p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
                 <RadioGroupItem value="pdf" id="pdf" />
                 <Label htmlFor="pdf" className="flex items-center gap-3 cursor-pointer flex-1">
-                  <File className="w-5 h-5 text-red-600" />
+                  <div className="glass w-10 h-10 rounded-lg flex items-center justify-center">
+                    <File className="w-5 h-5 text-red-500" />
+                  </div>
                   <div className="flex-1">
-                    <div className="font-medium">PDF</div>
+                    <div className="font-semibold">PDF</div>
                     <div className="text-sm text-muted-foreground">
                       Best for sharing, printing, and presentations
                     </div>
@@ -115,36 +121,36 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
 
           {/* Filename Input */}
           <div className="space-y-2">
-            <Label htmlFor="filename">Filename</Label>
-            <div className="flex items-center gap-2">
+            <Label htmlFor="filename" className="text-sm font-medium">Filename</Label>
+            <div className="flex items-center gap-3">
               <Input
                 id="filename"
                 value={filename}
                 onChange={(e) => handleFilenameChange(e.target.value)}
                 placeholder="Enter filename"
-                className="flex-1"
+                className="flex-1 h-11"
               />
-              <div className="text-sm text-muted-foreground min-w-fit">
+              <div className="text-sm text-muted-foreground min-w-fit bg-muted/60 px-3 py-2 rounded-lg font-mono">
                 {getFileExtension()}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              File will be saved as: <code>{getFullFilename()}</code>
+              File will be saved as: <code className="bg-muted/60 px-2 py-0.5 rounded">{getFullFilename()}</code>
             </p>
           </div>
 
           {/* Format-specific info */}
-          <div className="rounded-lg bg-muted p-3">
-            <h4 className="font-medium text-sm mb-2">Export Details:</h4>
+          <div className="neu-inset p-4 rounded-xl">
+            <h4 className="font-semibold text-sm mb-3">Export Details:</h4>
             {format === 'markdown' ? (
-              <ul className="text-xs text-muted-foreground space-y-1">
+              <ul className="text-xs text-muted-foreground space-y-2">
                 <li>• Preserves all text formatting</li>
                 <li>• Includes images as base64 data</li>
                 <li>• Compatible with GitHub, GitLab, etc.</li>
                 <li>• Can be edited in any text editor</li>
               </ul>
             ) : (
-              <ul className="text-xs text-muted-foreground space-y-1">
+              <ul className="text-xs text-muted-foreground space-y-2">
                 <li>• Professional document layout</li>
                 <li>• Includes page numbers and headers</li>
                 <li>• Optimized for printing</li>
@@ -156,16 +162,17 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
 
         <DialogFooter>
           <Button
-            variant="outline"
+            variant="glass"
             onClick={() => onOpenChange(false)}
             disabled={isExporting}
+            className="h-10"
           >
             Cancel
           </Button>
           <Button
             onClick={handleExport}
             disabled={isExporting || !filename.trim()}
-            className="min-w-[100px]"
+            className="min-w-[120px] h-10"
           >
             {isExporting ? (
               <>
