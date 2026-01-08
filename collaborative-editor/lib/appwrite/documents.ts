@@ -189,6 +189,7 @@ export async function createDocument(
 
     const docData = documentToAppwriteDocument({
       title: title || 'Untitled',
+      content: '',
       workspaceId: workspaceId || 'default',
       parentId,
       isDeleted: false,
