@@ -16,7 +16,6 @@ export interface Document {
   isPublic: boolean;              // Public sharing status
   ownerId?: string;               // Document owner ID
   collaborators: Collaborator[];  // List of collaborators
-  permissions: Permission[];      // Document permissions
 }
 
 // Document metadata without content - for faster loading in sidebar and lists
@@ -35,7 +34,6 @@ export interface DocumentMetadata {
   isPublic: boolean;              // Public sharing status
   ownerId?: string;               // Document owner ID
   collaborators: Collaborator[];  // List of collaborators
-  permissions: Permission[];      // Document permissions
 }
 
 export interface DocumentNode extends Document {
@@ -80,7 +78,6 @@ export interface Permission {
   permission: 'read' | 'write' | 'admin';
   grantedAt: Date;
   grantedBy: string;
-  expiresAt?: Date;
 }
 
 

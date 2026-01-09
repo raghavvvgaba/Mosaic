@@ -1,5 +1,5 @@
 import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
-import type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata, Collaborator, Permission } from '../db/types';
+import type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata, Collaborator } from '../db/types';
 
 // Import workspace validation
 import type { Workspace } from '../db/types';
@@ -130,7 +130,6 @@ function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Docum
     isPublic: (appwriteDoc.isPublic as boolean) || false,
     ownerId: appwriteDoc.ownerId as string,
     collaborators: (appwriteDoc.collaborators as Collaborator[]) || [],
-    permissions: (appwriteDoc.permissions as Permission[]) || [],
   };
 }
 
@@ -151,7 +150,6 @@ function appwriteDocumentToDocumentMetadata(appwriteDoc: Record<string, unknown>
     isPublic: (appwriteDoc.isPublic as boolean) || false,
     ownerId: appwriteDoc.ownerId as string,
     collaborators: (appwriteDoc.collaborators as Collaborator[]) || [],
-    permissions: (appwriteDoc.permissions as Permission[]) || [],
   };
 }
 
@@ -171,7 +169,6 @@ function documentToAppwriteDocument(doc: Partial<Document>) {
   if (doc.isPublic !== undefined) result.isPublic = doc.isPublic;
   if (doc.ownerId !== undefined) result.ownerId = doc.ownerId;
   if (doc.collaborators !== undefined) result.collaborators = doc.collaborators || [];
-  if (doc.permissions !== undefined) result.permissions = doc.permissions || [];
 
   return result;
 }
@@ -380,11 +377,11 @@ export async function getDeletedDocumentsMetadata(workspaceId?: string): Promise
     const queries = [
       Query.equal('workspaceId', [workspaceId || 'default']),
       Query.equal('isDeleted', [true]),
-      Query.select([
-        '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-        'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
-        'ownerId', 'collaborators', 'permissions'
-      ]),
+        Query.select([
+          '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'ownerId', 'collaborators'
+        ]),
       Query.orderDesc('$updatedAt'),
     ];
 
@@ -678,7 +675,7 @@ export async function getAllDocumentsMetadata(
       Query.select([
         '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
         'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
-        'ownerId', 'collaborators', 'permissions'
+        'ownerId', 'collaborators'
       ])
     ];
 

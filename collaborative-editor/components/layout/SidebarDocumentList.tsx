@@ -253,16 +253,9 @@ function SidebarDocumentList({ documents, userId, isLoading = false }: SidebarDo
   // Filter documents by user ownership and permissions
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
-      // Show documents owned by the user
       if (doc.ownerId === userId) return true;
 
-      // Show documents where user is in collaborators list
       if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === userId)) {
-        return true;
-      }
-
-      // Show documents with user permissions
-      if (doc.permissions && doc.permissions.some((perm) => perm.userId === userId)) {
         return true;
       }
 

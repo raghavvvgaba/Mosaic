@@ -79,6 +79,95 @@ Implement real-time collaborative document editing using BlockNote + Yjs + Custo
    - **Viewer:** Read-only view + "Request edit access" button
    - **Public viewer:** Read-only view + "Login to edit" prompt
 
+### Collaboration Activation Logic
+
+**IMPORTANT:** Yjs and realtime collaboration features are conditionally initialized to optimize performance and resource usage.
+
+#### When to Initialize Collaboration
+
+```
+FUNCTION shouldInitializeCollaboration(document, user):
+    // No user logged in
+    IF no user:
+        RETURN false
+
+    // Owner with no collaborators = single-user mode
+    IF document.ownerId === user.id:
+        RETURN document.sharedWith.length > 0
+
+    // Collaborator with editor permission
+    IF user.id IN document.sharedWith:
+        collaborator = document.sharedWith.find(c => c.userId === user.id)
+        RETURN collaborator.permission === 'editor'  // Only editors get realtime
+
+    // Public viewers, viewers, no access
+    RETURN false
+```
+
+#### Document Lifecycle States
+
+**1. Private Document (Created)**
+- `isPublic: false`, `sharedWith: []`
+- Collaboration: ❌ DISABLED
+- Yjs State: `null` (not initialized)
+- Owner edits in single-user mode (no realtime overhead)
+
+**2. Public Document (No Collaborators)**
+- `isPublic: true`, `sharedWith: []`
+- Collaboration: ❌ DISABLED
+- Public viewers get read-only access
+- Owner edits in single-user mode
+- No Yjs provider, no realtime connection
+
+**3. Document Shared with Editor**
+- `sharedWith: [{userId, permission: "editor", ...}]`
+- Collaboration: ✅ ENABLED (first time shared)
+- Yjs State: Initialized and stored in `yjsState`
+- Yjs Updates: Storage files created
+- Realtime connection established for:
+  - Owner (if collaborators exist)
+  - Editor collaborators only
+
+**4. Document Shared with Viewer**
+- `sharedWith: [{userId, permission: "viewer", ...}]`
+- Collaboration: ❌ DISABLED for viewers
+- Viewers get read-only access
+- No Yjs provider, no realtime connection
+- Owner and editors (if any) collaborate in realtime
+
+#### Permission Matrix
+
+| User Type | Condition | Permission | Can Edit? | Yjs Provider | Realtime | Cursors |
+|-----------|-----------|------------|-----------|--------------|----------|---------|
+| Owner | `ownerId === userId` | owner | ✅ | ✅ only if `sharedWith.length > 0` | ✅ only if collaborators | ✅ only if others active |
+| Editor | In `sharedWith`, permission: "editor" | editor | ✅ | ✅ | ✅ | ✅ |
+| Viewer | In `sharedWith`, permission: "viewer" | viewer | ❌ | ❌ | ❌ | ❌ |
+| Public | Logged in, `isPublic: true` | viewer | ❌ | ❌ | ❌ | ❌ |
+| Public | Not logged in, `isPublic: true` | viewer | ❌ | ❌ | ❌ | ❌ |
+| No Access | None of the above | none | ❌ | ❌ | ❌ | ❌ |
+
+#### Key Optimization Principles
+
+1. **Lazy Yjs Initialization**: Yjs state is only created when first editor is added
+2. **No Overhead for Single-User**: Private documents use standard editor without collaboration features
+3. **Read-Only Users Don't Connect**: Viewers and public users don't consume realtime resources
+4. **Conditional Realtime**: Only editors get realtime connections and cursor tracking
+5. **Owner Participation**: Owner gets realtime features only when there are active collaborators
+
+#### Example Flow
+
+```
+User creates document → Private, single-user mode
+  ↓
+Owner shares with John (Editor) → Yjs initialized, realtime ON
+  ↓
+John opens document → Connected to same Yjs doc, sees owner's cursor
+  ↓
+Owner shares with Sarah (Viewer) → Sarah gets read-only, no realtime
+  ↓
+All collaborators removed → Document back to single-user mode
+```
+
 ### Data Flow
 ```
 User A → Yjs Update → Appwrite Realtime → User B
@@ -1848,9 +1937,21 @@ export default function DocumentPage() {
     );
   }
 
-  // Initialize Yjs provider (only if user has access)
+  // Initialize Yjs provider (conditionally based on collaboration needs)
   useEffect(() => {
-    if (!user || !document || userPermission === 'viewer' && !accessCheck?.isPublic) return;
+    // Skip if no user or document
+    if (!user || !document) return;
+
+    // Skip for viewers (read-only mode)
+    if (userPermission === 'viewer') return;
+
+    // Check if collaboration should be initialized
+    if (!shouldInitializeCollaboration()) {
+      console.log('Collaboration not needed for this document/user');
+      return;
+    }
+
+    console.log('Initializing collaboration for document:', documentId);
 
     const doc = new Y.Doc();
     const newProvider = new AppwriteProvider(
@@ -1883,6 +1984,7 @@ export default function DocumentPage() {
 
     newProvider.connect().then(() => {
       setConnectionStatus('connected');
+      console.log('Collaboration connected successfully');
     }).catch(error => {
       console.error('Failed to connect provider:', error);
       setConnectionStatus('disconnected');
@@ -1894,7 +1996,7 @@ export default function DocumentPage() {
       newProvider.destroy();
       setProvider(null);
     };
-  }, [user, document, documentId, userPermission, accessCheck]);
+  }, [user, document, documentId, userPermission]);
 
   // Load user permission
   useEffect(() => {
@@ -1917,6 +2019,27 @@ export default function DocumentPage() {
     return colors[index % colors.length];
   }
 
+  // Determine if collaboration should be initialized
+  function shouldInitializeCollaboration(): boolean {
+    if (!user || !document) return false;
+
+    // Owner - only initialize if there are collaborators
+    if (document.ownerId === user.id) {
+      const hasEditorCollaborators = (document.sharedWith || [])
+        .some((c: any) => c.permission === 'editor');
+      return hasEditorCollaborators;
+    }
+
+    // Collaborator - only editors get realtime
+    const collaborator = (document.sharedWith || [])
+      .find((c: any) => c.userId === user.id);
+    if (collaborator) {
+      return collaborator.permission === 'editor';
+    }
+
+    return false;
+  }
+
   // ... rest of component
 
   return (
@@ -1934,31 +2057,36 @@ export default function DocumentPage() {
 
             {/* Right side: Collaboration features */}
             <div className="flex items-center gap-3">
-              {/* Connection status */}
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    'w-2 h-2 rounded-full',
-                    connectionStatus === 'connected' ? 'bg-green-500' : 'bg-yellow-500'
-                  )}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {connectionStatus === 'connected' ? 'Connected' : 'Connecting...'}
-                </span>
-              </div>
+              {/* Only show collaboration features when provider is active */}
+              {provider && (
+                <>
+                  {/* Connection status */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        'w-2 h-2 rounded-full',
+                        connectionStatus === 'connected' ? 'bg-green-500' : 'bg-yellow-500'
+                      )}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {connectionStatus === 'connected' ? 'Connected' : 'Connecting...'}
+                    </span>
+                  </div>
 
-              {/* Active users */}
-              <CollaborativePresence
-                activeUsers={activeUsers}
-                currentUserColor={userColor}
-                currentUser={{
-                  id: user.id,
-                  name: user.name,
-                  avatar: user.avatar,
-                }}
-              />
+                  {/* Active users */}
+                  <CollaborativePresence
+                    activeUsers={activeUsers}
+                    currentUserColor={userColor}
+                    currentUser={{
+                      id: user.id,
+                      name: user.name,
+                      avatar: user.avatar,
+                    }}
+                  />
+                </>
+              )}
 
-              {/* Share button */}
+              {/* Share button - always show for owner and editors */}
               <ShareButton
                 documentId={documentId}
                 documentTitle={document.title}

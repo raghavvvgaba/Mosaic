@@ -27,16 +27,9 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   const results = useMemo(() => {
     if (!searchResults || !user) return [];
     return searchResults.filter((doc) => {
-      // Show documents owned by the user
       if (doc.ownerId === user.id) return true;
 
-      // Show documents where user is in collaborators list
       if (doc.collaborators && doc.collaborators.some((collab) => collab.userId === user.id)) {
-        return true;
-      }
-
-      // Show documents with user permissions
-      if (doc.permissions && doc.permissions.some((perm) => perm.userId === user.id)) {
         return true;
       }
 
