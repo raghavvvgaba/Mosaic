@@ -17,9 +17,10 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+    <section className="relative min-h-screen flex items-center justify-center bg-transparent">
+      {/* Gradient fade to match Features section */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 backdrop-blur-[2px]" />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-4xl mx-auto">

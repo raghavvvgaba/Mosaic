@@ -183,6 +183,11 @@
   position: fixed !important;
 }
 
+/* Fix alert dialog positioning - override neu-card child positioning */
+[data-slot="alert-dialog-content"] {
+  position: fixed !important;
+}
+
 /* Neumorphic Card with Hover Effect */
 .neu-card-hover {
   background: #0e161f;

@@ -37,8 +37,9 @@ export function Features() {
   ];
 
   return (
-    <section className="py-24">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative py-24">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
         <div className="text-center mb-20">
           <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
@@ -54,9 +55,9 @@ export function Features() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="neu-card-hover p-8 group"
+              className="bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-white/20 group hover:bg-white/15 transition-all"
             >
-              <div className="glass w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div className="bg-white/20 backdrop-blur-md w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-white/30">
                 <feature.icon className="w-7 h-7 text-primary" />
               </div>
               <h3 className="text-xl font-semibold mb-4">{feature.title}</h3>
@@ -67,7 +68,7 @@ export function Features() {
 
         {/* Call to Action */}
         <div className="text-center mt-20">
-          <div className="neu-card-hover p-10 max-w-3xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-md p-10 max-w-3xl mx-auto rounded-2xl border border-white/20">
             <h3 className="text-3xl font-bold mb-6">Ready to get started?</h3>
             <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
               Join thousands of teams who are already using our platform to create amazing content together.
