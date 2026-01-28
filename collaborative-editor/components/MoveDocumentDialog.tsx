@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { FolderPlus, CornerUpLeft } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { FolderPlus } from 'lucide-react';
 
 import {
   Dialog,
@@ -13,12 +12,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import type { DocumentNodeMetadata, DocumentMetadata } from '@/lib/db/types';
-import { useDocumentTreeMetadata, useDocumentDescendants, useDocumentMutations } from '@/hooks/swr';
+import type { DocumentMetadata } from '@/lib/db/types';
+import { useDocumentMutations } from '@/hooks/swr';
 
 const ROOT_VALUE = '__ROOT__';
 
@@ -32,6 +27,9 @@ interface MoveDocumentDialogProps {
   onMoved?: (newParentId: string | null) => void;
 }
 
+// NOTE: This dialog is preserved for potential future reuse.
+// It is currently non-functional as nested document structure has been removed.
+
 export function MoveDocumentDialog({
   open,
   onOpenChange,
@@ -41,24 +39,20 @@ export function MoveDocumentDialog({
   workspaceId,
   onMoved,
 }: MoveDocumentDialogProps) {
-  const { data: tree } = useDocumentTreeMetadata({ workspaceId });
-  const { data: descendants } = useDocumentDescendants(documentId);
   const { moveDocument } = useDocumentMutations();
-  const [value, setValue] = useState<string>(currentParentId ?? ROOT_VALUE);
   const [submitting, setSubmitting] = useState(false);
-
-  // Memoize invalid IDs based on descendants data
+  
+  // Memoize invalid IDs - currently always includes document itself since nesting is removed
   const invalidIds = useMemo(() => {
-    if (!descendants) return new Set<string>();
-    return new Set<string>([documentId, ...descendants.map((doc) => doc.id)]);
-  }, [descendants, documentId]);
-
-  // Reset value when dialog reopens with potentially different currentParentId
+    return new Set<string>([documentId]);
+  }, [documentId]);
+  
+  // Reset submitting state when dialog closes
   useMemo(() => {
-    if (open) {
-      setValue(currentParentId ?? ROOT_VALUE);
+    if (!open) {
+      setSubmitting(false);
     }
-  }, [open, currentParentId]);
+  }, [open]);
 
   // Reset submitting state when dialog closes
   useMemo(() => {
@@ -67,28 +61,10 @@ export function MoveDocumentDialog({
     }
   }, [open]);
 
-  const isSelectionUnchanged = useMemo(() => {
-    const selectedParent = value === ROOT_VALUE ? null : value;
-    const current = currentParentId ?? null;
-    return selectedParent === current;
-  }, [value, currentParentId]);
-
   const handleSubmit = useCallback(async () => {
-    const targetParentId = value === ROOT_VALUE ? null : value;
-
-    if (isSelectionUnchanged) {
-      onOpenChange(false);
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await moveDocument(
-        documentId,
-        workspaceId,
-        targetParentId || undefined
-      );
-      onMoved?.(targetParentId);
+      await moveDocument(documentId, workspaceId);
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to move document:', error);
@@ -96,51 +72,7 @@ export function MoveDocumentDialog({
     } finally {
       setSubmitting(false);
     }
-  }, [documentId, isSelectionUnchanged, moveDocument, onMoved, onOpenChange, value, workspaceId]);
-
-  const renderOptions = useCallback(
-    (nodes: DocumentNodeMetadata[], depth = 0) => {
-      return nodes.map((node) => {
-        const isInvalid = invalidIds.has(node.id);
-        const updatedLabel = formatDistanceToNow(new Date(node.updatedAt), { addSuffix: true });
-
-        return (
-          <div key={node.id} className="space-y-2">
-            <label
-              className={cn(
-                'flex items-start gap-3 rounded-xl p-4 transition-all cursor-pointer',
-                isInvalid
-                  ? 'neu-card opacity-40 cursor-not-allowed'
-                  : 'neu-card hover:transform hover:-translate-y-1'
-              )}
-              style={{ paddingLeft: depth * 20 + 16 }}
-            >
-              <RadioGroupItem value={node.id} id={`move-${node.id}`} disabled={isInvalid} />
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">
-                  {node.title || 'Untitled'}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Updated {updatedLabel}
-                </span>
-                {isInvalid && (
-                  <span className="text-[11px] text-muted-foreground/80 mt-1">
-                    Cannot move into this page.
-                  </span>
-                )}
-              </div>
-            </label>
-            {node.children.length > 0 && (
-              <div className="space-y-2">
-                {renderOptions(node.children, depth + 1)}
-              </div>
-            )}
-          </div>
-        );
-      });
-    },
-    [invalidIds]
-  );
+  }, [documentId, moveDocument, onOpenChange, workspaceId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,47 +85,20 @@ export function MoveDocumentDialog({
             Move "{documentTitle || 'Untitled'}"
           </DialogTitle>
           <DialogDescription className="text-base">
-            Select a new parent page. You can move this note under any other note in the workspace.
+            NOTE: This dialog is preserved for future reuse. Nested document structure has been removed.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4 space-y-4">
-          <div>
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Destination</Label>
+        
+        <div className="py-4">
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">Document nesting has been removed.</p>
+            <p className="text-sm mt-2">This dialog is kept for potential future use.</p>
           </div>
-
-          {!tree ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <div className="w-8 h-8 mx-auto mb-3 opacity-50 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-              <p className="text-sm">Loading pages…</p>
-            </div>
-          ) : (
-            <RadioGroup value={value} onValueChange={setValue}>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 neu-card p-4 hover:transform hover:-translate-y-1 transition-all cursor-pointer rounded-xl">
-                  <RadioGroupItem value={ROOT_VALUE} id="move-root" />
-                  <div className="flex items-center gap-3 text-sm">
-                    <CornerUpLeft className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Move to top level</span>
-                  </div>
-                </label>
-              </div>
-
-              <ScrollArea className="max-h-80 mt-3">
-                <div className="space-y-2 pr-2">
-                  {renderOptions(tree, 0)}
-                </div>
-              </ScrollArea>
-            </RadioGroup>
-          )}
         </div>
-
+ 
         <DialogFooter>
           <Button variant="glass" onClick={() => onOpenChange(false)} disabled={submitting} className="h-10">
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!tree || submitting || isSelectionUnchanged} className="h-10">
-            Move
+            Close
           </Button>
         </DialogFooter>
       </DialogContent>

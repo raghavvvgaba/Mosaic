@@ -25,8 +25,6 @@ import { useDebouncedCallback } from 'use-debounce';
 import type {
   Document,
   DocumentMetadata,
-  DocumentNode,
-  DocumentNodeMetadata,
 } from '../../lib/db/types';
 
 // Import query keys and fetchers
@@ -218,77 +216,6 @@ export function useDocument(documentId: string | undefined, options: { swrOption
     {
       revalidateOnFocus: false,
       ...options.swrOptions,
-    }
-  );
-
-  return {
-    data,
-    error,
-    isLoading,
-    isValidating,
-    mutate,
-  };
-}
-
-// ============================================================================
-// DOCUMENT TREE HOOKS
-// ============================================================================
-
-/**
- * Hook for fetching document tree structure (with content)
- *
- * @example
- * const { data: tree, error, isLoading } = useDocumentTree({ workspaceId: 'workspace123' });
- */
-export function useDocumentTree(options: { workspaceId?: string } = {}) {
-  const { workspaceId } = options;
-  const key = keys.documentTreeKey(workspaceId);
-
-  const {
-    data,
-    error,
-    isLoading,
-    isValidating,
-    mutate,
-  } = useSWR<DocumentNode[]>(
-    key,
-    fetchers.fetchDocumentTree,
-    {
-      revalidateOnFocus: false,
-    }
-  );
-
-  return {
-    data,
-    error,
-    isLoading,
-    isValidating,
-    mutate,
-  };
-}
-
-/**
- * Hook for fetching document tree metadata (without content)
- * Use this for sidebars and navigation where you don't need content.
- *
- * @example
- * const { data: tree, error, isLoading } = useDocumentTreeMetadata({ workspaceId: 'workspace123' });
- */
-export function useDocumentTreeMetadata(options: { workspaceId?: string } = {}) {
-  const { workspaceId } = options;
-  const key = keys.documentTreeMetadataKey(workspaceId);
-
-  const {
-    data,
-    error,
-    isLoading,
-    isValidating,
-    mutate,
-  } = useSWR<DocumentNodeMetadata[]>(
-    key,
-    fetchers.fetchDocumentTreeMetadata,
-    {
-      revalidateOnFocus: false,
     }
   );
 
@@ -538,91 +465,6 @@ export function useDocumentSearch(query: string | undefined, options: { workspac
 }
 
 // ============================================================================
-// DOCUMENT PATH & CHILDREN HOOKS
-// ============================================================================
-
-/**
- * Hook for fetching document path (breadcrumbs)
- *
- * @example
- * const { data: path, error, isLoading } = useDocumentPath('doc123');
- */
-export function useDocumentPath(documentId: string | undefined) {
-  const key = documentId ? keys.documentPathKey(documentId) : null;
-
-  const {
-    data,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<Document[]>(
-    key,
-    fetchers.fetchDocumentPath
-  );
-
-  return {
-    data,
-    error,
-    isLoading,
-    mutate,
-  };
-}
-
-/**
- * Hook for fetching document children
- *
- * @example
- * const { data: children, error, isLoading } = useDocumentChildren('parent123');
- */
-export function useDocumentChildren(parentId: string | undefined) {
-  const key = parentId ? keys.documentChildrenKey(parentId) : null;
-
-  const {
-    data,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<Document[]>(
-    key,
-    fetchers.fetchDocumentChildren
-  );
-
-  return {
-    data,
-    error,
-    isLoading,
-    mutate,
-  };
-}
-
-/**
- * Hook for fetching document descendants (all nested children)
- *
- * @example
- * const { data: descendants, error, isLoading } = useDocumentDescendants('doc123');
- */
-export function useDocumentDescendants(documentId: string | undefined) {
-  const key = documentId ? keys.documentDescendantsKey(documentId) : null;
-
-  const {
-    data,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<Document[]>(
-    key,
-    fetchers.fetchDocumentDescendants
-  );
-
-  return {
-    data,
-    error,
-    isLoading,
-    mutate,
-  };
-}
-
-// ============================================================================
 // MUTATION HOOKS
 // ============================================================================
 
@@ -665,11 +507,11 @@ export function useDocumentMutations() {
     Document,
     Error,
     ReturnType<typeof keys.documentsKey>,
-    { title?: string; workspaceId?: string; parentId?: string }
+    { title?: string; workspaceId?: string }
   >(
     keys.documentsKey(),
-    async (_key: unknown, { arg }: { arg: { title?: string; workspaceId?: string; parentId?: string } }) => {
-      const result = await documentService.createDocument(arg.title, arg.workspaceId, arg.parentId);
+    async (_key: unknown, { arg }: { arg: { title?: string; workspaceId?: string } }) => {
+      const result = await documentService.createDocument(arg.title, arg.workspaceId);
 
       // Immediate invalidation for create - user expects to see new doc right away
       invalidateDocumentsImmediate();
@@ -678,13 +520,12 @@ export function useDocumentMutations() {
     }
   );
 
-  // Wrapper for createDocument that matches the service signature
+  // Wrapper for createDocument that matches service signature
   const createDocument = useCallback(async (
     title?: string,
-    workspaceId?: string,
-    parentId?: string
+    workspaceId?: string
   ) => {
-    return createDocumentTrigger({ title, workspaceId, parentId });
+    return createDocumentTrigger({ title, workspaceId });
   }, [createDocumentTrigger]);
 
   /**
@@ -705,10 +546,9 @@ export function useDocumentMutations() {
       // Optimistically update the specific document cache
       mutate(keys.documentKey(documentId), result, { revalidate: false });
 
-      // Determine if this update affects metadata (fields shown in lists/trees)
+      // Determine if this update affects metadata (fields shown in lists)
       const affectsMetadata = updates.title !== undefined ||
                              updates.isFavorite !== undefined ||
-                             updates.parentId !== undefined ||
                              updates.workspaceId !== undefined ||
                              updates.isDeleted !== undefined;
 
@@ -725,7 +565,6 @@ export function useDocumentMutations() {
         const workspaceId = result.workspaceId;
         mutate(keys.documentsMetadataKey(workspaceId, false), updateDocMetadata, { revalidate: false });
         mutate(keys.documentsMetadataKey(workspaceId, true), updateDocMetadata, { revalidate: false });
-        mutate(keys.documentTreeMetadataKey(workspaceId), updateDocMetadata, { revalidate: false });
         mutate(keys.recentDocumentsMetadataKey(workspaceId), updateDocMetadata, { revalidate: false });
 
         // Update favorites cache if favorite status changed
@@ -1002,17 +841,17 @@ export function useDocumentMutations() {
   );
 
   /**
-   * Move a document to a different workspace or parent
+   * Move a document to a different workspace
    */
   const { trigger: moveDocumentTrigger, isMutating: isMoving } = useSWRMutation<
     Document,
     Error,
     ReturnType<typeof keys.documentsKey>,
-    { documentId: string; newWorkspaceId: string; newParentId?: string }
+    { documentId: string; newWorkspaceId: string }
   >(
     keys.documentsKey(),
-    async (_key: unknown, { arg }: { arg: { documentId: string; newWorkspaceId: string; newParentId?: string } }) => {
-      const result = await documentService.moveDocument(arg.documentId, arg.newWorkspaceId, arg.newParentId);
+    async (_key: unknown, { arg }: { arg: { documentId: string; newWorkspaceId: string } }) => {
+      const result = await documentService.moveDocument(arg.documentId, arg.newWorkspaceId);
 
       // Immediate invalidation for move - user expects to see doc moved right away
       invalidateDocumentsImmediate();
@@ -1021,13 +860,12 @@ export function useDocumentMutations() {
     }
   );
 
-  // Wrapper for moveDocument that matches the service signature
+  // Wrapper for moveDocument that matches service signature
   const moveDocument = useCallback(async (
     documentId: string,
-    newWorkspaceId: string,
-    newParentId?: string
+    newWorkspaceId: string
   ) => {
-    return moveDocumentTrigger({ documentId, newWorkspaceId, newParentId });
+    return moveDocumentTrigger({ documentId, newWorkspaceId });
   }, [moveDocumentTrigger]);
 
   return {
@@ -1077,10 +915,6 @@ export const documentHooks = {
   // Single document hooks
   useDocument,
 
-  // Tree hooks
-  useDocumentTree,
-  useDocumentTreeMetadata,
-
   // Filtered list hooks
   useRecentDocuments,
   useRecentDocumentsMetadata,
@@ -1091,11 +925,6 @@ export const documentHooks = {
 
   // Search hook
   useDocumentSearch,
-
-  // Relationship hooks
-  useDocumentPath,
-  useDocumentChildren,
-  useDocumentDescendants,
 
   // Mutations
   useDocumentMutations,

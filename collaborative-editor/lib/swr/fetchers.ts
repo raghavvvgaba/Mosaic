@@ -11,8 +11,6 @@
 import type {
   Document,
   DocumentMetadata,
-  DocumentNode,
-  DocumentNodeMetadata,
   Workspace,
   User,
   UserPreferences,
@@ -82,24 +80,6 @@ export async function fetchDocument(key: [string, string, string]): Promise<Docu
 }
 
 /**
- * Fetcher for document tree structure
- * @param key - Query key: ['documents', 'tree', { workspaceId }]
- */
-export async function fetchDocumentTree(key: [string, string, { workspaceId?: string }]): Promise<DocumentNode[]> {
-  const [, , { workspaceId }] = key;
-  return documentService.getDocumentTree(workspaceId);
-}
-
-/**
- * Fetcher for document tree metadata (without content)
- * @param key - Query key: ['documents', 'tree-metadata', { workspaceId }]
- */
-export async function fetchDocumentTreeMetadata(key: [string, string, { workspaceId?: string }]): Promise<DocumentNodeMetadata[]> {
-  const [, , { workspaceId }] = key;
-  return documentService.getDocumentTreeMetadata(workspaceId);
-}
-
-/**
  * Fetcher for recent documents
  * @param key - Query key: ['documents', 'recent', { workspaceId }]
  */
@@ -160,33 +140,6 @@ export async function fetchDeletedDocumentsMetadata(key: [string, string, { work
 export async function searchDocuments(key: [string, string, { query: string; workspaceId?: string }]): Promise<Document[]> {
   const [, , { query, workspaceId }] = key;
   return documentService.searchDocuments(workspaceId, query);
-}
-
-/**
- * Fetcher for document path (breadcrumbs)
- * @param key - Query key: ['documents', 'path', documentId]
- */
-export async function fetchDocumentPath(key: [string, string, string]): Promise<Document[]> {
-  const [, , documentId] = key;
-  return documentService.getDocumentPath(documentId);
-}
-
-/**
- * Fetcher for document children
- * @param key - Query key: ['documents', 'children', parentId]
- */
-export async function fetchDocumentChildren(key: [string, string, string]): Promise<Document[]> {
-  const [, , parentId] = key;
-  return documentService.getChildren(parentId);
-}
-
-/**
- * Fetcher for document descendants
- * @param key - Query key: ['documents', 'descendants', documentId]
- */
-export async function fetchDocumentDescendants(key: [string, string, string]): Promise<Document[]> {
-  const [, , documentId] = key;
-  return documentService.getDescendants(documentId);
 }
 
 // ============================================================================

@@ -75,18 +75,6 @@ export const documentKey = (documentId: string) =>
   [DOCUMENT_KEY, 'detail', documentId];
 
 /**
- * Key for fetching document tree structure
- */
-export const documentTreeKey = (workspaceId?: string) =>
-  [DOCUMENT_KEY, 'tree', { workspaceId }];
-
-/**
- * Key for fetching document tree metadata (without content)
- */
-export const documentTreeMetadataKey = (workspaceId?: string) =>
-  [DOCUMENT_KEY, 'tree-metadata', { workspaceId }];
-
-/**
  * Key for fetching recent documents
  */
 export const recentDocumentsKey = (workspaceId?: string) =>
@@ -127,24 +115,6 @@ export const deletedDocumentsMetadataKey = (workspaceId?: string) =>
  */
 export const searchDocumentsKey = (query: string, workspaceId?: string) =>
   [DOCUMENT_KEY, 'search', { query, workspaceId }];
-
-/**
- * Key for fetching document path (breadcrumbs)
- */
-export const documentPathKey = (documentId: string) =>
-  [DOCUMENT_KEY, 'path', documentId];
-
-/**
- * Key for fetching document children
- */
-export const documentChildrenKey = (parentId: string) =>
-  [DOCUMENT_KEY, 'children', parentId];
-
-/**
- * Key for fetching document descendants
- */
-export const documentDescendantsKey = (documentId: string) =>
-  [DOCUMENT_KEY, 'descendants', documentId];
 
 // ============================================================================
 // USER KEYS

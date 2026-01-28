@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { useDocument, useDocumentPath, useDocumentMutations } from '@/hooks/swr';
+import { useDocument, useDocumentMutations } from '@/hooks/swr';
 import type { Document, DocumentFont } from '@/lib/db/types';
 import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEditor';
 import { formatDistanceToNow } from 'date-fns';
@@ -60,7 +60,6 @@ export default function DocumentPage() {
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const { data: document, isLoading, mutate } = useDocument(documentId);
-  const { data: documentPath } = useDocumentPath(documentId);
   const { updateDocument, updateDocumentTitleOnly, duplicateDocument, toggleFavorite, deleteDocument, createDocument, permanentlyDeleteDocument } = useDocumentMutations();
 
   const [saving, setSaving] = useState(false);
@@ -295,19 +294,6 @@ export default function DocumentPage() {
     });
   }, [documentId]);
 
-  const handleCreateSubpage = useCallback(async () => {
-    if (!document) return;
-
-    try {
-      const newDoc = await createDocument('Untitled', document.workspaceId, document.id);
-      openDocument(newDoc.id, newDoc.title);
-      window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: document.workspaceId } }));
-    } catch (error) {
-      console.error('Failed to create subpage:', error);
-      alert('Failed to create subpage');
-    }
-  }, [document, openDocument]);
-
   const handleBreadcrumbNavigate = useCallback((target: Document) => {
     if (target.id === documentId) return;
     openDocument(target.id, target.title);
@@ -348,14 +334,6 @@ export default function DocumentPage() {
       requestMoveToTrash();
     }
 
-    function handleCreateSubpageEvent(event: Event) {
-      const detail = (event as CustomEvent).detail as { documentId?: string } | undefined;
-      if (detail?.documentId && detail.documentId !== documentId) {
-        return;
-      }
-      void handleCreateSubpage();
-    }
-
     function handleAIDraftOpen() {
       setAiOpen(true);
     }
@@ -364,7 +342,6 @@ export default function DocumentPage() {
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
-    window.addEventListener('create-subpage', handleCreateSubpageEvent);
     window.addEventListener('ai-draft-open', handleAIDraftOpen);
 
     return () => {
@@ -372,10 +349,9 @@ export default function DocumentPage() {
       window.removeEventListener('export-document', handleExportDocument);
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
-      window.removeEventListener('create-subpage', handleCreateSubpageEvent);
       window.removeEventListener('ai-draft-open', handleAIDraftOpen);
     };
-  }, [documentId, handleCreateSubpage, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
+  }, [documentId, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
 
   function getWordCount(): number {
     if (!document) return 0;
@@ -445,29 +421,12 @@ export default function DocumentPage() {
     { id: 'serif', label: 'Ag', description: 'Serif', sampleClass: 'font-serif' },
     { id: 'mono', label: 'Ag', description: 'Mono', sampleClass: 'font-mono' },
   ];
-
+  
   return (
     <TooltipProvider>
       <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
         <header className="border-b sticky top-0 z-10">
           <div className="px-8 py-4 space-y-3">
-          {documentPath && documentPath.length > 0 && (
-            <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {documentPath.map((node, index) => (
-                <div key={node.id} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleBreadcrumbNavigate(node)}
-                    className={`hover:text-foreground transition-colors ${node.id === documentId ? 'font-medium text-foreground' : ''}`}
-                  >
-                    {node.title || 'Untitled'}
-                  </button>
-                  {index < documentPath.length - 1 && <span className="text-muted-foreground">/</span>}
-                </div>
-              ))}
-            </nav>
-          )}
-
           {/* Title bar */}
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
@@ -548,22 +507,8 @@ export default function DocumentPage() {
                         </button>
                       );
                     })}
-                  </div>
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    void handleCreateSubpage();
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New subpage
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
-                  <FolderPlus className="w-4 h-4 mr-2" />
-                  Move to…
-                </DropdownMenuItem>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <Copy className="w-4 h-4 mr-2" />
@@ -638,17 +583,7 @@ export default function DocumentPage() {
           onOpenChange={setMoveDialogOpen}
           documentId={document.id}
           documentTitle={document.title}
-          currentParentId={document.parentId}
           workspaceId={document.workspaceId}
-          onMoved={(newParentId) => {
-            setMoveDialogOpen(false);
-            // Update the document ref optimistically
-            if (documentRef.current) {
-              documentRef.current = { ...documentRef.current, parentId: newParentId ?? undefined };
-            }
-            // Revalidate the document data
-            void mutate();
-          }}
         />
       )}
 

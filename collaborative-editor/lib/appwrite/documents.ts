@@ -1,5 +1,5 @@
 import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
-import type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata, Collaborator } from '../db/types';
+import type { Document, DocumentMetadata, Collaborator } from '../db/types';
 
 // Import workspace validation
 import type { Workspace } from '../db/types';
@@ -125,7 +125,6 @@ function appwriteDocumentToDocument(appwriteDoc: Record<string, unknown>): Docum
     lastChangedAt: appwriteDoc.lastChangedAt ? new Date(appwriteDoc.lastChangedAt as string) : undefined,
     isDeleted: (appwriteDoc.isDeleted as boolean) || false,
     isFavorite: (appwriteDoc.isFavorite as boolean) || false,
-    parentId: appwriteDoc.parentId as string,
     font: (appwriteDoc.font as 'sans' | 'serif' | 'mono') || undefined,
     isPublic: (appwriteDoc.isPublic as boolean) || false,
     ownerId: appwriteDoc.ownerId as string,
@@ -145,7 +144,6 @@ function appwriteDocumentToDocumentMetadata(appwriteDoc: Record<string, unknown>
     lastChangedAt: appwriteDoc.lastChangedAt ? new Date(appwriteDoc.lastChangedAt as string) : undefined,
     isDeleted: (appwriteDoc.isDeleted as boolean) || false,
     isFavorite: (appwriteDoc.isFavorite as boolean) || false,
-    parentId: appwriteDoc.parentId as string,
     font: (appwriteDoc.font as 'sans' | 'serif' | 'mono') || undefined,
     isPublic: (appwriteDoc.isPublic as boolean) || false,
     ownerId: appwriteDoc.ownerId as string,
@@ -164,7 +162,6 @@ function documentToAppwriteDocument(doc: Partial<Document>) {
   if (doc.lastChangedAt !== undefined) result.lastChangedAt = doc.lastChangedAt?.toISOString();
   if (doc.isDeleted !== undefined) result.isDeleted = doc.isDeleted;
   if (doc.isFavorite !== undefined) result.isFavorite = doc.isFavorite;
-  if (doc.parentId !== undefined) result.parentId = doc.parentId;
   if (doc.font !== undefined) result.font = doc.font;
   if (doc.isPublic !== undefined) result.isPublic = doc.isPublic;
   if (doc.ownerId !== undefined) result.ownerId = doc.ownerId;
@@ -175,8 +172,7 @@ function documentToAppwriteDocument(doc: Partial<Document>) {
 
 export async function createDocument(
   title?: string,
-  workspaceId?: string,
-  parentId?: string
+  workspaceId?: string
 ): Promise<Document> {
   try {
     const appwrite = getAppwrite();
@@ -188,7 +184,6 @@ export async function createDocument(
       title: title || 'Untitled',
       content: '',
       workspaceId: workspaceId || 'default',
-      parentId,
       isDeleted: false,
       isFavorite: false,
       ownerId: userId,
@@ -379,7 +374,7 @@ export async function getDeletedDocumentsMetadata(workspaceId?: string): Promise
       Query.equal('isDeleted', [true]),
         Query.select([
           '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'font', 'isPublic',
           'ownerId', 'collaborators'
         ]),
       Query.orderDesc('$updatedAt'),
@@ -523,84 +518,9 @@ export async function toggleFavorite(documentId: string, currentStatus: boolean)
 }
 
 // Document tree and hierarchy functions
-export async function getDocumentTree(workspaceId?: string): Promise<DocumentNode[]> {
-  try {
-    const documents = await getAllDocuments(workspaceId);
 
-    // Filter non-deleted documents and build tree structure
-    const nonDeletedDocs = documents.filter(doc => !doc.isDeleted);
-    const docMap = new Map<string, DocumentNode>(nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }]));
-    const roots: DocumentNode[] = [];
-
-    for (const doc of nonDeletedDocs) {
-      const node = docMap.get(doc.id)!;
-
-      if (doc.parentId && docMap.has(doc.parentId)) {
-        docMap.get(doc.parentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-
-    // Sort alphabetically at each level
-    const sortTree = (nodes: DocumentNode[]): DocumentNode[] => {
-      return nodes.sort((a, b) => {
-        const titleA = (a.title || 'Untitled').toLowerCase();
-        const titleB = (b.title || 'Untitled').toLowerCase();
-        return titleA.localeCompare(titleB);
-      }).map(node => ({
-        ...node,
-        children: sortTree(node.children)
-      }));
-    };
-
-    return sortTree(roots);
-  } catch (error) {
-    console.error('Failed to get document tree:', error);
-    return [];
-  }
-}
-
-export async function getDocumentPath(documentId: string): Promise<Document[]> {
-  try {
-    const path: Document[] = [];
-    let currentDoc = await getDocument(documentId);
-
-    while (currentDoc && currentDoc.parentId) {
-      const parent = await getDocument(currentDoc.parentId);
-      if (!parent || parent.workspaceId !== currentDoc.workspaceId) break;
-      path.unshift(parent);
-      currentDoc = parent;
-    }
-
-    return path;
-  } catch (error) {
-    console.error('Failed to get document path:', error);
-    return [];
-  }
-}
-
-export async function getChildren(parentId: string): Promise<Document[]> {
-  try {
-    const appwrite = getAppwrite();
-    const response = await appwrite.tablesDB.listRows({
-      databaseId: getDatabaseId(),
-      tableId: getDocumentsTableId(),
-      queries: [
-        Query.equal('parentId', [parentId]),
-        Query.equal('isDeleted', [false]),
-        Query.orderAsc('title'),
-      ]
-    });
-
-    return response.rows.map(appwriteDocumentToDocument);
-  } catch (error) {
-    console.error('Failed to get children:', error);
-    return [];
-  }
-}
-
-export async function moveDocument(documentId: string, newWorkspaceId: string, newParentId?: string): Promise<Document> {
+// Move document between workspaces
+export async function moveDocument(documentId: string, newWorkspaceId: string): Promise<Document> {
   try {
     // Validate document ownership first
     const docOwnership = await validateDocumentOwnership(documentId);
@@ -621,7 +541,6 @@ export async function moveDocument(documentId: string, newWorkspaceId: string, n
       rowId: documentId,
       data: {
         workspaceId: newWorkspaceId,
-        parentId: newParentId,
       }
     });
 
@@ -629,25 +548,6 @@ export async function moveDocument(documentId: string, newWorkspaceId: string, n
   } catch (error) {
     console.error('Failed to move document:', error);
     throw new Error('Failed to move document');
-  }
-}
-
-export async function getDescendants(documentId: string): Promise<Document[]> {
-  try {
-    const allDocs = await getAllDocuments(); // Get all documents to search through
-    const descendants: Document[] = [];
-
-    function collectDescendants(parentId: string) {
-      const children = allDocs.filter(doc => doc.parentId === parentId);
-      descendants.push(...children);
-      children.forEach(child => collectDescendants(child.id));
-    }
-
-    collectDescendants(documentId);
-    return descendants;
-  } catch (error) {
-    console.error('Failed to get descendants:', error);
-    return [];
   }
 }
 
@@ -674,7 +574,7 @@ export async function getAllDocumentsMetadata(
       Query.equal('workspaceId', [workspaceId || 'default']),
       Query.select([
         '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-        'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+        'lastChangedAt', 'isDeleted', 'isFavorite', 'font', 'isPublic',
         'ownerId', 'collaborators'
       ])
     ];
@@ -710,7 +610,7 @@ export async function getRecentDocumentsMetadata(workspaceId?: string): Promise<
         Query.equal('isDeleted', [false]),
         Query.select([
           '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'font', 'isPublic',
           'ownerId', 'collaborators', 'permissions'
         ]),
         Query.orderDesc('lastChangedAt'),
@@ -740,7 +640,7 @@ export async function getFavoriteDocumentsMetadata(workspaceId?: string): Promis
         Query.equal('isFavorite', [true]),
         Query.select([
           '$id', 'title', 'workspaceId', 'icon', '$createdAt', '$updatedAt',
-          'lastChangedAt', 'isDeleted', 'isFavorite', 'parentId', 'font', 'isPublic',
+          'lastChangedAt', 'isDeleted', 'isFavorite', 'font', 'isPublic',
           'ownerId', 'collaborators', 'permissions'
         ]),
         Query.orderDesc('$updatedAt'),
@@ -750,65 +650,6 @@ export async function getFavoriteDocumentsMetadata(workspaceId?: string): Promis
     return response.rows.map(appwriteDocumentToDocumentMetadata);
   } catch (error) {
     console.error('Failed to get favorite documents metadata:', error);
-    return [];
-  }
-}
-
-// Get document tree metadata without content - for sidebar hierarchy
-export async function getDocumentTreeMetadata(workspaceId?: string): Promise<DocumentNodeMetadata[]> {
-  try {
-    const documents = await getAllDocumentsMetadata(workspaceId);
-
-    // Filter non-deleted documents and build tree structure
-    const nonDeletedDocs = documents.filter(doc => !doc.isDeleted);
-    const docMap = new Map<string, DocumentNodeMetadata>(nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }]));
-    const roots: DocumentNodeMetadata[] = [];
-
-    for (const doc of nonDeletedDocs) {
-      const node = docMap.get(doc.id)!;
-
-      if (doc.parentId && docMap.has(doc.parentId)) {
-        docMap.get(doc.parentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-
-    // Sort alphabetically at each level
-    const sortTree = (nodes: DocumentNodeMetadata[]): DocumentNodeMetadata[] => {
-      return nodes.sort((a, b) => {
-        const titleA = (a.title || 'Untitled').toLowerCase();
-        const titleB = (b.title || 'Untitled').toLowerCase();
-        return titleA.localeCompare(titleB);
-      }).map(node => ({
-        ...node,
-        children: sortTree(node.children)
-      }));
-    };
-
-    return sortTree(roots);
-  } catch (error) {
-    console.error('Failed to get document tree metadata:', error);
-    return [];
-  }
-}
-
-// Get descendants metadata without content - for move operations
-export async function getDescendantsMetadata(documentId: string): Promise<DocumentMetadata[]> {
-  try {
-    const allDocs = await getAllDocumentsMetadata(); // Get all metadata to search through
-    const descendants: DocumentMetadata[] = [];
-
-    function collectDescendants(parentId: string) {
-      const children = allDocs.filter(doc => doc.parentId === parentId);
-      descendants.push(...children);
-      children.forEach(child => collectDescendants(child.id));
-    }
-
-    collectDescendants(documentId);
-    return descendants;
-  } catch (error) {
-    console.error('Failed to get descendants metadata:', error);
     return [];
   }
 }
@@ -855,40 +696,4 @@ export function filterNonDeletedDocuments(
   documents: DocumentMetadata[]
 ): DocumentMetadata[] {
   return documents.filter(doc => doc.isDeleted === false);
-}
-
-// Build document tree from metadata (extracted from getDocumentTreeMetadata)
-// This is a pure function that builds the tree structure locally without API calls
-export function buildDocumentTreeFromMetadata(
-  documents: DocumentMetadata[]
-): DocumentNodeMetadata[] {
-  const nonDeletedDocs = documents.filter(doc => !doc.isDeleted);
-  const docMap = new Map<string, DocumentNodeMetadata>(
-    nonDeletedDocs.map(doc => [doc.id, { ...doc, children: [] }])
-  );
-  const roots: DocumentNodeMetadata[] = [];
-
-  for (const doc of nonDeletedDocs) {
-    const node = docMap.get(doc.id)!;
-
-    if (doc.parentId && docMap.has(doc.parentId)) {
-      docMap.get(doc.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  // Sort alphabetically at each level
-  const sortTree = (nodes: DocumentNodeMetadata[]): DocumentNodeMetadata[] => {
-    return nodes.sort((a, b) => {
-      const titleA = (a.title || 'Untitled').toLowerCase();
-      const titleB = (b.title || 'Untitled').toLowerCase();
-      return titleA.localeCompare(titleB);
-    }).map(node => ({
-      ...node,
-      children: sortTree(node.children)
-    }));
-  };
-
-  return sortTree(roots);
 }

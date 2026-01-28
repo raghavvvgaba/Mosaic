@@ -11,7 +11,6 @@ export interface Document {
   lastChangedAt?: Date;
   isDeleted: boolean;
   isFavorite?: boolean;
-  parentId?: string;
   font?: DocumentFont;
   isPublic: boolean;              // Public sharing status
   ownerId?: string;               // Document owner ID
@@ -29,20 +28,10 @@ export interface DocumentMetadata {
   lastChangedAt?: Date;
   isDeleted: boolean;
   isFavorite?: boolean;
-  parentId?: string;
   font?: DocumentFont;
   isPublic: boolean;              // Public sharing status
   ownerId?: string;               // Document owner ID
   collaborators: Collaborator[];  // List of collaborators
-}
-
-export interface DocumentNode extends Document {
-  children: DocumentNode[];
-}
-
-// Node version with metadata only
-export interface DocumentNodeMetadata extends DocumentMetadata {
-  children: DocumentNodeMetadata[];
 }
 
 export interface Settings {

@@ -74,16 +74,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     window.dispatchEvent(new CustomEvent('duplicate-document', { detail: { documentId } }));
   }, [getCurrentDocumentId, showToast]);
 
-  const createSubpageForCurrentDocument = useCallback(() => {
-    const documentId = getCurrentDocumentId();
-    if (!documentId) {
-      showToast('Open a document to create a subpage');
-      return;
-    }
-    window.dispatchEvent(new CustomEvent('create-subpage', { detail: { documentId } }));
-    showToast('Creating subpage...');
-  }, [getCurrentDocumentId, showToast]);
-
   const exportCurrentDocument = useCallback(() => {
     const documentId = getCurrentDocumentId();
     if (!documentId) {
@@ -165,15 +155,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       description: 'Create new document',
       category: 'general',
       action: handleCreateDocument,
-      global: true,
-      context: 'global'
-    },
-    {
-      id: 'new-subpage',
-      keys: isMac ? ['meta', 'alt', 'n'] : ['ctrl', 'alt', 'n'],
-      description: 'Create subpage under current document',
-      category: 'general',
-      action: createSubpageForCurrentDocument,
       global: true,
       context: 'global'
     },

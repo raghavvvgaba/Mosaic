@@ -5,10 +5,55 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createDocument, deleteDocument, getDocument, moveDocument, permanentlyDeleteDocument, restoreDocument } from './documents';
 import { resetDB } from './index';
 
-describe('document cascade behaviour', () => {
+// Note: Tests for document hierarchy/cascade behavior have been removed
+// as the nested document feature has been removed from the application.
+
+describe('document basic operations', () => {
   beforeEach(async () => {
     await resetDB();
   });
+
+  it('creates a document', async () => {
+    const doc = await createDocument('Test Document');
+    expect(doc).toBeDefined();
+    expect(doc.title).toBe('Test Document');
+  });
+
+  it('deletes a document', async () => {
+    const doc = await createDocument('Test Document');
+    await deleteDocument(doc.id);
+    
+    const deleted = await getDocument(doc.id);
+    expect(deleted?.isDeleted).toBe(true);
+  });
+
+  it('restores a document', async () => {
+    const doc = await createDocument('Test Document');
+    await deleteDocument(doc.id);
+    await restoreDocument(doc.id);
+    
+    const restored = await getDocument(doc.id);
+    expect(restored?.isDeleted).toBe(false);
+  });
+
+  it('permanently deletes a document', async () => {
+    const doc = await createDocument('Test Document');
+    await deleteDocument(doc.id);
+    await permanentlyDeleteDocument(doc.id);
+    
+    const permanent = await getDocument(doc.id);
+    expect(permanent).toBeUndefined();
+  });
+
+  it('moves a document to a different workspace', async () => {
+    const doc = await createDocument('Test Document', 'workspace1');
+    await moveDocument(doc.id, 'workspace2');
+    
+    const moved = await getDocument(doc.id);
+    expect(moved?.workspaceId).toBe('workspace2');
+  });
+});
+
 
   it('deletes descendants when parent is trashed', async () => {
     const parent = await createDocument('Parent');
@@ -80,10 +125,3 @@ describe('document cascade behaviour', () => {
     expect(movedChild?.parentId).toBeUndefined();
   });
 
-  it('prevents moving a document into its descendant', async () => {
-    const parent = await createDocument('Parent');
-    const child = await createDocument('Child', parent.workspaceId, parent.id);
-
-    await expect(moveDocument(parent.id, child.id)).rejects.toThrow();
-  });
-});

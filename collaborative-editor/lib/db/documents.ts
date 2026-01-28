@@ -12,11 +12,7 @@ export {
   getDeletedDocuments,
   getDeletedDocumentsMetadata,
   searchDocuments,
-  getDocumentTree,
-  getDocumentPath,
-  getDescendants,
   moveDocument,
-  getChildren,
   getRecentDocuments,
   duplicateDocument,
   getFavoriteDocuments,
@@ -24,36 +20,23 @@ export {
   getAllDocumentsMetadata,
   getRecentDocumentsMetadata,
   getFavoriteDocumentsMetadata,
-  getDocumentTreeMetadata,
-  getDescendantsMetadata,
   getAllDocumentsMetadataForFiltering,
   filterRecentDocuments,
   filterFavoriteDocuments,
   filterDeletedDocuments,
   filterNonDeletedDocuments,
-  buildDocumentTreeFromMetadata,
 } from '../appwrite/documents';
 
-import type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata } from './types';
-import { getDescendants } from '../appwrite/documents';
+import type { Document, DocumentMetadata } from './types';
 
 // Helper function to check if a document can be moved
 export async function canMoveDocument(
   documentId: string,
-  targetWorkspaceId: string,
-  targetParentId?: string
+  targetWorkspaceId: string
 ): Promise<{ canMove: boolean; reason?: string }> {
-  // Prevent moving a document to be its own descendant
-  if (targetParentId) {
-    const descendants = await getDescendants(documentId);
-    if (descendants.some(doc => doc.id === targetParentId)) {
-      return { canMove: false, reason: 'Cannot move a document to be its own descendant' };
-    }
-  }
-
   // Other validation logic can be added here
   return { canMove: true };
 }
 
 // Re-export types for convenience
-export type { Document, DocumentNode, DocumentMetadata, DocumentNodeMetadata };
+export type { Document, DocumentMetadata };

@@ -16,9 +16,8 @@ import {
   filterRecentDocuments,
   filterFavoriteDocuments,
   filterDeletedDocuments,
-  buildDocumentTreeFromMetadata
 } from '@/lib/db/documents';
-import type { Document, DocumentMetadata, DocumentNodeMetadata } from '@/lib/db/types';
+import type { Document, DocumentMetadata } from '@/lib/db/types';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -50,27 +49,6 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
     if (!allDocuments) return [];
     return filterDeletedDocuments(allDocuments);
   }, [allDocuments]);
-
-  const documentTree = useMemo(() => {
-    if (!allDocuments) return [];
-    return buildDocumentTreeFromMetadata(allDocuments);
-  }, [allDocuments]);
-
-  // Helper function to update a single document in the tree
-  const updateDocumentInTree = useCallback((nodes: DocumentNodeMetadata[], documentId: string, updatedDoc: Partial<Document>): DocumentNodeMetadata[] => {
-    return nodes.map(node => {
-      if (node.id === documentId) {
-        return { ...node, ...updatedDoc };
-      }
-      if (node.children && node.children.length > 0) {
-        return {
-          ...node,
-          children: updateDocumentInTree(node.children, documentId, updatedDoc)
-        };
-      }
-      return node;
-    });
-  }, []);
 
   useEffect(() => {
     const handleDocumentUpdated = (event: Event) => {
@@ -159,10 +137,10 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        <div className='flex-1 overflow-hidden px-3'>
+        <div className='flex-1 overflow-y-auto px-3'>
           {user ? (
             <SidebarDocumentList
-              documents={documentTree}
+              documents={allDocuments ?? []}
               userId={user.id}
               isLoading={isLoading || authLoading}
             />

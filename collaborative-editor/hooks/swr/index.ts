@@ -14,8 +14,6 @@ export {
   useDocumentsMetadata,
   useDocumentsForFiltering,
   useDocument,
-  useDocumentTree,
-  useDocumentTreeMetadata,
   useRecentDocuments,
   useRecentDocumentsMetadata,
   useFavoriteDocuments,
@@ -23,9 +21,6 @@ export {
   useDeletedDocuments,
   useDeletedDocumentsMetadata,
   useDocumentSearch,
-  useDocumentPath,
-  useDocumentChildren,
-  useDocumentDescendants,
   useDocumentMutations,
 } from './useDocuments';
 
