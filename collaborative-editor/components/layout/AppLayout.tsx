@@ -62,8 +62,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       />
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 overflow-auto pl-0 pr-6 py-6 md:pl-4">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>

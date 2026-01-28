@@ -448,3 +448,107 @@ div[data-suggestion-menu] button[data-selected="true"],
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+
+/* Sidebar Document List Animations */
+
+/* Children reveal animation for expand/collapse */
+@keyframes childrenReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-children-reveal {
+  animation: childrenReveal 250ms ease-out forwards;
+}
+
+/* Staggered animation delays for children */
+[class~="space-y-0.5"] > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+[class~="space-y-0.5"] > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+[class~="space-y-0.5"] > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+[class~="space-y-0.5"] > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+[class~="space-y-0.5"] > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+[class~="space-y-0.5"] > *:nth-child(6) {
+  animation-delay: 250ms;
+}
+[class~="space-y-0.5"] > *:nth-child(n+7) {
+  animation-delay: 300ms;
+}
+
+/* Chevron rotation animation */
+@keyframes chevronRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(90deg);
+  }
+}
+
+/* Drag lift effect */
+@keyframes dragLift {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-2px) scale(0.98);
+    opacity: 0.4;
+  }
+}
+
+/* Drop zone pulse animation */
+@keyframes dropZonePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-drop-zone-pulse {
+  animation: dropZonePulse 1.5s ease-in-out infinite;
+}
+
+/* Active document glow animation */
+@keyframes activeGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px -5px rgba(255, 184, 107, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 25px -3px rgba(255, 184, 107, 0.15);
+  }
+}
+
+.active-glow {
+  animation: activeGlow 3s ease-in-out infinite;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-children-reveal,
+  .animate-drop-zone-pulse,
+  .active-glow {
+    animation: none !important;
+  }
+
+  [class~="space-y-0.5"] > * {
+    animation-delay: 0ms !important;
+  }
+}

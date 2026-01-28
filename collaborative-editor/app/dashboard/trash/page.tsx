@@ -210,14 +210,14 @@ export default function TrashPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="w-full p-8">
       <div className="container mx-auto max-w-5xl">
         <div className="flex justify-between items-center mb-8">
           <div>

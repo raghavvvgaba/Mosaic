@@ -449,8 +449,8 @@ export default function DocumentPage() {
   return (
     <TooltipProvider>
       <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
-      <header className="border-b bg-background sticky top-0 z-10">
-        <div className="px-8 py-4 space-y-3">
+        <header className="border-b sticky top-0 z-10">
+          <div className="px-8 py-4 space-y-3">
           {documentPath && documentPath.length > 0 && (
             <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {documentPath.map((node, index) => (
@@ -586,38 +586,36 @@ export default function DocumentPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1">
-          <div className="max-w-4xl mx-auto p-8">
-            <BlockEditor
-              ref={editorRef}
-              documentId={documentId}
-              initialContent={document.content}
-              onSave={handleContentSave}
-              className={FONT_CLASS_MAP[documentFont]}
-              font={documentFont}
-              onOpenAIDraft={() => setAiOpen(true)}
-            />
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-8 min-h-full">
+          <BlockEditor
+            ref={editorRef}
+            documentId={documentId}
+            initialContent={document.content}
+            onSave={handleContentSave}
+            className={FONT_CLASS_MAP[documentFont]}
+            font={documentFont}
+            onOpenAIDraft={() => setAiOpen(true)}
+          />
         </div>
+      </div>
 
-        {/* Stats bar at bottom */}
-        <div className="border-t bg-muted/30 px-8 py-1.5">
-          <div className="max-w-4xl mx-auto flex items-center justify-start gap-2 sm:gap-4 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">{wordCount} words</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">{readingTime} min read</span>
-            <span className="hidden sm:inline">•</span>
-            <span>
-              {saving ? (
-                'Saving...'
-              ) : lastSaved ? (
-                `Last saved: ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
-              ) : (
-                'Not saved'
-              )}
-            </span>
-          </div>
+      {/* Stats bar at bottom */}
+      <div className="border-t px-8 py-1.5">
+        <div className="max-w-4xl mx-auto flex items-center justify-start gap-2 sm:gap-4 text-xs text-muted-foreground">
+          <span className="hidden sm:inline">{wordCount} words</span>
+          <span className="hidden sm:inline">•</span>
+          <span className="hidden sm:inline">{readingTime} min read</span>
+          <span className="hidden sm:inline">•</span>
+          <span>
+            {saving ? (
+              'Saving...'
+            ) : lastSaved ? (
+              `Last saved: ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+            ) : (
+              'Not saved'
+            )}
+          </span>
         </div>
       </div>
 
