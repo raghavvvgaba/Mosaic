@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { RotateCcw, Trash2, FileText, ArchiveRestore } from 'lucide-react';
+import { RotateCcw, Trash2, ArchiveRestore, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
@@ -217,9 +217,11 @@ export default function TrashPage() {
   }
 
   return (
-    <div className="w-full p-8">
+    <div className="w-full p-4 sm:p-6 md:p-8">
       <div className="container mx-auto max-w-5xl">
-        <div className="flex justify-between items-center mb-8">
+        {/* Header Section */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-bold">Trash</h1>
             <p className="text-muted-foreground mt-2">
@@ -266,6 +268,7 @@ export default function TrashPage() {
               </Button>
             </div>
           )}
+          </div>
         </div>
 
         {!documents || documents.length === 0 ? (
@@ -277,60 +280,96 @@ export default function TrashPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {documents.map((doc) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            {documents.map((doc) => {
+              const isSelected = selectionMode && selectedIds.has(doc.id);
+              return (
               <div
                 key={doc.id}
-                className="relative bg-card rounded-xl border transition-all overflow-hidden hover:border-primary/50 hover:shadow-lg"
+                className={cn(
+                  'p-4 sm:p-5 md:p-6 rounded-2xl transition-all duration-200 group overflow-hidden min-h-[140px] sm:h-36 md:h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background flex flex-col',
+                  'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
+                  !selectionMode && 'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
+                  !selectionMode && 'hover:transform hover:-translate-y-0.5',
+                  'cursor-pointer',
+                  isSelected && 'ring-2 ring-primary/50',
+                  FONT_CLASS_MAP[doc.font ?? 'sans']
+                )}
               >
-                <div className="p-6 h-40 flex flex-col">
-                  <div className="flex items-start gap-3">
-                    {selectionMode && (
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.has(doc.id)}
-                          onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-5 h-5 text-muted-foreground" />
-                        <h2 className={cn('text-lg font-semibold', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                          {doc.title || 'Untitled'}
-                        </h2>
-                      </div>
-                      <p className={cn('text-sm text-muted-foreground', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                        Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                      </p>
-                    </div>
+                {/* Selection checkbox at top right */}
+                {selectionMode && (
+                  <div className="flex justify-end -mt-4 -mr-4 mb-2">
+                    <Checkbox
+                      checked={selectedIds.has(doc.id)}
+                      onCheckedChange={(checked) => {
+                        handleSelectDocument(doc.id, checked as boolean);
+                      }}
+                      className={cn(
+                        'size-4 rounded border transition-colors',
+                        selectedIds.has(doc.id)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border/70 bg-background/50'
+                      )}
+                    />
                   </div>
+                )}
+
+                {/* Main content */}
+                <div className="flex-1 flex flex-col justify-center">
+                  <h3
+                    className={cn(
+                      'text-center font-medium text-sm line-clamp-2 text-slate-200 transition-colors',
+                      !selectionMode && 'group-hover:text-primary',
+                      FONT_CLASS_MAP[doc.font ?? 'sans']
+                    )}
+                  >
+                    {doc.title || 'Untitled'}
+                  </h3>
+                  <p className={cn('flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
+                    <Clock className="w-3 h-3" />
+                    Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                  </p>
+                </div>
+
+                {/* Metadata and actions */}
+                <div className="flex items-center justify-end">
                   {!selectionMode && (
-                    <div className="mt-auto flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={(e) => handleRestore(doc.id, e)}>
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        Restore
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestore(doc.id, e);
+                        }}
+                        className="h-6 w-6 text-green-500 hover:bg-green-500/10 transition-all"
+                      >
+                        <RotateCcw className="w-3 h-3" />
                       </Button>
                       <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => handlePermanentDelete(doc.id, doc.title, e)}
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePermanentDelete(doc.id, doc.title, e);
+                        }}
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10 transition-all"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Forever
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Bulk actions toolbar for trash */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-primary text-primary-foreground rounded-full shadow-lg px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center gap-2">
               <span className="font-medium">{selectedIds.size} selected</span>

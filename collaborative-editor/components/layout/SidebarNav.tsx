@@ -1,18 +1,17 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { FileText, Clock, Trash2, Star } from 'lucide-react';
+import { FileText, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/contexts/NavigationContext';
 
 interface SidebarNavProps {
   allCount: number;
-  recentCount: number;
   favoritesCount: number;
   trashCount: number;
 }
 
-export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }: SidebarNavProps) {
+export function SidebarNav({ allCount, favoritesCount, trashCount }: SidebarNavProps) {
   const { openPage } = useNavigation();
   const pathname = usePathname();
 
@@ -24,14 +23,6 @@ export function SidebarNav({ allCount, recentCount, favoritesCount, trashCount }
       path: '/dashboard',
       count: allCount,
       isActive: pathname === '/dashboard' || pathname.startsWith('/dashboard/documents/')
-    },
-    {
-      label: 'Recent',
-      icon: Clock,
-      iconName: 'recent',
-      path: '/dashboard/recent',
-      count: recentCount,
-      isActive: pathname === '/dashboard/recent'
     },
     {
       label: 'Favorites',

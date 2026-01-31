@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { FileText, Star, Clock } from 'lucide-react';
+import { Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
 import { filterFavoriteDocuments } from '@/lib/db/documents';
@@ -70,68 +70,90 @@ export default function FavoritesPage() {
 
   if (!documents || documents.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-2">Favorites</h1>
-        <p className="text-muted-foreground mb-8">
-          Your starred documents will appear here
-        </p>
-
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Star className="w-12 h-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No favorite documents yet</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Click the star icon on any document to add it to favorites
+      <div className="w-full p-4 sm:p-6 md:p-8">
+        <div className="container mx-auto max-w-5xl">
+          <h1 className="text-3xl font-bold mb-2">Favorites</h1>
+          <p className="text-muted-foreground mb-8">
+            Your starred documents will appear here
           </p>
+
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Star className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No favorite documents yet</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Click the star icon on any document to add it to favorites
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-2">Favorites</h1>
-      <p className="text-muted-foreground mt-2">
-        {documents.length} {documents.length === 1 ? 'document' : 'documents'}
-      </p>
-      <p className="text-xs text-muted-foreground mt-1 mb-6">
-        Workspace: {activeWorkspace?.name ?? 'Loading...'}
-      </p>
+    <div className="w-full p-4 sm:p-6 md:p-8">
+      <div className="container mx-auto max-w-5xl">
+        {/* Header Section */}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold mb-2">Favorites</h1>
+          <p className="text-muted-foreground mt-2">
+            {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Workspace: {activeWorkspace?.name ?? 'Loading...'}
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {documents.map((doc) => (
           <div
             key={doc.id}
             onClick={() => handleDocumentClick(doc)}
-            className="relative bg-card rounded-xl border transition-all cursor-pointer group overflow-hidden hover:border-primary/50 hover:shadow-lg"
+            className={cn(
+              'p-4 sm:p-5 md:p-6 rounded-2xl transition-all duration-200 group overflow-hidden min-h-[140px] sm:h-36 md:h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background flex flex-col',
+              'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
+              'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
+              'hover:transform hover:-translate-y-0.5',
+              'cursor-pointer',
+              FONT_CLASS_MAP[doc.font ?? 'sans']
+            )}
           >
-            <div className="p-6 h-40 flex flex-col">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="w-5 h-5 text-muted-foreground" />
-                  <h2 className={cn('text-xl font-semibold group-hover:text-primary transition-colors', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                    {doc.title || 'Untitled'}
-                  </h2>
-                </div>
-                {doc.lastChangedAt && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
-                  </div>
+            {/* Main content */}
+            <div className="flex-1 flex flex-col justify-center">
+              <h3
+                className={cn(
+                  'text-center font-medium text-sm line-clamp-2 text-slate-200 transition-colors group-hover:text-primary',
+                  FONT_CLASS_MAP[doc.font ?? 'sans']
                 )}
-              </div>
-              <div className="mt-auto flex items-center justify-end">
+              >
+                {doc.title || 'Untitled'}
+              </h3>
+              {doc.lastChangedAt && (
+                <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2">
+                  <Clock className="w-3 h-3" />
+                  <span>{formatShortTime(new Date(doc.lastChangedAt))}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Metadata and actions */}
+            <div className="flex items-center justify-end">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleToggleFavorite(e, doc.id, doc.isFavorite ?? false)}
-                  className={`${doc.isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity text-yellow-500`}
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFavorite(e, doc.id, doc.isFavorite ?? false);
+                  }}
+                  className={`h-6 w-6 transition-all ${doc.isFavorite ? 'text-yellow-500 opacity-100' : 'hover:bg-accent/20'}`}
                 >
-                  <Star className={`w-4 h-4 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
+                  <Star className={`w-3 h-3 ${doc.isFavorite ? 'fill-yellow-500' : ''}`} />
                 </Button>
               </div>
             </div>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

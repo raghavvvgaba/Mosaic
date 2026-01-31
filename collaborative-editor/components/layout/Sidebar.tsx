@@ -13,7 +13,6 @@ import {
   useDocumentMutations,
 } from '@/hooks/swr';
 import {
-  filterRecentDocuments,
   filterFavoriteDocuments,
   filterDeletedDocuments,
 } from '@/lib/db/documents';
@@ -35,11 +34,6 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Use useMemo for client-side filtering (performance optimization)
-  const recentDocuments = useMemo(() => {
-    if (!allDocuments) return [];
-    return filterRecentDocuments(allDocuments);
-  }, [allDocuments]);
-
   const favoriteDocuments = useMemo(() => {
     if (!allDocuments) return [];
     return filterFavoriteDocuments(allDocuments);
@@ -118,7 +112,6 @@ export function Sidebar({ onSearchOpen, onShowShortcuts }: SidebarProps) {
 
         <SidebarNav
           allCount={allDocuments?.length ?? 0}
-          recentCount={recentDocuments.length}
           favoritesCount={favoriteDocuments.length}
           trashCount={trashedDocuments.length}
         />
