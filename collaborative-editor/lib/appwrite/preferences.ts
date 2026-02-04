@@ -36,8 +36,11 @@ export class PreferencesService {
       // Get current preferences first to merge
       const currentPrefs = await this.getPreferences();
 
-      // Merge updates with current preferences
-      const newPrefs = this.deepMerge(currentPrefs, updates);
+      // Merge updates with current preferences (flat object)
+      const newPrefs: UserPreferences = {
+        ...currentPrefs,
+        ...updates,
+      };
 
       // Update on Appwrite (replaces entire object)
       await account.updatePrefs({ prefs: newPrefs });
@@ -76,31 +79,18 @@ export class PreferencesService {
   /**
    * Merge fetched preferences with defaults (handles missing keys)
    */
-  private static mergeWithDefaults(fetchedPrefs: any): UserPreferences {
+  private static mergeWithDefaults(fetchedPrefs: unknown): UserPreferences {
     const defaults = this.getDefaultPreferences();
+    const prefs =
+      typeof fetchedPrefs === 'object' && fetchedPrefs !== null
+        ? (fetchedPrefs as Partial<UserPreferences>)
+        : {};
 
     return {
-      theme: fetchedPrefs.theme ?? defaults.theme,
-      font: fetchedPrefs.font ?? defaults.font,
-      fontSize: fetchedPrefs.fontSize ?? defaults.fontSize,
-      avatarId: fetchedPrefs.avatarId ?? defaults.avatarId,
+      theme: prefs.theme ?? defaults.theme,
+      font: prefs.font ?? defaults.font,
+      fontSize: prefs.fontSize ?? defaults.fontSize,
+      avatarId: prefs.avatarId ?? defaults.avatarId,
     };
-  }
-
-  /**
-   * Deep merge objects to avoid losing nested data
-   */
-  private static deepMerge(target: any, source: any): any {
-    const result = { ...target };
-
-    for (const key in source) {
-      if (source[key] instanceof Object && key in target && !(source[key] instanceof Array)) {
-        result[key] = this.deepMerge(target[key], source[key]);
-      } else {
-        result[key] = source[key];
-      }
-    }
-
-    return result;
   }
 }

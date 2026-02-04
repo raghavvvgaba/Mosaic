@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronsUpDown, Plus, Pencil, Trash2, Check, Briefcase, Settings2, PlusCircle } from 'lucide-react';
+import { ChevronsUpDown, Plus, Pencil, Trash2, Check, Briefcase, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

@@ -12,6 +12,25 @@ type InlineContent = {
   [key: string]: unknown
 }
 
+type BlockContent = InlineContent[] | string | undefined
+type BlockWithContent = Block & { content?: BlockContent }
+
+type TiptapEditor = {
+  state: {
+    selection: { empty: boolean }
+    tr: { replaceSelectionWith: (node: unknown) => void }
+  }
+  schema: {
+    text: (text: string) => unknown
+  }
+  view: { dispatch: (tr: unknown) => void }
+}
+
+function getTiptapEditor(editor: BlockNoteEditor): TiptapEditor | null {
+  const maybe = (editor as unknown as { _tiptapEditor?: TiptapEditor })._tiptapEditor
+  return maybe ?? null
+}
+
 /**
  * Extract selected text from BlockNote editor using only BlockNote APIs
  */
@@ -51,15 +70,15 @@ function extractTextFromBlocks(blocks: Block[]): string {
 
   blocks.forEach(block => {
     // Access block content through the correct property
-    const blockAny = block as any
-    if (blockAny.content) {
-      if (typeof blockAny.content === 'string') {
-        texts.push(blockAny.content)
-      } else if (Array.isArray(blockAny.content)) {
+    const content = (block as BlockWithContent).content
+    if (content) {
+      if (typeof content === 'string') {
+        texts.push(content)
+      } else if (Array.isArray(content)) {
         // Handle inline content array
-        const text = blockAny.content
-          .filter((item: any) => item && typeof item === 'object' && 'text' in item)
-          .map((item: any) => item.text || '')
+        const text = content
+          .filter((item) => item && typeof item === 'object' && 'text' in item)
+          .map((item) => (typeof item.text === 'string' ? item.text : ''))
           .join('')
         if (text) {
           texts.push(text)
@@ -81,14 +100,15 @@ export function hasTextSelection(editor: BlockNoteEditor): boolean {
   }
 
   // Check if any selected blocks have actual text content
-  const blocks = selection.blocks as any[]
+  const blocks = selection.blocks as BlockWithContent[]
   return blocks.some(block => {
-    if (block.content) {
-      if (typeof block.content === 'string') {
-        return block.content.trim().length > 0
+    const content = block.content
+    if (content) {
+      if (typeof content === 'string') {
+        return content.trim().length > 0
       }
-      if (Array.isArray(block.content)) {
-        return block.content.some((item: any) => item && item.text && item.text.trim().length > 0)
+      if (Array.isArray(content)) {
+        return content.some((item) => typeof item?.text === 'string' && item.text.trim().length > 0)
       }
     }
     return false
@@ -101,19 +121,18 @@ export function hasTextSelection(editor: BlockNoteEditor): boolean {
 export function replaceSelectedText(editor: BlockNoteEditor, newText: string): boolean {
   try {
     // Get the current selection to use ProseMirror directly
-    const pmSelection = (editor as any)._tiptapEditor.state.selection
-    const editorAny = editor as any
+    const tiptap = getTiptapEditor(editor)
+    if (!tiptap) return false
+    const pmSelection = tiptap.state.selection
 
     if (!pmSelection || pmSelection.empty) {
       return false
     }
 
     // Use ProseMirror's transaction to replace the selected text
-    const { tr } = (editor as any)._tiptapEditor.state
-    tr.replaceSelectionWith(
-      (editor as any)._tiptapEditor.schema.text(newText)
-    )
-    ;(editor as any)._tiptapEditor.view.dispatch(tr)
+    const { tr } = tiptap.state
+    tr.replaceSelectionWith(tiptap.schema.text(newText))
+    tiptap.view.dispatch(tr)
 
     return true
   } catch (error) {
@@ -123,10 +142,10 @@ export function replaceSelectedText(editor: BlockNoteEditor, newText: string): b
     try {
       const selection = editor.getSelection()
       if (selection && selection.blocks.length > 0) {
-        const editorFallback = editor as any
-        const newBlock = editorFallback.schema.paragraph.create([
-          editorFallback.schema.text(newText)
-        ]) as any
+        const newBlock = {
+          type: 'paragraph',
+          content: [{ type: 'text', text: newText }]
+        } as unknown as Block
 
         editor.insertBlocks([newBlock], selection.blocks[0], 'before')
         editor.removeBlocks(selection.blocks)
@@ -155,7 +174,7 @@ export function insertTextBelow(editor: BlockNoteEditor, text: string): boolean 
     const newBlock = {
       type: 'paragraph' as const,
       content: [{ type: 'text' as const, text }]
-    } as any // Cast to any to bypass strict type checking
+    } as unknown as Block
 
     // Insert after current block
     const currentBlock = cursorPos.block
@@ -176,8 +195,8 @@ export function insertTextBelow(editor: BlockNoteEditor, text: string): boolean 
         const simpleBlock = {
           type: 'paragraph',
           content: typeof text === 'string' ? [{ type: 'text', text }] : text
-        }
-        editor.insertBlocks([simpleBlock as any], cursorPos.block, 'after')
+        } as unknown as Block
+        editor.insertBlocks([simpleBlock], cursorPos.block, 'after')
         return true
       }
     } catch (fallbackError) {

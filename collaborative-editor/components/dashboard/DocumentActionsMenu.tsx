@@ -4,8 +4,7 @@ import {
   MoreVertical, 
   Pencil, 
   Trash2, 
-  Star, 
-  FileInput, 
+  Star,
   FolderInput 
 } from 'lucide-react';
 import {
@@ -16,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 
 interface DocumentActionsMenuProps {
   onRename: () => void;
@@ -47,6 +45,10 @@ export function DocumentActionsMenu({
         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename(); }}>
           <Pencil className="mr-2 h-4 w-4" />
           <span>Rename</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}>
+          <Star className={`mr-2 h-4 w-4 ${isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+          <span>{isFavorite ? 'Remove Favorite' : 'Add to Favorites'}</span>
         </DropdownMenuItem>
         {/* Placeholder for Move functionality if implemented */}
         <DropdownMenuItem disabled>

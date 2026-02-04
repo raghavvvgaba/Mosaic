@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { CheckSquare, Square } from 'lucide-react';
+import { CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { SearchBar } from '@/components/sidebar/SearchBar'; // Reusing existing search for now

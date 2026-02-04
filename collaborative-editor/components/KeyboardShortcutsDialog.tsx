@@ -96,7 +96,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
           {shortcutsByCategory.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
               <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No shortcuts found matching "{searchQuery}"</p>
+              <p className="text-sm">No shortcuts found matching &quot;{searchQuery}&quot;</p>
             </div>
           ) : (
             shortcutsByCategory.map(({ category, categoryInfo, shortcuts }) => (

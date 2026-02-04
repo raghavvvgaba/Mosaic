@@ -24,7 +24,7 @@ export function AppearanceSettings() {
   const [selectedFont, setSelectedFont] = useState<Font>('sans');
   const [fontSize, setFontSize] = useState(16);
   const [isSaving, setIsSaving] = useState(false);
-  const [previewText, setPreviewText] = useState('The quick brown fox jumps over the lazy dog.');
+  const [previewText] = useState('The quick brown fox jumps over the lazy dog.');
 
   // Initialize font and fontSize from user preferences
   useEffect(() => {

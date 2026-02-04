@@ -17,12 +17,13 @@ async function validateWorkspaceOwnership(workspaceId: string): Promise<{ userId
       workspaceId
     );
 
-    const workspace = response as any;
+    const workspace = response as { ownerId?: string };
     return {
       userId: user.$id,
       valid: workspace.ownerId === user.$id
     };
   } catch (error) {
+    void error;
     return { userId: '', valid: false };
   }
 }

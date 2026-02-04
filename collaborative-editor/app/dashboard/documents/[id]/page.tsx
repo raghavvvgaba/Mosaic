@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save, Download } from 'lucide-react';
+import { MoreVertical, Copy, Star, Trash2, Sparkles, Loader2, CircleCheck, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -60,7 +60,7 @@ export default function DocumentPage() {
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const { data: document, isLoading, mutate } = useDocument(documentId);
-  const { updateDocument, updateDocumentTitleOnly, duplicateDocument, toggleFavorite, deleteDocument, createDocument, permanentlyDeleteDocument } = useDocumentMutations();
+  const { updateDocument, duplicateDocument, toggleFavorite, deleteDocument, permanentlyDeleteDocument } = useDocumentMutations();
 
   const [saving, setSaving] = useState(false);
   const [titleSaving, setTitleSaving] = useState(false);
@@ -109,7 +109,7 @@ export default function DocumentPage() {
       };
       checkAndDeleteEmpty();
     };
-  }, [documentId]);
+  }, [documentId, permanentlyDeleteDocument]);
 
   // (Minimal rebuild) Removed auto-title timers and retries
 
@@ -293,12 +293,7 @@ export default function DocumentPage() {
         }
       },
     });
-  }, [documentId]);
-
-  const handleBreadcrumbNavigate = useCallback((target: Document) => {
-    if (target.id === documentId) return;
-    openDocument(target.id, target.title);
-  }, [documentId, openDocument]);
+  }, [documentId, deleteDocument]);
 
   useEffect(() => {
     function handleDocumentsChanged(event: Event) {

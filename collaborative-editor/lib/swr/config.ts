@@ -1,5 +1,19 @@
 import { SWRConfiguration } from 'swr';
 
+type ErrorWithStatus = {
+  status?: number;
+  response?: { status?: number };
+  code?: number;
+  type?: string;
+  message?: string;
+};
+
+const getStatus = (error: unknown) => {
+  if (!error || typeof error !== 'object') return undefined;
+  const err = error as ErrorWithStatus;
+  return err.status ?? err.response?.status;
+};
+
 /**
  * Global SWR Configuration
  *
@@ -26,7 +40,8 @@ export const swrConfig: SWRConfiguration = {
   // Error retry strategy
   onErrorRetry: (error, key, config, revalidate, opts) => {
     // Don't retry on 401 (unauthorized) or 403 (forbidden) errors
-    const shouldNotRetry = error.status === 401 || error.status === 403;
+    const status = getStatus(error);
+    const shouldNotRetry = status === 401 || status === 403;
     if (shouldNotRetry) return;
 
     // Only retry up to 3 times
@@ -39,7 +54,8 @@ export const swrConfig: SWRConfiguration = {
   // Global error handler
   onError: (error, key) => {
     // Log errors but don't show toasts here (let components handle UI)
-    if (error.status !== 401 && error.status !== 403) {
+    const status = getStatus(error);
+    if (status !== 401 && status !== 403) {
       console.error('SWR Error:', key, error);
     }
   },
@@ -58,16 +74,19 @@ export const swrConfig: SWRConfiguration = {
 export async function swrFetcher<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Enhance error with status code if available
-    if (error.response) {
+    const status = getStatus(error);
+    if (status !== undefined) {
+      const base =
+        typeof error === 'object' && error !== null ? (error as ErrorWithStatus) : {};
       throw {
-        ...error,
-        status: error.response.status,
-        message: error.message || 'An error occurred',
+        ...base,
+        status,
+        message: base.message || 'An error occurred',
       };
     }
-    throw error;
+    throw error instanceof Error ? error : new Error('An error occurred');
   }
 }
 
@@ -80,15 +99,16 @@ export function createAuthenticatedFetcher<T>(
   return async () => {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle authentication errors
-      if (error.code === 401 || error.type === 'user_unauthorized') {
+      const err = error as ErrorWithStatus;
+      if (err.code === 401 || err.type === 'user_unauthorized') {
         // Redirect to login or show auth modal
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('authError'));
         }
       }
-      throw error;
+      throw error instanceof Error ? error : new Error('An error occurred');
     }
   };
 }

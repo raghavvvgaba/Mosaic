@@ -34,6 +34,8 @@ export async function canMoveDocument(
   documentId: string,
   targetWorkspaceId: string
 ): Promise<{ canMove: boolean; reason?: string }> {
+  void documentId;
+  void targetWorkspaceId;
   // Other validation logic can be added here
   return { canMove: true };
 }

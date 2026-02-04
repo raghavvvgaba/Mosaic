@@ -18,7 +18,7 @@ interface WorkspaceContextValue {
   activeWorkspace: Workspace | null;
   loading: boolean;
   setActiveWorkspace: (id: string, options?: { navigate?: boolean }) => void;
-  createWorkspace: (name: string, options?: { color?: string; icon?: string }) => Promise<Workspace>;
+  createWorkspace: (name: string) => Promise<Workspace>;
   renameWorkspace: (id: string, name: string) => Promise<Workspace>;
   updateWorkspaceMetadata: (id: string, updates: { color?: string; icon?: string }) => Promise<Workspace>;
   deleteWorkspace: (id: string) => Promise<void>;
@@ -103,7 +103,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [loadWorkspaces, setActiveWorkspace, user]);
 
   const createWorkspace = useCallback(
-    async (name: string, options: { color?: string; icon?: string } = {}) => {
+    async (name: string) => {
       const workspace = await createWorkspaceRecord(name, user?.id);
       await loadWorkspaces();
       setActiveWorkspace(workspace.id);

@@ -15,7 +15,7 @@ import { RenameDialog } from '@/components/RenameDialog';
 
 export default function Home() {
   const { openDocument } = useNavigation();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { data: documents, isLoading } = useDocumentsMetadata({
     workspaceId: activeWorkspaceId ?? undefined,
     includeDeleted: true,
@@ -28,7 +28,6 @@ export default function Home() {
   }, [documents]);
 
   const { deleteDocument, toggleFavorite, updateDocument } = useDocumentMutations();
-  const [greeting, setGreeting] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const selectionModeRef = useRef(selectionMode);
@@ -47,14 +46,6 @@ export default function Home() {
   useEffect(() => {
     selectionModeRef.current = selectionMode;
   }, [selectionMode]);
-
-  useEffect(() => {
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 18) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-  }, []);
 
   useEffect(() => {
     setSelectionMode(false);

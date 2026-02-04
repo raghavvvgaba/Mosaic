@@ -16,7 +16,7 @@ import { RenameDialog } from '@/components/RenameDialog';
 
 export default function FavoritesPage() {
   const { openDocument } = useNavigation();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { data: allDocuments, isLoading } = useDocumentsMetadata({
     workspaceId: activeWorkspaceId ?? undefined,
     includeDeleted: true,
@@ -230,4 +230,3 @@ export default function FavoritesPage() {
     </div>
   );
 }
-

@@ -1,5 +1,4 @@
 import { getAppwrite, ID, Permission, Role, appwriteConfig } from './config';
-import type { Models } from 'appwrite';
 
 /**
  * Storage Service
@@ -15,6 +14,16 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif',
 // Max file sizes
 const AVATARS_MAX_SIZE = 5 * 1024 * 1024; // 5MB for avatars
 const DOCUMENT_IMAGES_MAX_SIZE = 15 * 1024 * 1024; // 15MB for document images
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+  if (typeof error === 'string') {
+    return error || fallback;
+  }
+  return fallback;
+};
 
 export interface AvatarUploadResult {
   fileId: string;
@@ -72,9 +81,9 @@ export class StorageService {
         fileId: result.$id,
         url,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar upload failed:', error);
-      throw new Error(error.message || 'Failed to upload avatar');
+      throw new Error(getErrorMessage(error, 'Failed to upload avatar'));
     }
   }
 
@@ -90,7 +99,7 @@ export class StorageService {
         bucketId: AVATARS_BUCKET_ID,
         fileId: fileId,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar deletion failed:', error);
       // Don't throw - avatar deletion shouldn't block other operations
       console.warn('Failed to delete old avatar file:', fileId);
@@ -221,9 +230,9 @@ export class StorageService {
       const url = this.getDocumentImageViewUrl(result.$id);
 
       return url;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Document image upload failed:', error);
-      throw new Error(error.message || 'Failed to upload image');
+      throw new Error(getErrorMessage(error, 'Failed to upload image'));
     }
   }
 
@@ -239,7 +248,7 @@ export class StorageService {
         bucketId: DOCUMENT_IMAGES_BUCKET_ID,
         fileId: fileId,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Document image deletion failed:', error);
       // Don't throw - image deletion shouldn't block other operations
       console.warn('Failed to delete document image file:', fileId);
@@ -249,17 +258,10 @@ export class StorageService {
   /**
    * Get the URL for a document image file
    * @param fileId - The file ID
-   * @param width - Optional width for future use (currently not used)
-   * @param height - Optional height for future use (currently not used)
    * @returns The view URL (original quality, no transformations, faster loading)
    */
-  static getDocumentImageUrl(
-    fileId: string,
-    width?: number,
-    height?: number
-  ): string {
+  static getDocumentImageUrl(fileId: string): string {
     // For document images, use view endpoint (original quality, no processing, faster)
-    // Width and height parameters are kept for API compatibility but not used
     return this.getDocumentImageViewUrl(fileId);
   }
 

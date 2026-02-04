@@ -9,9 +9,10 @@
  * WARNING: This will permanently delete all nested documents
  */
 
-const { Client, ID, Query } = require('appwrite');
+const { Client, Databases, Query } = require('appwrite');
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 
 // Read environment variables from .env.local file
 function loadEnvVars() {
@@ -106,7 +107,6 @@ async function deleteNestedDocuments() {
     console.log('⚠️  WARNING: This will permanently delete ALL nested documents listed above!');
     console.log('⚠️  Root-level documents (with no parentId) will NOT be deleted.\n');
     
-    const readline = require('readline');
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
@@ -140,7 +140,8 @@ async function deleteNestedDocuments() {
         process.stdout.write(`\r  Progress: ${deletedCount}/${nestedDocs.length} deleted`);
       } catch (error) {
         failedCount++;
-        console.error(`\n  ✗ Failed to delete ${doc.$id}:`, error.message);
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`\n  ✗ Failed to delete ${doc.$id}:`, message);
       }
     }
 
@@ -170,7 +171,8 @@ async function deleteNestedDocuments() {
     console.error('\n❌ Error during cleanup:');
     console.error(error);
     
-    if (error.message && error.message.includes('not found')) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('not found')) {
       console.error('\n💡 Hint: Make sure your APPWRITE_API_KEY has write permissions.');
     }
     

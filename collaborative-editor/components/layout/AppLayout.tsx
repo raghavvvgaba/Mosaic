@@ -59,7 +59,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
-        onSearchOpen={() => setSearchOpen(true)}
         onShowShortcuts={() => setShortcutsOpen(true)}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

@@ -1,9 +1,6 @@
 import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
 import type { Document, DocumentMetadata, Collaborator } from '../db/types';
 
-// Import workspace validation
-import type { Workspace } from '../db/types';
-
 // Extend Window interface for custom event
 declare global {
   interface WindowEventMap {
@@ -15,8 +12,10 @@ const getDatabaseId = () => appwriteConfig.databaseId;
 const getDocumentsTableId = () => appwriteConfig.documentsTableId;
 
 // User cache to avoid repeated account.get() calls
+type AppwriteUser = { $id: string } & Record<string, unknown>;
+
 interface UserCache {
-  user: any | null;
+  user: AppwriteUser | null;
   userId: string | null;
 }
 
@@ -43,13 +42,13 @@ async function getCachedUser() {
   // Fetch and cache
   const appwrite = getAppwrite();
   try {
-    const user = await appwrite.account.get();
+    const user = (await appwrite.account.get()) as AppwriteUser;
     userCache.user = user;
     userCache.userId = user.$id;
     return { user, userId: user.$id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Clear cache on auth failure
-    if (error.code === 401 || error.type === 'user_unauthorized') {
+    if (isUnauthorizedError(error)) {
       userCache.user = null;
       userCache.userId = null;
     }
@@ -76,9 +75,9 @@ async function validateDocumentOwnership(documentId: string): Promise<{ userId: 
       valid: document.ownerId === userId,
       document
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If error is from getCachedUser(), re-throw with proper structure
-    if (error.code === 401 || error.type === 'user_unauthorized') {
+    if (isUnauthorizedError(error)) {
       return { userId: '', valid: false };
     }
     return { userId: '', valid: false };
@@ -98,14 +97,14 @@ async function validateWorkspaceOwnershipForDocuments(workspaceId: string): Prom
       workspaceId
     );
 
-    const workspace = response as any;
+    const workspace = response as { ownerId?: string };
     return {
       userId,
       valid: workspace.ownerId === userId
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If error is from getCachedUser(), re-throw with proper structure
-    if (error.code === 401 || error.type === 'user_unauthorized') {
+    if (isUnauthorizedError(error)) {
       return { userId: '', valid: false };
     }
     return { userId: '', valid: false };
@@ -153,7 +152,7 @@ function appwriteDocumentToDocumentMetadata(appwriteDoc: Record<string, unknown>
 
 // Helper function to convert Document to Appwrite format
 function documentToAppwriteDocument(doc: Partial<Document>) {
-  const result: any = {};
+  const result: Record<string, unknown> = {};
 
   if (doc.title !== undefined) result.title = doc.title;
   if (doc.content !== undefined) result.content = doc.content;
@@ -168,6 +167,14 @@ function documentToAppwriteDocument(doc: Partial<Document>) {
   if (doc.collaborators !== undefined) result.collaborators = doc.collaborators || [];
 
   return result;
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const err = error as { code?: number; type?: string };
+  return err.code === 401 || err.type === 'user_unauthorized';
 }
 
 export async function createDocument(

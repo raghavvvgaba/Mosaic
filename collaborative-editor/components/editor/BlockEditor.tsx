@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController, FormattingToolbarController, useComponentsContext, useEditorContentOrSelectionChange, getFormattingToolbarItems, useBlockNoteEditor, useSelectedBlocks } from "@blocknote/react";
+import { useCreateBlockNote, DefaultReactSuggestionItem, getDefaultReactSlashMenuItems, SuggestionMenuController, FormattingToolbarController, useComponentsContext, getFormattingToolbarItems, useBlockNoteEditor, useSelectedBlocks } from "@blocknote/react";
 import { useImproveWriting } from "@/hooks/useImproveWriting";
 import { ImproveWritingLoader } from "./ImproveWritingLoader";
 import { ImprovedTextDisplay } from "./ImprovedTextDisplay";
@@ -56,14 +56,13 @@ const ImproveWritingButton = ({ onClick }: { onClick: () => void }) => {
 
   // Only show if there are selected blocks with content
   const hasSelectedText = selectedBlocks.some((block) => {
-    const blockAny = block as any;
-    if (blockAny.content) {
-      if (typeof blockAny.content === 'string') {
-        return blockAny.content.trim().length > 0;
-      }
-      if (Array.isArray(blockAny.content)) {
-        return blockAny.content.some((item: any) => item && item.text && item.text.trim().length > 0);
-      }
+    const content = (block as EditorBlock).content;
+    if (!content) return false;
+    if (typeof content === 'string') {
+      return content.trim().length > 0;
+    }
+    if (Array.isArray(content)) {
+      return content.some((item) => typeof item?.text === 'string' && item.text.trim().length > 0);
     }
     return false;
   });
@@ -93,7 +92,6 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
 }: BlockEditorProps, ref) {
   const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const [isEmpty, setIsEmpty] = useState<boolean>(true);
   const [imageUpload, setImageUpload] = useState({
     loading: false,
     error: null as string | null,
@@ -137,11 +135,11 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         const imageUrl = await StorageService.uploadDocumentImage(file);
         setImageUpload({ loading: false, error: null });
         return imageUrl;
-      } catch (error: any) {
-        const errorMessage = error.message || 'Failed to upload image';
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
         setImageUpload({ loading: false, error: errorMessage });
         console.error('Image upload failed:', error);
-        throw error;
+        throw error instanceof Error ? error : new Error(errorMessage);
       }
     },
   }) as unknown as MaybeExtraEditor;
@@ -158,37 +156,11 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     const content = JSON.stringify(jsonDoc);
     debouncedSave(content);
 
-    try {
-      const empty =
-        !jsonDoc ||
-        jsonDoc.length === 0 ||
-        (jsonDoc.length === 1 &&
-          jsonDoc[0] &&
-          jsonDoc[0].type === 'paragraph' &&
-          (!jsonDoc[0].content ||
-            (Array.isArray(jsonDoc[0].content) && jsonDoc[0].content.length === 0)));
-      setIsEmpty(empty);
-    } catch {
-      setIsEmpty(false);
-    }
   }, [editor, debouncedSave]);
 
   useEffect(() => {
     return editor.onChange(handleChange);
   }, [editor, handleChange]);
-
-  // Initialize empty state on mount
-  useEffect(() => {
-    const jsonDoc = editor.document as unknown as EditorBlock[];
-    const empty =
-      !jsonDoc ||
-      jsonDoc.length === 0 ||
-      (jsonDoc.length === 1 &&
-        jsonDoc[0] &&
-        jsonDoc[0].type === 'paragraph' &&
-        (!jsonDoc[0].content || (Array.isArray(jsonDoc[0].content) && jsonDoc[0].content.length === 0)));
-    setIsEmpty(empty);
-  }, [editor]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;

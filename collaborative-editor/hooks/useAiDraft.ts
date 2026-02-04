@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { streamGenerate, type GenerateParams } from '@/lib/ai/openrouter-client'
 
 export type AiOptions = {

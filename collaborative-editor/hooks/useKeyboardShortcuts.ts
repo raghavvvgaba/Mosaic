@@ -6,7 +6,6 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Shortcut, ShortcutCategory } from '@/lib/shortcuts/shortcutConfig';
 import { matchesShortcut, isMac } from '@/lib/shortcuts/shortcutConfig';
 import { createDocument } from '@/lib/appwrite/documents';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { usePathname } from 'next/navigation';
 
 interface UseKeyboardShortcutsOptions {
@@ -18,7 +17,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
   const { enabled = true, context = 'global' } = options;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useAuthContext();
   const pathname = usePathname();
   const shortcutsRef = useRef<Shortcut[]>([]);
 

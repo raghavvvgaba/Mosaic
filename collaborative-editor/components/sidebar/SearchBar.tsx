@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useDocumentSearch } from '@/hooks/swr';
@@ -103,7 +103,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       {isOpen && results.length === 0 && query.length > 1 && (
         <div className="absolute top-full mt-3 w-full neu-card border-0 rounded-2xl p-6 text-center text-muted-foreground z-50 shadow-2xl">
           <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">No documents found for "{query}"</p>
+          <p className="text-sm">No documents found for &quot;{query}&quot;</p>
         </div>
       )}
     </div>

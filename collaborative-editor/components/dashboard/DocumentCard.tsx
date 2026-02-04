@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { FileText, Clock, Star } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentActionsMenu } from './DocumentActionsMenu';
 import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';

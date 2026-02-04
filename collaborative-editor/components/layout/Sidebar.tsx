@@ -12,41 +12,29 @@ import {
   ChevronRight,
   Plus,
   Check,
-  Briefcase,
   Home,
-  Settings2
+  Settings2,
+  type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useAuthContext } from '@/contexts/AuthContext';
 import { cn, getInitials, getWorkspaceColor } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { WorkspaceSwitcher, WorkspaceManagerDialog } from './WorkspaceSwitcher';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SidebarProps {
-  onSearchOpen: () => void;
   onShowShortcuts: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
 export function Sidebar({ 
-  onSearchOpen, 
   onShowShortcuts, 
   isCollapsed, 
   onToggleCollapse 
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuthContext();
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
@@ -58,7 +46,7 @@ export function Sidebar({
     isActive = false,
     shortcut
   }: { 
-    icon: any, 
+    icon: LucideIcon, 
     label: string, 
     onClick: () => void, 
     isActive?: boolean,

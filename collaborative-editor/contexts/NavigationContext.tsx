@@ -16,11 +16,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const openDocument = useCallback((id: string, title: string) => {
+    void title;
     // Simply navigate to the document, replacing current view
     router.push(`/dashboard/documents/${id}`);
   }, [router]);
 
   const openPage = useCallback((path: string, title: string) => {
+    void title;
     // Simply navigate to the page, replacing current view
     router.push(path);
   }, [router]);

@@ -7,6 +7,24 @@ import { StorageService } from '@/lib/appwrite/storage';
 import { createWorkspace } from '@/lib/appwrite/workspaces';
 import type { User, UserPreferences } from '@/lib/db/types';
 
+type AppwriteUser = {
+  $id: string;
+  email: string;
+  name: string;
+  emailVerification?: boolean;
+  $createdAt: string;
+};
+
+const getErrorMessage = (err: unknown, fallback: string) => {
+  if (err instanceof Error) {
+    return err.message || fallback;
+  }
+  if (typeof err === 'string') {
+    return err || fallback;
+  }
+  return fallback;
+};
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -42,7 +60,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
   const [error, setError] = useState<string | null>(null);
 
   // Convert Appwrite user to our User type
-  const convertAppwriteUser = async (appwriteUser: any): Promise<User> => {
+  const convertAppwriteUser = async (appwriteUser: AppwriteUser): Promise<User> => {
     // Fetch preferences from Appwrite (now includes avatarId)
     const preferences = await PreferencesService.getPreferences();
 
@@ -96,9 +114,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       const { user: appwriteUser } = await AuthService.signIn(email, password);
       const user = await convertAppwriteUser(appwriteUser);
       setUser(user);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign in failed:', err);
-      const errorMessage = err.message || 'Invalid email or password';
+      const errorMessage = getErrorMessage(err, 'Invalid email or password');
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -125,9 +143,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         setError('Account created successfully, but workspace creation failed. You may need to create a workspace manually.');
         // Still allow signup to complete since user account was created
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign up failed:', err);
-      const errorMessage = err.message || 'Failed to create account';
+      const errorMessage = getErrorMessage(err, 'Failed to create account');
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -142,9 +160,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
 
       await AuthService.signOut();
       setUser(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign out failed:', err);
-      const errorMessage = err.message || 'Failed to sign out';
+      const errorMessage = getErrorMessage(err, 'Failed to sign out');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -162,9 +180,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         const updatedUser = { ...user, name };
         setUser(updatedUser);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Profile update failed:', err);
-      const errorMessage = err.message || 'Failed to update profile';
+      const errorMessage = getErrorMessage(err, 'Failed to update profile');
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -185,9 +203,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         };
         setUser(updatedUser);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Preferences update failed:', err);
-      const errorMessage = err.message || 'Failed to update preferences';
+      const errorMessage = getErrorMessage(err, 'Failed to update preferences');
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -212,9 +230,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         };
         setUser(updatedUser);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Avatar update failed:', err);
-      const errorMessage = err.message || 'Failed to update avatar';
+      const errorMessage = getErrorMessage(err, 'Failed to update avatar');
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -242,9 +260,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
         };
         setUser(updatedUser);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Avatar deletion failed:', err);
-      const errorMessage = err.message || 'Failed to delete avatar';
+      const errorMessage = getErrorMessage(err, 'Failed to delete avatar');
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -254,9 +272,9 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     try {
       setError(null);
       await AuthService.sendEmailVerification();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Email verification failed:', err);
-      const errorMessage = err.message || 'Failed to send verification email';
+      const errorMessage = getErrorMessage(err, 'Failed to send verification email');
       setError(errorMessage);
       throw new Error(errorMessage);
     }

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { RotateCcw, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
 import { filterDeletedDocuments } from '@/lib/db/documents';
-import type { DocumentMetadata, DocumentFont } from '@/lib/db/types';
+import type { DocumentFont } from '@/lib/db/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
@@ -16,7 +15,6 @@ import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 
 export default function TrashPage() {
-  const router = useRouter();
   const { activeWorkspaceId } = useWorkspace();
   const { data: allDocuments, isLoading } = useDocumentsMetadata({
     workspaceId: activeWorkspaceId ?? undefined,

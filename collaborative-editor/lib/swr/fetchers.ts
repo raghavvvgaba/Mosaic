@@ -167,6 +167,7 @@ export async function fetchCurrentUser(): Promise<User | null> {
       lastLoginAt: appwriteUser.$updatedAt ? new Date(appwriteUser.$updatedAt) : undefined,
     };
   } catch (error) {
+    console.error('Failed to fetch current user:', error);
     return null;
   }
 }
@@ -180,8 +181,9 @@ export async function fetchUser(key: [string, string, string]): Promise<User | n
   const [, , userId] = key;
   try {
     // TODO: Implement getUserById in AuthService
-    throw new Error('getUserById not implemented');
+    throw new Error(`getUserById not implemented for ${userId}`);
   } catch (error) {
+    console.warn('User fetch not available:', error);
     return null;
   }
 }

@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 
 interface AIAssistantButtonProps {
   onImproveWriting?: () => void;
-  onGenerateContent?: () => void;
   onSummarize?: () => void;
   onTranslate?: () => void;
   onBrainstorm?: () => void;
@@ -23,7 +22,6 @@ interface Message {
 
 export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   onImproveWriting,
-  onGenerateContent,
   onSummarize,
   onTranslate,
   onBrainstorm,
@@ -107,6 +105,14 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
       },
     },
     {
+      icon: <FileText size={16} />,
+      label: 'Summarize',
+      onClick: () => {
+        onSummarize?.();
+        setInputValue('Summarize the following:');
+      },
+    },
+    {
       icon: <Wand2 size={16} />,
       label: 'Improve Writing',
       onClick: () => {
@@ -128,6 +134,14 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
       onClick: () => {
         onBrainstorm?.();
         setInputValue('Help me brainstorm ideas for:');
+      },
+    },
+    {
+      icon: <MessageSquare size={16} />,
+      label: 'Ask AI',
+      onClick: () => {
+        onAskAI?.();
+        setInputValue('I have a question:');
       },
     },
   ];
@@ -173,7 +187,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
             </div>
 
             {/* Feature Buttons */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {featureButtons.map((button, index) => (
                 <button
                   key={index}

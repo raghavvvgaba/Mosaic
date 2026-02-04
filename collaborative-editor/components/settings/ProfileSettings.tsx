@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,9 +64,10 @@ export function ProfileSettings() {
     try {
       await updateAvatar(file);
       setIsAvatarDialogOpen(false); // Close dialog after successful upload
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to upload avatar';
       console.error('Failed to upload avatar:', error);
-      setAvatarError(error.message || 'Failed to upload avatar');
+      setAvatarError(message);
     } finally {
       setIsUploadingAvatar(false);
       // Reset file input
@@ -81,9 +83,10 @@ export function ProfileSettings() {
     try {
       await deleteAvatar();
       setIsAvatarDialogOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to delete avatar';
       console.error('Failed to delete avatar:', error);
-      setAvatarError(error.message || 'Failed to delete avatar');
+      setAvatarError(message);
     } finally {
       setIsDeletingAvatar(false);
     }
