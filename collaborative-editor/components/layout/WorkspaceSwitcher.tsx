@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronsUpDown, Plus, Pencil, Trash2, Check } from 'lucide-react';
+import { ChevronsUpDown, Plus, Pencil, Trash2, Check, Briefcase, Settings2, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,16 +18,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { cn } from '@/lib/utils';
-// System workspace constants removed - no more shared workspaces
+import { cn, getInitials, getWorkspaceColor } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/AlertDialog';
 
-export function WorkspaceSwitcher() {
+interface WorkspaceSwitcherProps {
+  collapsed?: boolean;
+}
+
+export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
   const [managerOpen, setManagerOpen] = useState(false);
 
   const activeLabel = useMemo(() => {
-    if (!activeWorkspace) return 'Loading workspaces...';
+    if (!activeWorkspace) return 'Loading...';
     return activeWorkspace.name;
   }, [activeWorkspace]);
 
@@ -37,75 +38,81 @@ export function WorkspaceSwitcher() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="neu-inset w-full h-14 flex items-center justify-center p-2 cursor-pointer">
-            <span className="truncate text-center font-medium text-sm">{activeLabel}</span>
-          </div>
+          {collapsed ? (
+             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+                <div className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform active:scale-95",
+                  activeWorkspace ? getWorkspaceColor(activeWorkspace.id) : "bg-muted"
+                )}>
+                  {activeWorkspace ? getInitials(activeWorkspace.name) : <Briefcase className="h-3.5 w-3.5" />}
+                </div>
+             </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              className="w-full justify-between h-12 px-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group rounded-xl transition-all"
+            >
+              <div className="flex items-center gap-3 truncate">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm group-hover:shadow transition-all",
+                  activeWorkspace ? getWorkspaceColor(activeWorkspace.id) : "bg-primary/10 text-primary"
+                )}>
+                  {activeWorkspace ? getInitials(activeWorkspace.name) : <Briefcase className="w-4 h-4" />}
+                </div>
+                <div className="flex flex-col items-start text-left truncate">
+                   <span className="truncate text-sm font-semibold tracking-tight">{activeLabel}</span>
+                   <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider opacity-70">Workspace</span>
+                </div>
+              </div>
+              <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
+            </Button>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[280px] neu-card border-0 p-3">
-          {/* Workspace list with neumorphic styling */}
-          <div className="space-y-2">
+        <DropdownMenuContent 
+          align="start" 
+          side={collapsed ? "right" : "bottom"}
+          className="w-[260px] p-1.5 rounded-xl shadow-xl border-border/50 backdrop-blur-xl bg-background/95"
+        >
+          <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em] px-3 py-2.5">
+            Switch Workspace
+          </DropdownMenuLabel>
+          <div className="space-y-0.5">
             {workspaces.map((workspace) => {
               const isActive = workspace.id === activeWorkspace?.id;
               return (
-                <div
+                <DropdownMenuItem
                   key={workspace.id}
                   onClick={() => setActiveWorkspace(workspace.id)}
-                  className={cn(
-                    'relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300',
-                    isActive
-                      ? 'neu-card border border-primary/30 shadow-[inset_0_0_0_1px_rgba(255,184,107,0.2)]'
-                      : 'neu-card-hover'
-                  )}
+                  className="flex items-center gap-3 cursor-pointer py-2.5 px-3 rounded-lg focus:bg-sidebar-accent focus:text-sidebar-accent-foreground group"
                 >
-                  {/* Active indicator dot */}
                   <div className={cn(
-                    'w-2.5 h-2.5 rounded-full transition-all duration-300',
-                    isActive
-                      ? 'bg-primary shadow-[0_0_10px_rgba(255,184,107,0.5)]'
-                      : 'neu-inset'
-                  )} />
-
-                  {/* Workspace name */}
-                  <span className={cn(
-                    'flex-1 truncate text-sm transition-colors',
-                    isActive
-                      ? 'text-primary font-semibold'
-                      : 'text-foreground font-medium'
+                    "w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold shadow-sm group-focus:shadow-none transition-all",
+                    getWorkspaceColor(workspace.id)
                   )}>
+                    {getInitials(workspace.name)}
+                  </div>
+                  <span className={cn("flex-1 truncate text-sm", isActive ? "font-semibold" : "font-medium text-muted-foreground group-focus:text-foreground")}>
                     {workspace.name}
                   </span>
-
-                  {/* Active workspace indicator */}
                   {isActive && (
-                    <div className="w-5 h-5 rounded-full neu-inset flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
                       <Check className="h-3 w-3 text-primary" />
                     </div>
                   )}
-                </div>
+                </DropdownMenuItem>
               );
             })}
           </div>
 
-          {/* Neumorphic divider */}
-          <div className="my-4">
-            <div className="neu-inset h-1 rounded-full" />
-          </div>
+          <DropdownMenuSeparator className="my-1.5 mx-1 opacity-50" />
 
-          {/* Manage workspaces with neumorphic styling */}
-          <div
+          <DropdownMenuItem
             onClick={() => setManagerOpen(true)}
-            className="neu-card-hover p-2 rounded-xl cursor-pointer group"
+            className="cursor-pointer py-2.5 px-3 rounded-lg text-muted-foreground focus:text-foreground focus:bg-sidebar-accent group"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 neu-inset rounded-lg flex items-center justify-center group-hover:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.3),inset_-2px_-2px_5px_rgba(255,255,255,0.02)] transition-shadow">
-                <Pencil className="h-4 w-4 text-muted-foreground/80" />
-              </div>
-              <span className="flex-1 text-foreground font-medium">Manage Workspaces</span>
-              <div className="w-5 h-5 neu-inset rounded-full flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity">
-                <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
-              </div>
-            </div>
-          </div>
+            <Settings2 className="h-4 w-4 mr-3 opacity-70 group-focus:opacity-100 transition-opacity" />
+            <span className="text-sm font-medium">Manage Workspaces</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -114,7 +121,7 @@ export function WorkspaceSwitcher() {
   );
 }
 
-function WorkspaceManagerDialog({
+export function WorkspaceManagerDialog({
   open,
   onOpenChange,
 }: {
@@ -206,7 +213,6 @@ function WorkspaceManagerDialog({
   };
 
   const handleDeleteWorkspace = (workspaceId: string) => {
-    // System workspace protection removed - users can now manage their own workspaces
     const target = workspaces.find((workspace) => workspace.id === workspaceId);
     setConfirmConfig({
       title: 'Delete Workspace',
@@ -234,7 +240,7 @@ function WorkspaceManagerDialog({
         <DialogHeader>
           <DialogTitle>Manage Workspaces</DialogTitle>
           <DialogDescription>
-            Create, rename, or delete workspaces. Each workspace keeps its own documents.
+            Create, rename, or delete workspaces.
           </DialogDescription>
         </DialogHeader>
 
@@ -243,16 +249,16 @@ function WorkspaceManagerDialog({
             <Input
               value={newWorkspaceName}
               onChange={(event) => setNewWorkspaceName(event.target.value)}
-              placeholder="Workspace name"
+              placeholder="New workspace name"
               required
             />
-            <Button type="submit" size="sm" disabled={creating} className="glass">
+            <Button type="submit" size="sm" disabled={creating}>
               <Plus className="h-4 w-4 mr-1" />
               Add
             </Button>
           </form>
 
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-80 overflow-y-auto">
             {workspaces.map((workspace) => {
               const isActive = workspace.id === activeWorkspaceId;
               const isRenaming = renamingId === workspace.id;
@@ -260,34 +266,45 @@ function WorkspaceManagerDialog({
               return (
                 <div
                   key={workspace.id}
-                  className="neu-card px-4 py-3"
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card text-card-foreground shadow-sm"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="font-medium flex items-center gap-2">
-                        <span>{workspace.name}</span>
-                        {workspace.isDefault && (
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md">Personal</span>
-                        )}
+                  <div className="flex-1 min-w-0 mr-4">
+                    {isRenaming ? (
+                       <form onSubmit={handleRenameWorkspace} className="flex items-center gap-2">
+                          <Input
+                            value={renameValue}
+                            onChange={(event) => setRenameValue(event.target.value)}
+                            required
+                            autoFocus
+                            className="h-8"
+                          />
+                          <Button type="submit" size="sm" disabled={renaming}>Save</Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setRenamingId(null)}>Cancel</Button>
+                       </form>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{workspace.name}</span>
+                        {isActive && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Active</span>}
+                        {workspace.isDefault && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Personal</span>}
                       </div>
-                      {isActive && (
-                        <div className="text-xs text-primary font-medium">Active workspace</div>
-                      )}
-                    </div>
+                    )}
+                  </div>
+
+                  {!isRenaming && (
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-accent/20"
+                        className="h-8 w-8"
                         onClick={() => setActiveWorkspace(workspace.id)}
-                        title="Set active"
+                        title="Switch to"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-accent/20"
+                        className="h-8 w-8"
                         onClick={() => startRenaming(workspace.id, workspace.name)}
                         title="Rename"
                       >
@@ -304,32 +321,6 @@ function WorkspaceManagerDialog({
                           <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
-                  </div>
-
-                  {isRenaming && (
-                    <form onSubmit={handleRenameWorkspace} className="mt-3 flex items-center gap-2">
-                      <Input
-                        value={renameValue}
-                        onChange={(event) => setRenameValue(event.target.value)}
-                        required
-                        autoFocus
-                      />
-                      <Button type="submit" size="sm" disabled={renaming} className="glass">
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setRenamingId(null);
-                          setRenameValue('');
-                        }}
-                        className="hover:bg-accent/20"
-                      >
-                        Cancel
-                      </Button>
-                    </form>
                   )}
                 </div>
               );

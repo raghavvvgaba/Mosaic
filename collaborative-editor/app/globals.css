@@ -44,30 +44,50 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --radius: 0.5rem;
+  
+  /* Zinc-50 */
+  --background: oklch(0.985 0 0);
+  /* Zinc-950 */
   --foreground: oklch(0.145 0 0);
+
+  /* White */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #ffb86b;
-  --primary-foreground: #0b1118;
+
+  /* Zinc-900 */
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* Zinc-100 */
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
+
+  /* Zinc-100 */
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+
+  /* Zinc-100 */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
+
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  /* Zinc-200 */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.145 0 0);
+
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -79,58 +99,55 @@
 }
 
 .dark {
-  /* Neumorphic Dark Theme Colors */
-  --background: #0d141c;
+  /* Zinc-950 */
+  --background: oklch(0.1 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: #0b1118;
+
+  /* Zinc-900 */
+  --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: #0b1118;
+
+  --popover: oklch(0.145 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #ffb86b;
-  --primary-foreground: #0b1118;
-  --secondary: rgba(255,255,255,0.08);
+
+  /* Zinc-50 */
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+
+  /* Zinc-800 */
+  --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: rgba(255,255,255,0.12);
+
+  /* Zinc-800 */
+  --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: rgba(255,255,255,0.08);
+
+  /* Zinc-800 */
+  --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgba(255,255,255,0.06);
-  --input: rgba(255,255,255,0.08);
-  --ring: #ffb86b;
+
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  /* Zinc-800 */
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.87 0 0);
+
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #0b1118;
+
+  --sidebar: oklch(0.1 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #ffb86b;
-  --sidebar-primary-foreground: #0b1118;
-  --sidebar-accent: rgba(255,255,255,0.08);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: rgba(255,255,255,0.06);
-  --sidebar-ring: #ffb86b;
-
-  /* Neumorphic Design System Variables */
-  --bg: #0b0f14;
-  --neu-card: #0b1118;
-  --neu-muted: rgba(255,255,255,0.12);
-  --neu-accent: #ffb86b;
-  --neu-focus-ring: 3px solid rgba(255,184,107,0.15);
-
-  /* Neumorphic Shadows */
-  --soft-shadow:
-    6px 6px 14px rgba(0,0,0,0.65),
-    -4px -4px 10px rgba(255,255,255,0.02);
-
-  --soft-shadow-2:
-    10px 12px 26px rgba(0,0,0,0.65),
-    -6px -6px 18px rgba(255,255,255,0.02);
-
-  --inset-shadow:
-    inset 4px 4px 10px rgba(0,0,0,0.55),
-    inset -3px -3px 6px rgba(255,255,255,0.02);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.87 0 0);
 }
 
 @layer base {
@@ -138,417 +155,110 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
-/* Neumorphic Utility Classes */
-:root {
-  --bg-gradient-start: #0d141c;
-  --bg-gradient-end: #101a24;
+/* Backward Compatibility Layer for Neumorphic Classes - Mapping to Minimal */
+.neu-card, .neu-card-hover {
+  @apply bg-card border border-border rounded-xl shadow-sm transition-all;
 }
-
-.dark {
-  /* Background gradient for main pages */
-  body {
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-    min-height: 100vh;
-  }
-}
-
-/* Neumorphic Card */
-.neu-card {
-  background: #0e161f;
-  box-shadow: var(--soft-shadow);
-  border-radius: 16px;
-  position: relative;
-}
-
-.neu-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  z-index: 1;
-}
-
-.neu-card > * {
-  position: relative;
-  z-index: 2;
-}
-
-/* Fix dialog positioning - override neu-card child positioning */
-[data-slot="dialog-content"] {
-  position: fixed !important;
-}
-
-/* Fix alert dialog positioning - override neu-card child positioning */
-[data-slot="alert-dialog-content"] {
-  position: fixed !important;
-}
-
-/* Neumorphic Card with Hover Effect */
-.neu-card-hover {
-  background: #0e161f;
-  box-shadow: var(--soft-shadow);
-  border-radius: 16px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  cursor: pointer;
-}
-
-.neu-card-hover::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  z-index: 1;
-}
-
-.neu-card-hover > * {
-  position: relative;
-  z-index: 2;
-}
-
 .neu-card-hover:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--soft-shadow-2);
+  @apply shadow-md;
 }
-
-/* Inset Surface */
 .neu-inset {
-  background: #0a0f16;
-  box-shadow: var(--inset-shadow);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  @apply bg-muted/50 rounded-lg border border-transparent;
 }
-
-/* Glass Surface */
-.glass {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: var(--soft-shadow);
+.glass, .glass-hover {
+  @apply bg-background/80 backdrop-blur-md border border-border shadow-sm;
 }
-
-/* Glass Surface with Hover Effect */
-.glass-hover {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: var(--soft-shadow);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-}
-
 .glass-hover:hover {
-  background: rgba(255,255,255,0.08);
-  transform: translateY(-2px);
-  box-shadow: var(--soft-shadow-2);
+  @apply bg-accent/50;
 }
-
-/* Neumorphic Button */
 .neu-button {
-  background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-  box-shadow: var(--soft-shadow);
-  border-radius: 12px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(255,255,255,0.05);
+  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2;
 }
 
-.neu-button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--soft-shadow-2);
-}
-
-.neu-button:active {
-  transform: scale(0.998);
-  box-shadow: var(--inset-shadow);
-}
-
-/* Focus styles for accessibility */
-.neu-card:focus-visible,
-.neu-button:focus-visible,
-.glass:focus-visible {
-  outline: var(--neu-focus-ring);
-  outline-offset: 4px;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .neu-card,
-  .neu-button,
-  .glass {
-    transform: none !important;
-    transition: none !important;
-  }
-}
-
-/* BlockNote suggestion menu styling for proper keyboard navigation */
-/* Target BlockNote shadcn suggestion menu */
+/* BlockNote Overrides adapted for Minimal Theme */
 .bn-shadcn [role="menu"] {
-  max-height: 400px;
-  overflow-y: auto;
-  scroll-behavior: smooth;
+  @apply bg-popover border border-border shadow-md rounded-lg;
 }
-
 .bn-shadcn [role="menuitem"] {
-  cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
-  scroll-margin: 8px;
+  @apply text-popover-foreground rounded-sm;
 }
-
-/* Highlighted menu item - using oklch for proper color support */
 .bn-shadcn [role="menuitem"][data-highlighted],
 .bn-shadcn [role="menuitem"]:hover,
 .bn-shadcn [role="menuitem"][data-selected],
 .bn-shadcn [data-hovered="true"] {
   background-color: var(--accent) !important;
-  opacity: 1 !important;
-}
-
-/* Additional specific selectors for BlockNote menu items */
-.bn-shadcn .bn-suggestion-menu-item[data-hovered="true"],
-.bn-shadcn .bn-suggestion-menu-item:hover,
-.bn-shadcn .bn-suggestion-menu-item[data-selected="true"],
-div[data-suggestion-menu] [data-hovered="true"],
-div[data-suggestion-menu] button[data-hovered="true"],
-div[data-suggestion-menu] button[data-selected="true"],
-.bn-shadcn button[data-selected="true"],
-.bn-shadcn button[aria-selected="true"],
-.bn-shadcn div[data-selected="true"],
-.bn-shadcn div[aria-selected="true"] {
-  background-color: var(--accent) !important;
-}
-
-/* For better visibility in dark mode */
-.dark .bn-shadcn [role="menuitem"][data-highlighted],
-.dark .bn-shadcn [role="menuitem"]:hover,
-.dark .bn-shadcn [data-hovered="true"],
-.dark .bn-shadcn [data-selected="true"],
-.dark div[data-suggestion-menu] [data-hovered="true"] {
-  background-color: var(--accent) !important;
   color: var(--accent-foreground) !important;
 }
 
-/* Catch-all for any BlockNote menu items that might have focus/selection */
-.bn-shadcn [data-suggestion-menu-item] button:hover,
-.bn-shadcn [data-suggestion-menu-item] button:focus,
-.bn-shadcn [data-suggestion-menu-item] button[data-state="open"],
-.bn-shadcn [data-radix-collection-item]:hover,
-.bn-shadcn [data-radix-collection-item][data-highlighted],
-.bn-shadcn [cmdk-item][data-selected="true"],
-.bn-shadcn [cmdk-item]:hover {
-  background-color: var(--accent) !important;
-}
-
-/* Very specific targeting for shadcn Dropdown/Popover menu items */
-[data-radix-popper-content-wrapper] button:hover,
-[data-radix-popper-content-wrapper] button:focus,
-[data-radix-popper-content-wrapper] [role="menuitem"]:hover,
-[data-radix-popper-content-wrapper] [role="menuitem"][data-highlighted],
-[data-radix-popper-content-wrapper] [data-highlighted="true"] {
-  background-color: var(--accent) !important;
-}
-
-/* Ensure highlighting is visible with a semi-transparent overlay if accent isn't showing */
-.bn-shadcn button:hover,
-.bn-shadcn button:focus-visible {
-  background-color: var(--accent) !important;
-}
-
-/* Make sure Radix UI elements within BlockNote have visible hover states */
-.bn-shadcn [data-radix-collection-item] {
-  transition: background-color 0.15s ease;
-}
-
-.bn-shadcn [data-radix-collection-item]:hover,
-.bn-shadcn [data-radix-collection-item][data-state="highlighted"] {
-  background-color: var(--accent) !important;
-}
-
-/* Ensure keyboard focus is visible */
-.bn-shadcn [role="menuitem"]:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
-}
-
-/* Alternative selectors for suggestion menu items */
-.bn-suggestion-menu-item,
-.bn-combobox-item {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  scroll-margin: 8px;
-}
-
-.bn-suggestion-menu-item[data-selected="true"],
-.bn-suggestion-menu-item[aria-selected="true"],
-.bn-combobox-item[data-selected="true"],
-.bn-combobox-item[aria-selected="true"],
-.bn-combobox-item[data-hovered="true"] {
-  background-color: var(--accent) !important;
-}
-
-/* BlockNote editor canvas: remove grey backgrounds and borders for a uniform canvas */
 .bn-shadcn .bn-root,
 .bn-shadcn .bn-editor,
 .bn-shadcn .bn-container,
 .bn-shadcn .bn-content,
 .bn-shadcn .bn-page,
-.bn-shadcn .bn-block-content {
+.bn-shadcn .bn-block-content,
+.bn-shadcn .bn-main,
+.bn-shadcn .bn-editor-container,
+.bn-shadcn [data-content-type] {
   background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
   border: none !important;
 }
 
-/* Hide built-in per-line placeholders; we will render a single overlay when the note is empty */
-.bn-shadcn .bn-editor [data-placeholder]::before,
-.bn-shadcn .ProseMirror p.is-editor-empty:first-child::before,
-.bn-shadcn .ProseMirror p.is-empty:first-child::before {
-  content: none !important;
+/* Ensure no default background from blocknote-shadcn and force inherited background */
+.bn-shadcn, .bn-main, .bn-editor {
+  --bn-colors-editor-background: transparent !important;
+  background-color: transparent !important;
 }
 
-/* Prevent nested scrollbars inside BlockNote editor; let page handle scroll */
-.bn-shadcn .bn-root,
-.bn-shadcn .bn-container,
-.bn-shadcn .bn-editor,
-.bn-shadcn .bn-content,
-.bn-shadcn .bn-page,
-.bn-shadcn .bn-block-content {
-  overflow: visible !important;
-  max-height: none !important;
+/* BlockNote Heading Size Overrides */
+.bn-editor h1, 
+.bn-block-content[data-content-type="heading"][data-level="1"] .bn-inline-content {
+  font-size: 1.75rem !important; 
+  line-height: 2.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
 }
 
-/* Ensure editor grows with content */
-.bn-shadcn .bn-editor {
-  height: auto !important;
+.bn-editor h2, 
+.bn-block-content[data-content-type="heading"][data-level="2"] .bn-inline-content {
+  font-size: 1.4rem !important;
+  line-height: 2rem !important;
+  font-weight: 600 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.4rem !important;
 }
 
-/* Landing page background pattern */
+.bn-editor h3, 
+.bn-block-content[data-content-type="heading"][data-level="3"] .bn-inline-content {
+  font-size: 1.15rem !important;
+  line-height: 1.75rem !important;
+  font-weight: 600 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.3rem !important;
+}
+
+/* Ensure first heading has no top margin */
+.bn-editor .bn-block-group > .bn-block-outer:first-child h1,
+.bn-editor .bn-block-group > .bn-block-outer:first-child h2,
+.bn-editor .bn-block-group > .bn-block-outer:first-child h3 {
+  margin-top: 0 !important;
+}
+
+/* Landing Page Grid - subtle update */
 .bg-grid-pattern {
   background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
-
 .dark .bg-grid-pattern {
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-}
-
-/* Line clamp utility for text truncation */
-.line-clamp-2 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-/* Sidebar Document List Animations */
-
-/* Children reveal animation for expand/collapse */
-@keyframes childrenReveal {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-children-reveal {
-  animation: childrenReveal 250ms ease-out forwards;
-}
-
-/* Staggered animation delays for children */
-[class~="space-y-0.5"] > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-[class~="space-y-0.5"] > *:nth-child(2) {
-  animation-delay: 50ms;
-}
-[class~="space-y-0.5"] > *:nth-child(3) {
-  animation-delay: 100ms;
-}
-[class~="space-y-0.5"] > *:nth-child(4) {
-  animation-delay: 150ms;
-}
-[class~="space-y-0.5"] > *:nth-child(5) {
-  animation-delay: 200ms;
-}
-[class~="space-y-0.5"] > *:nth-child(6) {
-  animation-delay: 250ms;
-}
-[class~="space-y-0.5"] > *:nth-child(n+7) {
-  animation-delay: 300ms;
-}
-
-/* Chevron rotation animation */
-@keyframes chevronRotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(90deg);
-  }
-}
-
-/* Drag lift effect */
-@keyframes dragLift {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-2px) scale(0.98);
-    opacity: 0.4;
-  }
-}
-
-/* Drop zone pulse animation */
-@keyframes dropZonePulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.animate-drop-zone-pulse {
-  animation: dropZonePulse 1.5s ease-in-out infinite;
-}
-
-/* Active document glow animation */
-@keyframes activeGlow {
-  0%, 100% {
-    box-shadow: 0 0 20px -5px rgba(255, 184, 107, 0.12);
-  }
-  50% {
-    box-shadow: 0 0 25px -3px rgba(255, 184, 107, 0.15);
-  }
-}
-
-.active-glow {
-  animation: activeGlow 3s ease-in-out infinite;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .animate-children-reveal,
-  .animate-drop-zone-pulse,
-  .active-glow {
-    animation: none !important;
-  }
-
-  [class~="space-y-0.5"] > * {
-    animation-delay: 0ms !important;
-  }
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }

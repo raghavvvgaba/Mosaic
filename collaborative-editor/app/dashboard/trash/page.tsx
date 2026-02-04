@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { RotateCcw, Trash2, ArchiveRestore, Clock } from 'lucide-react';
+import { RotateCcw, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDocumentsMetadata, useDocumentMutations } from '@/hooks/swr';
@@ -12,10 +12,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { cn } from '@/lib/utils';
+import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
+import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 
 export default function TrashPage() {
   const router = useRouter();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { data: allDocuments, isLoading } = useDocumentsMetadata({
     workspaceId: activeWorkspaceId ?? undefined,
     includeDeleted: true,
@@ -26,6 +28,7 @@ export default function TrashPage() {
     if (!allDocuments) return [];
     return filterDeletedDocuments(allDocuments);
   }, [allDocuments]);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const selectionModeRef = useRef(selectionMode);
@@ -58,11 +61,9 @@ export default function TrashPage() {
   }, [selectionMode]);
 
   useEffect(() => {
-    // Clear selection when workspace changes
     setSelectionMode(false);
     setSelectedIds(new Set());
 
-    // Listen for ESC key to exit selection mode
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && selectionModeRef.current) {
         setSelectionMode(false);
@@ -140,24 +141,23 @@ export default function TrashPage() {
 
   function handleSelectDocument(docId: string, checked: boolean) {
     const newSelected = new Set(selectedIds);
-    if (checked) {
-      newSelected.add(docId);
-    } else {
-      newSelected.delete(docId);
-    }
+    if (checked) newSelected.add(docId);
+    else newSelected.delete(docId);
     setSelectedIds(newSelected);
   }
 
   function handleToggleSelectionMode() {
     setSelectionMode(!selectionMode);
-    if (selectionMode) {
-      setSelectedIds(new Set());
-    }
+    if (selectionMode) setSelectedIds(new Set());
   }
 
   function handleSelectAll() {
     if (documents) {
-      setSelectedIds(new Set(documents.map(doc => doc.id)));
+      if (selectedIds.size === documents.length) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(documents.map(doc => doc.id)));
+      }
     }
   }
 
@@ -211,176 +211,146 @@ export default function TrashPage() {
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-muted-foreground animate-pulse">Loading trash...</div>
       </div>
     );
   }
 
   return (
-    <div className="w-full p-4 sm:p-6 md:p-8">
-      <div className="container mx-auto max-w-5xl">
-        {/* Header Section */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold">Trash</h1>
-            <p className="text-muted-foreground mt-2">
-              {documents?.length ?? 0} {(documents?.length ?? 0) === 1 ? 'document' : 'documents'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Workspace: {activeWorkspace?.name ?? 'Loading...'}
-            </p>
-          </div>
-          {documents && documents.length > 0 && (
-            <div className="flex items-center gap-2">
-              {selectionMode && selectedIds.size > 0 && (
-                <span className="text-sm text-muted-foreground">
-                  {selectedIds.size} selected
-                </span>
-              )}
-              {selectionMode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  Select All
+    <div className="flex flex-col h-full bg-background/50">
+      <DashboardTopBar 
+        selectionMode={selectionMode}
+        onToggleSelectionMode={handleToggleSelectionMode}
+        selectedCount={selectedIds.size}
+        onSelectAll={handleSelectAll}
+        showSelectAll={(documents?.length ?? 0) > 0}
+      />
+
+      <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto">
+        <div className="container mx-auto max-w-6xl">
+          {/* Global Trash Actions (Visible when not selecting) */}
+          {!selectionMode && documents && documents.length > 0 && (
+             <div className="mb-6 flex gap-3 justify-end">
+                <Button variant="outline" size="sm" onClick={handleRestoreAll}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Restore All
                 </Button>
-              )}
-              {!selectionMode && (
-                <>
-                  <Button variant="outline" onClick={handleRestoreAll}>
-                    <ArchiveRestore className="w-4 h-4 mr-2" />
-                    Restore All
-                  </Button>
-                  <Button variant="destructive" onClick={handleEmptyTrash}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Empty Trash
-                  </Button>
-                </>
-              )}
-              <Button
-                variant={selectionMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={handleToggleSelectionMode}
-              >
-                {selectionMode ? 'Cancel' : 'Select'}
-              </Button>
-            </div>
+                <Button variant="destructive" size="sm" onClick={handleEmptyTrash}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Empty Trash
+                </Button>
+             </div>
           )}
-          </div>
-        </div>
 
-        {!documents || documents.length === 0 ? (
-          <div className="text-center py-16">
-            <Trash2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 mb-4">Trash is empty</p>
-            <Button variant="outline" onClick={() => router.push('/')}>
-              Go to All Documents
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {documents.map((doc) => {
-              const isSelected = selectionMode && selectedIds.has(doc.id);
-              return (
-              <div
-                key={doc.id}
-                className={cn(
-                  'p-4 sm:p-5 md:p-6 rounded-2xl transition-all duration-200 group overflow-hidden min-h-[140px] sm:h-36 md:h-40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background flex flex-col',
-                  'bg-[#0a0f16] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]',
-                  !selectionMode && 'hover:bg-[#0e161f] hover:shadow-[12px_14px_30px_rgba(0,0,0,0.75),-8px_-8px_20px_rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.12)]',
-                  !selectionMode && 'hover:transform hover:-translate-y-0.5',
-                  'cursor-pointer',
-                  isSelected && 'ring-2 ring-primary/50',
-                  FONT_CLASS_MAP[doc.font ?? 'sans']
-                )}
-              >
-                {/* Selection checkbox at top right */}
-                {selectionMode && (
-                  <div className="flex justify-end -mt-4 -mr-4 mb-2">
-                    <Checkbox
-                      checked={selectedIds.has(doc.id)}
-                      onCheckedChange={(checked) => {
-                        handleSelectDocument(doc.id, checked as boolean);
-                      }}
-                      className={cn(
-                        'size-4 rounded border transition-colors',
-                        selectedIds.has(doc.id)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-border/70 bg-background/50'
-                      )}
-                    />
-                  </div>
-                )}
-
-                {/* Main content */}
-                <div className="flex-1 flex flex-col justify-center">
-                  <h3
+          {!documents || documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-card/50 rounded-xl border border-dashed border-border/60">
+              <div className="w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
+                <Trash2 className="w-8 h-8 opacity-50" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">Trash is empty</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Documents you delete will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
+              {documents.map((doc) => {
+                const isSelected = selectionMode && selectedIds.has(doc.id);
+                return (
+                  <div
+                    key={doc.id}
                     className={cn(
-                      'text-center font-medium text-sm line-clamp-2 text-slate-200 transition-colors',
-                      !selectionMode && 'group-hover:text-primary',
+                      'relative flex flex-col',
+                      'bg-card border border-border shadow-sm rounded-lg',
+                      'transition-all duration-200 group',
+                      selectionMode ? 'cursor-pointer' : 'cursor-default hover:shadow-md hover:border-primary/20',
+                      isSelected && 'ring-2 ring-primary border-primary',
+                      'p-3 sm:p-5',
+                      'min-h-[120px] sm:min-h-[140px]',
                       FONT_CLASS_MAP[doc.font ?? 'sans']
                     )}
+                    onClick={(e) => {
+                      if (selectionMode) {
+                        e.stopPropagation();
+                        handleSelectDocument(doc.id, !isSelected);
+                      }
+                    }}
                   >
-                    {doc.title || 'Untitled'}
-                  </h3>
-                  <p className={cn('flex items-center justify-center gap-1 text-xs text-muted-foreground mt-2', FONT_CLASS_MAP[doc.font ?? 'sans'])}>
-                    <Clock className="w-3 h-3" />
-                    Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                  </p>
-                </div>
+                    {/* Selection Checkbox */}
+                    {selectionMode && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => {}}
+                          className={cn(
+                            'size-5 rounded-md border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
+                            !isSelected && "bg-background/80 backdrop-blur-sm"
+                          )}
+                        />
+                      </div>
+                    )}
 
-                {/* Metadata and actions */}
-                <div className="flex items-center justify-end">
-                  {!selectionMode && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRestore(doc.id, e);
-                        }}
-                        className="h-6 w-6 text-green-500 hover:bg-green-500/10 transition-all"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePermanentDelete(doc.id, doc.title, e);
-                        }}
-                        className="h-6 w-6 text-destructive hover:bg-destructive/10 transition-all"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col justify-center items-center text-center space-y-1.5 sm:space-y-2 mt-2 sm:mt-0">
+                      <h3 className={cn(
+                        'font-medium text-sm sm:text-base line-clamp-2 text-card-foreground transition-colors',
+                        !selectionMode && 'group-hover:text-primary'
+                      )}>
+                        {doc.title || 'Untitled'}
+                      </h3>
+                      <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>Deleted {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                    {/* Actions Footer */}
+                    <div className="flex items-center justify-center gap-1 mt-2 pt-2 border-t border-transparent group-hover:border-border/30 transition-colors h-8 opacity-0 group-hover:opacity-100">
+                      {!selectionMode && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => handleRestore(doc.id, e)}
+                            className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            title="Restore"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => handlePermanentDelete(doc.id, doc.title, e)}
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Delete Forever"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <MobileBottomNav />
 
       {/* Bulk actions toolbar for trash */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-primary text-primary-foreground rounded-full shadow-lg px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{selectedIds.size} selected</span>
-            </div>
+            <span className="font-medium text-sm whitespace-nowrap">{selectedIds.size} selected</span>
             
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBulkRestore}
-                className="hover:bg-primary-foreground/20 text-primary-foreground"
+                className="hover:bg-primary-foreground/20 text-primary-foreground h-8 px-2"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Restore
@@ -390,21 +360,21 @@ export default function TrashPage() {
                 variant="ghost"
                 size="sm"
                 onClick={handleBulkDelete}
-                className="hover:bg-primary-foreground/20 text-primary-foreground"
+                className="hover:bg-primary-foreground/20 text-primary-foreground h-8 px-2"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete Forever
+                Delete
               </Button>
               
-              <div className="w-px h-6 bg-primary-foreground/20" />
+              <div className="w-px h-5 bg-primary-foreground/20 mx-1" />
               
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleClearSelection}
-                className="hover:bg-primary-foreground/20 text-primary-foreground"
+                className="hover:bg-primary-foreground/20 text-primary-foreground h-8 w-8 rounded-full"
               >
-                ✕
+                <span className="text-lg">×</span>
               </Button>
             </div>
           </div>

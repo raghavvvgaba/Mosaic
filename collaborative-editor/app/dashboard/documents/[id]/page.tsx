@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save } from 'lucide-react';
+import { MoreVertical, Copy, Star, Plus, Trash2, FolderPlus, Sparkles, Loader2, CircleCheck, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ import { BlockEditor, type BlockEditorHandle } from '@/components/editor/BlockEd
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { ExportButton } from '@/components/export/ExportButton';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
@@ -39,9 +39,9 @@ function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Dat
       <TooltipTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
           {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#ffb86b' }} />
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           ) : lastSaved ? (
-            <CircleCheck className="w-4 h-4" style={{ color: '#4ade80' }} />
+            <CircleCheck className="w-4 h-4 text-green-500" />
           ) : (
             <Save className="w-4 h-4 text-muted-foreground" />
           )}
@@ -67,6 +67,7 @@ export default function DocumentPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [localTitle, setLocalTitle] = useState<string>('');
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
     title: string;
     description: string;
@@ -320,10 +321,7 @@ export default function DocumentPage() {
     }
 
     function handleExportDocument() {
-      const exportButton = window.document.querySelector('[data-export-button]') as HTMLButtonElement;
-      if (exportButton) {
-        exportButton.click();
-      }
+      setShowExportDialog(true);
     }
 
     function handleToggleFavoriteEvent() {
@@ -425,8 +423,8 @@ export default function DocumentPage() {
   return (
     <TooltipProvider>
       <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
-        <header className="border-b sticky top-0 z-10">
-          <div className="px-8 py-4 space-y-3">
+        <header className="border-b sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="pl-14 pr-[5px] md:px-8 py-4">
           {/* Title bar */}
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
@@ -445,39 +443,7 @@ export default function DocumentPage() {
                 )}
               </div>
 
-            {/* Moved New subpage into dropdown */}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleFavorite}
-              className={document.isFavorite ? 'text-yellow-500' : ''}
-            >
-              <Star className={`w-4 h-4 ${document.isFavorite ? 'fill-yellow-500' : ''}`} />
-            </Button>
-
             <SaveStatusIcon saving={saving} lastSaved={lastSaved} />
-
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void handleGenerateTitle()}
-                  disabled={titleGenerating}
-                  className="flex items-center gap-1"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {titleGenerating ? 'Generating…' : 'Title'}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Generate title based on note content</p>
-              </TooltipContent>
-            </Tooltip>
-
-  
-            <ExportButton document={document} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -510,10 +476,29 @@ export default function DocumentPage() {
                 </div>
                 </div>
                 <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={handleToggleFavorite}>
+                  <Star className={`w-4 h-4 mr-2 ${document.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                  {document.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => void handleGenerateTitle()} disabled={titleGenerating}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {titleGenerating ? 'Generating Title...' : 'Generate Title'}
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <Copy className="w-4 h-4 mr-2" />
                   Duplicate
                 </DropdownMenuItem>
+                
                 <DropdownMenuItem
                   onClick={(event) => {
                     event.preventDefault();
@@ -532,7 +517,7 @@ export default function DocumentPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-8 min-h-full">
+        <div className="max-w-4xl mx-4 md:mx-auto px-0 md:px-8 py-4 md:py-8 min-h-full">
           <BlockEditor
             ref={editorRef}
             documentId={documentId}
@@ -584,6 +569,14 @@ export default function DocumentPage() {
           documentId={document.id}
           documentTitle={document.title}
           workspaceId={document.workspaceId}
+        />
+      )}
+
+      {document && (
+        <ExportDialog
+          document={document}
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
         />
       )}
 

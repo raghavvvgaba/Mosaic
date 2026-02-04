@@ -19,6 +19,7 @@ import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles, X } from 'lucide-react';
 import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -195,9 +196,18 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     wrapper.style.setProperty('--bn-font-family', fontFamily);
     wrapper.style.setProperty('font-family', fontFamily, 'important');
     wrapper
-      .querySelectorAll<HTMLElement>('.bn-default-styles, .bn-block-content, .bn-inline-content, .bn-editor')
+      .querySelectorAll<HTMLElement>('.bn-default-styles, .bn-block-content, .bn-inline-content, .bn-editor, .bn-main, .bn-container')
       .forEach((node) => {
         node.style.setProperty('font-family', fontFamily, 'important');
+        node.style.setProperty('background-color', 'transparent', 'important');
+        node.style.setProperty('background', 'transparent', 'important');
+        // Aggressively remove internal padding/margin that might create a "box" look
+        if (node.classList.contains('bn-editor') || node.classList.contains('bn-main')) {
+          node.style.setProperty('padding-left', '0', 'important');
+          node.style.setProperty('padding-right', '0', 'important');
+          node.style.setProperty('margin-left', '0', 'important');
+          node.style.setProperty('margin-right', '0', 'important');
+        }
       });
   }, [fontFamily]);
 
@@ -327,13 +337,14 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     return <CustomToolbar />;
   }, [handleImproveWriting]);
   return (
-    <div ref={wrapperRef} className={className}>
-      <div className="relative">
+    <div ref={wrapperRef} className={cn("bg-transparent", className)}>
+      <div className="relative bg-transparent">
         <BlockNoteView
           editor={editor}
           theme={theme === 'dark' ? 'dark' : 'light'}
           slashMenu={false}
           formattingToolbar={false}
+          data-theming-transparent
         >
           <FormattingToolbarController formattingToolbar={CustomFormattingToolbar} />
           <SuggestionMenuController

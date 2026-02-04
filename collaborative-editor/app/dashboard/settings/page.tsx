@@ -14,7 +14,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="w-full justify-start bg-transparent border-b border-border/50 rounded-none h-auto p-0">
+        <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none h-auto p-0">
           <TabsTrigger
             value="profile"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"

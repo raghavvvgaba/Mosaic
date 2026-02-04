@@ -62,14 +62,13 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search documents..."
-          className="pl-12 pr-12 w-full text-base h-11"
-          autoFocus
+          placeholder="Search"
+          className="pl-9 pr-8 md:pl-12 md:pr-12 w-full text-sm md:text-base h-9 md:h-11"
         />
         {query && (
           <button

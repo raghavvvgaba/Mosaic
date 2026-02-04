@@ -8,6 +8,7 @@ import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { Document } from '@/lib/db/types';
+import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { openDocument } = useNavigation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({ context: 'global' });
@@ -55,14 +57,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#0d141c] to-[#101a24]">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
         onSearchOpen={() => setSearchOpen(true)}
         onShowShortcuts={() => setShortcutsOpen(true)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
+        // On desktop, the sidebar is part of the flex flow, so no margin needed if Sidebar is relative
+        // We'll handle layout in Sidebar component to switch between fixed (mobile) and relative (desktop)
+      )}>
         <main className="flex-1 overflow-auto">
           {children}
         </main>
