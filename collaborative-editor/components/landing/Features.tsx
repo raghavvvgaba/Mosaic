@@ -1,85 +1,120 @@
 'use client';
 
-import { FileText, Users, Lock, Zap, Smartphone, Cloud } from 'lucide-react';
+import { Users, Lock, Smartphone, Cloud, ArrowUpRight, Cpu, Layout } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function Features() {
   const features = [
     {
-      icon: FileText,
-      title: "Document Editor",
-      description: "Powerful block-based editor with rich formatting, tables, and markdown support."
-    },
-    {
-      icon: Users,
       title: "Real-time Collaboration",
-      description: "Work together seamlessly with live cursors, comments, and instant updates."
+      description: "See what your team is typing as they type it. Live cursors, presence indicators, and instant sync.",
+      icon: Users,
+      className: "md:col-span-2",
+      gradient: "from-blue-500/20 to-purple-500/20"
     },
     {
+      title: "AI-Powered",
+      description: "Draft, summarize, and edit faster with integrated AI assistance.",
+      icon: Cpu,
+      className: "md:col-span-1",
+      gradient: "from-amber-500/20 to-orange-500/20"
+    },
+    {
+      title: "Block Editor",
+      description: "A notion-style block editor that just works. Drag, drop, and organize.",
+      icon: Layout,
+      className: "md:col-span-1",
+      gradient: "from-green-500/20 to-emerald-500/20"
+    },
+    {
+      title: "Offline First",
+      description: "Keep working even when your internet drops. Changes sync automatically when you're back online.",
       icon: Cloud,
-      title: "Cloud Storage",
-      description: "All your documents securely stored in the cloud with automatic backups."
+      className: "md:col-span-2",
+      gradient: "from-pink-500/20 to-rose-500/20"
     },
     {
-      icon: Lock,
-      title: "Secure & Private",
-      description: "Enterprise-grade security with end-to-end encryption and privacy controls."
-    },
-    {
+      title: "Universal Access",
+      description: "Works perfectly on mobile, tablet, and desktop. Responsive by default.",
       icon: Smartphone,
-      title: "Mobile Ready",
-      description: "Access and edit your documents from any device with our responsive design."
+      className: "md:col-span-3 lg:col-span-1",
+      gradient: "from-indigo-500/20 to-violet-500/20"
     },
     {
-      icon: Zap,
-      title: "Lightning Fast",
-      description: "Optimized performance with instant loading and smooth real-time updates."
+      title: "Enterprise Security",
+      description: "End-to-end encryption for your most sensitive documents.",
+      icon: Lock,
+      className: "md:col-span-3 lg:col-span-2",
+      gradient: "from-gray-500/20 to-slate-500/20"
     }
   ];
 
   return (
-    <section className="relative py-24">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <section className="relative py-24 sm:py-32">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
         {/* Section Header */}
-        <div className="text-center mb-20">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
-            Everything You Need to Create Amazing Documents
+        <div className="max-w-2xl mx-auto text-center mb-20">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
+            Everything you need to <br />
+            <span className="text-primary">ship faster.</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Built for modern teams who value simplicity, speed, and collaboration.
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            We&apos;ve obsessed over every pixel so you don&apos;t have to. Powerful features wrapped in a beautiful, distraction-free interface.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[minmax(180px,auto)]">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-white/20 group hover:bg-white/15 transition-all"
+              className={cn(
+                "group relative overflow-hidden rounded-3xl border border-white/10 bg-black/60 backdrop-blur-xl p-8 transition-all duration-500 hover:bg-black/80 hover:border-white/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/10",
+                feature.className
+              )}
             >
-              <div className="bg-white/20 backdrop-blur-md w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-white/30">
-                <feature.icon className="w-7 h-7 text-primary" />
+              {/* Hover Gradient Background */}
+              <div 
+                className={cn(
+                  "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-gradient-to-br",
+                  feature.gradient
+                )} 
+              />
+              
+              <div className="relative z-10 h-full flex flex-col justify-between transition-transform duration-500 group-hover:translate-y-[-2px]">
+                <div className="mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 mb-6 group-hover:scale-110 group-hover:bg-primary/20 group-hover:border-primary/30 transition-all duration-500 group-hover:rotate-3">
+                    <feature.icon className="w-6 h-6 text-white group-hover:text-primary transition-colors" />
+                  </div>
+                  <h3 className="text-xl font-bold text-primary mb-3 group-hover:text-white transition-colors">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-white/90 transition-colors duration-300">
+                    {feature.description}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/30 group-hover:text-primary transition-all duration-300">
+                  <span>Explore module</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                </div>
               </div>
-              <h3 className="text-xl font-semibold mb-4">{feature.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
 
-        {/* Call to Action */}
-        <div className="text-center mt-20">
-          <div className="bg-white/10 backdrop-blur-md p-10 max-w-3xl mx-auto rounded-2xl border border-white/20">
-            <h3 className="text-3xl font-bold mb-6">Ready to get started?</h3>
-            <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-              Join thousands of teams who are already using our platform to create amazing content together.
-            </p>
+        {/* Bottom CTA */}
+        <div className="mt-32 text-center">
+          <div className="relative inline-flex group">
+            <div className="absolute transition-all duration-1000 opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-xl blur-lg group-hover:opacity-100 group-hover:-inset-1 group-hover:duration-200 animate-tilt"></div>
             <a
               href="/signup"
-              className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold hover:bg-primary/90 transition-all hover:shadow-xl text-lg"
+              className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-gray-900 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+              role="button"
             >
-              Start Free Today
+              Get Started Now
             </a>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">No credit card required</p>
         </div>
       </div>
     </section>

@@ -4,24 +4,21 @@ interface DocumentListSkeletonProps {
   count?: number;
 }
 
-export function DocumentListSkeleton({ count = 5 }: DocumentListSkeletonProps) {
+export function DocumentListSkeleton({ count = 10 }: DocumentListSkeletonProps) {
   return (
-    <div className="space-y-0.5">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="group flex items-center gap-1 rounded-lg px-2 py-2">
-          <div className="h-6 w-6 flex items-center justify-center">
-            <div className="w-4 h-4 bg-muted animate-pulse rounded" />
+        <div 
+          key={index} 
+          className="relative flex flex-col bg-card border border-border/60 shadow-sm rounded-xl p-3 sm:p-5 min-h-[120px] sm:min-h-[140px] animate-pulse"
+        >
+          <div className="flex-1 flex flex-col justify-center items-center space-y-3">
+            <div className="h-4 bg-muted rounded-md w-3/4" />
+            <div className="h-3 bg-muted rounded-md w-1/4" />
           </div>
-          <div className="flex items-start gap-2 flex-1 min-w-0">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0 bg-muted animate-pulse rounded" />
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-              <div className="h-3 bg-muted animate-pulse rounded w-1/2" />
-            </div>
-          </div>
-          <div className="flex items-center gap-1 pr-2 opacity-0">
-            <div className="w-8 h-8 bg-muted animate-pulse rounded" />
-            <div className="w-8 h-8 bg-muted animate-pulse rounded" />
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 h-8">
+            <div className="h-4 w-4 bg-muted rounded-full" />
+            <div className="h-4 w-4 bg-muted rounded-full" />
           </div>
         </div>
       ))}

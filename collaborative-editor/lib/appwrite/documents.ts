@@ -509,8 +509,6 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
 
 export async function toggleFavorite(documentId: string, currentStatus: boolean): Promise<void> {
   try {
-    console.log('toggleFavorite service called with:', documentId, currentStatus);
-    console.log('Service types:', typeof documentId, typeof currentStatus);
     const appwrite = getAppwrite();
     await appwrite.tablesDB.updateRow({
       databaseId: getDatabaseId(),

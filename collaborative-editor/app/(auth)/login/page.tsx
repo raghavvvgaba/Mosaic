@@ -34,31 +34,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d141c] to-[#101a24] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 overflow-hidden">
+      <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Back to home */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors glass px-4 py-2 rounded-xl inline-flex"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors bg-muted/50 backdrop-blur-md border border-border shadow-sm px-4 py-2 rounded-xl"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to app
+          Back to Mosaic
         </Link>
 
-        <Card className="neu-card border-0 shadow-2xl">
+        <Card className="bg-card border border-border rounded-2xl shadow-xl">
           <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 neu-card flex items-center justify-center mb-6">
+            <div className="mx-auto w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mb-6">
               <Lock className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
             <CardDescription className="text-base mt-2">
-              Sign in to access your documents and workspaces
+              Sign in to access your Mosaic workspace
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-0 space-y-6">
             {error && (
-              <Alert variant="destructive" className="neu-inset border-0">
+              <Alert variant="destructive" className="bg-muted/50 rounded-lg border border-transparent border-0">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -121,25 +121,22 @@ export default function LoginPage() {
 
             {/* Features reminder */}
             <div className="pt-6 border-t border-border/30">
-              <h3 className="font-medium text-sm text-foreground mb-4">
-                Your account includes:
-              </h3>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex items-center gap-3">
-                  <div className="h-2 w-2 bg-primary rounded-full" />
-                  Realtime Collaboration
+              <ul className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <div className="h-1 w-1 bg-primary rounded-full" />
+                  Realtime Sync
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="h-2 w-2 bg-primary rounded-full" />
-                  Cloud sync across all devices
+                <li className="flex items-center gap-2">
+                  <div className="h-1 w-1 bg-primary rounded-full" />
+                  Cloud Storage
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="h-2 w-2 bg-primary rounded-full" />
-                  Shared Workspaces
+                <li className="flex items-center gap-2">
+                  <div className="h-1 w-1 bg-primary rounded-full" />
+                  Shared Spaces
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="h-2 w-2 bg-primary rounded-full" />
-                  AI-Powered Enchancements
+                <li className="flex items-center gap-2">
+                  <div className="h-1 w-1 bg-primary rounded-full" />
+                  AI Assistant
                 </li>
               </ul>
             </div>

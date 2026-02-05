@@ -136,7 +136,6 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       // Create personal workspace for the new user
       try {
         await createWorkspace(`${name}'s Workspace`, user.id);
-        console.log('Personal workspace created successfully');
       } catch (workspaceError) {
         console.error('Failed to create personal workspace:', workspaceError);
         // Don't fail signup if workspace creation fails, but notify user

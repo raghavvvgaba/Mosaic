@@ -131,19 +131,19 @@ function PasswordStrength({ password }: { password: string }) {
               className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
                 index <= strength.score
                   ? strength.color
-                  : 'bg-gray-200'
+                  : 'bg-muted'
               }`}
             />
           ))}
         </div>
-        <span className="text-xs font-medium text-gray-600 min-w-[60px]">
+        <span className="text-xs font-medium text-muted-foreground min-w-[60px]">
           {strength.label}
         </span>
       </div>
 
       {/* Strength message */}
       {strength.message && (
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-muted-foreground">
           {strength.message}
         </p>
       )}
@@ -152,166 +152,413 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function SignupPage() {
+
   const router = useRouter();
+
   const { signUp } = useAuthContext();
+
   const [name, setName] = useState('');
+
   const [email, setEmail] = useState('');
+
   const [password, setPassword] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
+
   const [error, setError] = useState('');
 
+
+
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault();
+
     setIsLoading(true);
+
     setError('');
 
+
+
     try {
+
       // Create account - migration will be handled by useAuth hook
+
       await signUp(name, email, password);
 
+
+
       // Redirect to dashboard - migration happens automatically in background
+
       router.push('/dashboard');
+
     } catch (err: unknown) {
+
       setError(err instanceof Error ? err.message : 'Failed to create account');
+
       setIsLoading(false);
+
     }
+
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Back to home */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to app
-        </Link>
 
-        <Card className="shadow-lg border">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <User className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Create Account</CardTitle>
-            <CardDescription>
-              Sign up to create unlimited documents and workspaces
-            </CardDescription>
-          </CardHeader>
 
-          <CardContent className="pt-0">
+    return (
+
+
+
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 overflow-hidden">
+
+
+
+        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+
+
+          {/* Back to home */}
+
+
+
+          <Link
+
+
+
+            href="/"
+
+
+
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors bg-muted/50 backdrop-blur-md border border-border shadow-sm px-4 py-2 rounded-xl"
+
+
+
+          >
+
+
+
+            <ArrowLeft className="h-4 w-4" />
+
+
+
+            Back to Mosaic
+
+
+
+          </Link>
+
+
+
+  
+
+
+
+          <Card className="bg-card border border-border rounded-2xl shadow-xl">
+
+
+
+            <CardHeader className="text-center pb-6">
+
+
+
+              <div className="mx-auto w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mb-6">
+
+
+
+                <User className="h-8 w-8 text-primary" />
+
+
+
+              </div>
+
+
+
+              <CardTitle className="text-3xl font-bold tracking-tight">Create Account</CardTitle>
+
+
+
+              <CardDescription className="text-base mt-2">
+
+
+
+                Join Mosaic to start building your ideas
+
+
+
+              </CardDescription>
+
+
+
+            </CardHeader>
+
+
+
+  
+
+
+
+          <CardContent className="pt-0 space-y-6">
+
             {error && (
-              <Alert variant="destructive" className="mb-4">
+
+              <Alert variant="destructive" className="bg-muted/50 rounded-lg border border-transparent border-0">
+
                 <AlertDescription>{error}</AlertDescription>
+
               </Alert>
+
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+
+                <Label htmlFor="name" className="text-sm font-medium">Name</Label>
+
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
                   <Input
+
                     id="name"
+
                     type="text"
+
                     placeholder="Enter your name"
+
                     value={name}
+
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-10"
+
+                    className="pl-12 h-11"
+
                     required
+
                     disabled={isLoading}
+
                   />
+
                 </div>
+
               </div>
 
+
+
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
                   <Input
+
                     id="email"
+
                     type="email"
+
                     placeholder="Enter your email"
+
                     value={email}
+
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+
+                    className="pl-12 h-11"
+
                     required
+
                     disabled={isLoading}
+
                   />
+
                 </div>
+
               </div>
 
+
+
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
                   <Input
+
                     id="password"
+
                     type="password"
+
                     placeholder="Create a password"
+
                     value={password}
+
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+
+                    className="pl-12 h-11"
+
                     required
+
                     minLength={8}
+
                     disabled={isLoading}
+
                   />
+
                 </div>
+
                 <PasswordStrength password={password} />
-                <p className="text-xs text-slate-500">
+
+                <p className="text-xs text-muted-foreground">
+
                   Password must be at least 8 characters
+
                 </p>
+
               </div>
+
+
 
               <Button
+
                 type="submit"
-                className="w-full"
+
+                className="w-full h-11 text-base font-medium"
+
                 disabled={isLoading}
+
               >
+
                 {isLoading ? 'Creating account...' : 'Create Account'}
+
               </Button>
+
             </form>
 
-            <div className="mt-6 text-center">
+
+
+            <div className="text-center">
+
               <p className="text-sm text-muted-foreground">
+
                 Already have an account?{' '}
+
                 <Link
+
                   href="/login"
+
                   className="text-primary hover:underline font-medium"
+
                 >
+
                   Sign in
+
                 </Link>
+
               </p>
+
             </div>
 
-            {/* Benefits list */}
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-medium text-sm text-foreground mb-3">
-                With an account you get:
-              </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
-                  Realtime Collaboration
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
-                  Shared Workspaces
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
-                  Cloud sync across devices
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 bg-primary rounded-full" />
-                  AI-Powered Enchancements
-                </li>
-              </ul>
-            </div>
+
+
+                        {/* Features list */}
+
+
+
+                        <div className="pt-6 border-t border-border/30">
+
+
+
+                          <ul className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+
+
+
+                            <li className="flex items-center gap-2">
+
+
+
+                              <div className="h-1 w-1 bg-primary rounded-full" />
+
+
+
+                              Realtime Sync
+
+
+
+                            </li>
+
+
+
+                            <li className="flex items-center gap-2">
+
+
+
+                              <div className="h-1 w-1 bg-primary rounded-full" />
+
+
+
+                              Shared Spaces
+
+
+
+                            </li>
+
+
+
+                            <li className="flex items-center gap-2">
+
+
+
+                              <div className="h-1 w-1 bg-primary rounded-full" />
+
+
+
+                              Cloud Backup
+
+
+
+                            </li>
+
+
+
+                            <li className="flex items-center gap-2">
+
+
+
+                              <div className="h-1 w-1 bg-primary rounded-full" />
+
+
+
+                              AI Assistant
+
+
+
+                            </li>
+
+
+
+                          </ul>
+
+
+
+                        </div>
+
+
+
+            
+
           </CardContent>
+
         </Card>
+
       </div>
+
     </div>
+
   );
+
 }

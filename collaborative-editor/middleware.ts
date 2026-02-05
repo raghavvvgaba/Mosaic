@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  void request;
 
   // Simple middleware that allows all routes
   // Authentication will be rebuilt from scratch later
-
-  console.log('Middleware - Allowing access to:', pathname);
 
   return NextResponse.next();
 }

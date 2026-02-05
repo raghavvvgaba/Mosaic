@@ -61,11 +61,13 @@ export function DashboardTopBar({
 
         {/* Right Section: Search + Actions */}
         <div className="flex flex-1 items-center justify-end gap-4 min-w-0">
-           {/* Search Bar */}
+           {/* Search Bar Section */}
            <div className="flex-1 md:flex-none md:w-64 lg:w-80 max-w-md">
-              <SearchBar 
-                onResultClick={(doc) => openDocument(doc.id, doc.title)} 
-              />
+              <div className="rounded-full border border-border bg-muted/30 px-1 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30 transition-all">
+                <SearchBar 
+                  onResultClick={(doc) => openDocument(doc.id, doc.title)} 
+                />
+              </div>
            </div>
 
            {/* Actions */}

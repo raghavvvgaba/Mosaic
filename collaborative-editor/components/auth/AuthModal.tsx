@@ -65,7 +65,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="neu-card w-full max-w-md mx-4 shadow-2xl">
+      <div className="bg-card border border-border rounded-xl shadow-sm transition-all w-full max-w-md mx-4 shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border/30">
           <h2 className="text-2xl font-bold tracking-tight">
             {mode === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -74,7 +74,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             variant="ghost"
             size="icon-sm"
             onClick={onClose}
-            className="h-9 w-9 glass hover:bg-accent/20"
+            className="h-9 w-9 bg-background/80 backdrop-blur-md border border-border shadow-sm hover:bg-accent/20"
           >
             <X className="h-4 w-4" />
           </Button>

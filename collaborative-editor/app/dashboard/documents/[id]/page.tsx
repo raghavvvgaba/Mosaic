@@ -385,8 +385,34 @@ export default function DocumentPage() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-gray-500">Loading document...</div>
+      <div className="h-full flex flex-col bg-background animate-in fade-in duration-500">
+        <header className="border-b sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="pl-14 pr-[5px] md:px-8 py-4">
+            <div className="max-w-4xl mx-auto flex items-center gap-4">
+              <div className="h-8 bg-muted animate-pulse rounded-md flex-1 max-w-sm" />
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 bg-muted animate-pulse rounded-md" />
+                <div className="h-8 w-8 bg-muted animate-pulse rounded-md" />
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 overflow-hidden">
+          <div className="max-w-4xl mx-4 md:mx-auto px-0 md:px-8 py-12 space-y-6">
+            <div className="space-y-3">
+              <div className="h-10 bg-muted animate-pulse rounded-md w-3/4" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-1/4 opacity-50" />
+            </div>
+            <div className="space-y-4 pt-8">
+              <div className="h-4 bg-muted animate-pulse rounded-md w-full" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-[95%]" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-[98%]" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-[92%]" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-[96%]" />
+              <div className="h-4 bg-muted animate-pulse rounded-md w-[80%]" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -394,7 +420,7 @@ export default function DocumentPage() {
   if (!document) {
     return (
       <div className="h-full flex flex-col items-center justify-center">
-        <div className="text-gray-500 mb-4">Document not found</div>
+        <div className="text-muted-foreground mb-4">Document not found</div>
       </div>
     );
   }

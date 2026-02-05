@@ -68,7 +68,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search"
-          className="pl-9 pr-8 md:pl-12 md:pr-12 w-full text-sm md:text-base h-9 md:h-11"
+          className="pl-9 pr-8 md:pl-12 md:pr-12 w-full text-sm md:text-base h-9 md:h-11 border-none bg-transparent focus-visible:ring-0 shadow-none"
         />
         {query && (
           <button
@@ -81,7 +81,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full mt-3 w-full neu-card border-0 rounded-2xl max-h-96 overflow-auto z-50 shadow-2xl">
+        <div className="absolute top-full mt-3 w-full bg-card border border-border rounded-xl shadow-sm transition-all rounded-2xl max-h-96 overflow-auto z-50 shadow-2xl">
           {results.map(doc => (
             <button
               key={doc.id}
@@ -101,7 +101,7 @@ export function SearchBar({ onResultClick, onClose }: SearchBarProps) {
       )}
 
       {isOpen && results.length === 0 && query.length > 1 && (
-        <div className="absolute top-full mt-3 w-full neu-card border-0 rounded-2xl p-6 text-center text-muted-foreground z-50 shadow-2xl">
+        <div className="absolute top-full mt-3 w-full bg-card border border-border rounded-xl shadow-sm transition-all rounded-2xl p-6 text-center text-muted-foreground z-50 shadow-2xl">
           <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
           <p className="text-sm">No documents found for &quot;{query}&quot;</p>
         </div>

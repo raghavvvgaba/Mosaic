@@ -12,6 +12,7 @@ import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 import { DocumentCard } from '@/components/dashboard/DocumentCard';
 import { RenameDialog } from '@/components/RenameDialog';
+import { DocumentListSkeleton } from '@/components/ui/document-list-skeleton';
 
 export default function Home() {
   const { openDocument } = useNavigation();
@@ -154,8 +155,19 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-muted-foreground animate-pulse">Loading documents...</div>
+      <div className="flex flex-col h-full bg-background/50">
+        <DashboardTopBar 
+          selectionMode={false}
+          onToggleSelectionMode={() => {}}
+          selectedCount={0}
+          showSelectAll={false}
+        />
+        <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto animate-in fade-in duration-500">
+          <div className="container mx-auto max-w-6xl">
+            <DocumentListSkeleton count={10} />
+          </div>
+        </main>
+        <MobileBottomNav />
       </div>
     );
   }

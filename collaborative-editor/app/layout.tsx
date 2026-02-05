@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Collaborative Editor - Local-First Notes App",
+  title: "Mosaic - Your Ideas, Connected",
   description: "A powerful, offline-first block-based document editor inspired by Notion",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CollabEditor",
+    title: "Mosaic",
   },
 };
 

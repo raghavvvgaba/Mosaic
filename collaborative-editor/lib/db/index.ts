@@ -13,5 +13,4 @@ export async function getDB() {
 
 export async function resetDB() {
   // No longer needed - Appwrite handles data persistence
-  console.log('DB reset is no longer needed - using Appwrite cloud storage');
 }

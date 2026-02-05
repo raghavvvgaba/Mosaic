@@ -18,6 +18,7 @@ import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles, X } from 'lucide-react';
 import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
+import { MobileToolbar } from './MobileToolbar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -370,20 +371,25 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
           onAIDraft={onOpenAIDraft}
           onSummarize={() => {
             // TODO: Implement summarize functionality
-            console.log('Summarize feature coming soon');
+            toast.info('Summarize feature coming soon');
           }}
           onTranslate={() => {
             // TODO: Implement translate functionality
-            console.log('Translate feature coming soon');
+            toast.info('Translate feature coming soon');
           }}
           onBrainstorm={() => {
             // TODO: Implement brainstorm functionality
-            console.log('Brainstorm feature coming soon');
+            toast.info('Brainstorm feature coming soon');
           }}
           onAskAI={() => {
             // TODO: Implement AI chat functionality
-            console.log('AI Chat feature coming soon');
+            toast.info('AI Chat feature coming soon');
           }}
+        />
+
+        <MobileToolbar 
+          editor={editor} 
+          onOpenAIDraft={onOpenAIDraft} 
         />
       </div>
     </div>

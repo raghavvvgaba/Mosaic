@@ -52,10 +52,10 @@ export function DocumentCard({
     <div
       className={cn(
         'relative flex flex-col',
-        'bg-card border border-border shadow-sm rounded-lg',
-        'transition-all duration-200 group',
-        selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-md hover:border-primary/20',
-        isSelected && 'ring-2 ring-primary border-primary',
+        'bg-card border border-border/60 shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-xl',
+        'transition-all duration-300 group',
+        selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-lg hover:shadow-primary/5 hover:border-primary/40 hover:-translate-y-0.5',
+        isSelected && 'ring-2 ring-primary border-primary shadow-md',
         // Mobile optimization: Smaller padding, compact size
         'p-3 sm:p-5',
         'min-h-[120px] sm:min-h-[140px]',
@@ -113,14 +113,14 @@ export function DocumentCard({
                  size="icon-sm"
                  className={cn(
                    "h-6 w-6 sm:h-7 sm:w-7 transition-opacity",
-                   doc.isFavorite ? "opacity-100 text-yellow-500" : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500"
+                   doc.isFavorite ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"
                  )}
                  onClick={(e) => {
                    e.stopPropagation();
                    onToggleFavorite(doc);
                  }}
                >
-                 <Star className={cn("w-3.5 h-3.5", doc.isFavorite && "fill-yellow-500")} />
+                 <Star className={cn("w-3.5 h-3.5", doc.isFavorite && "fill-primary")} />
                </Button>
             )}
          </div>
@@ -132,6 +132,7 @@ export function DocumentCard({
             menuOpen && "opacity-100" // Keep visible when menu is open
           )}>
             <DocumentActionsMenu 
+              documentId={doc.id}
               onRename={() => onRename(doc)}
               onDelete={() => onDelete(doc)}
               onToggleFavorite={() => onToggleFavorite(doc)}

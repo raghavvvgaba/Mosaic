@@ -14,10 +14,14 @@ import {
   Check,
   Home,
   Settings2,
+  LogOut,
+  FileText,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { UserAvatar } from '@/components/auth/UserAvatar';
 import { cn, getInitials, getWorkspaceColor } from '@/lib/utils';
 import { WorkspaceSwitcher, WorkspaceManagerDialog } from './WorkspaceSwitcher';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -36,6 +40,7 @@ export function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const { activeWorkspace, workspaces, setActiveWorkspace } = useWorkspace();
+  const { user, signOut } = useAuthContext();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isWorkspaceManagerOpen, setIsWorkspaceManagerOpen] = useState(false);
 
@@ -61,7 +66,7 @@ export function Sidebar({
               "w-full h-9 mb-1 transition-all duration-200 ease-in-out",
               isCollapsed ? "justify-center px-0" : "justify-start px-2",
               isActive 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm" 
+                ? "bg-sidebar-accent text-primary font-medium shadow-sm" 
                 : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
             )}
             onClick={onClick}
@@ -124,8 +129,11 @@ export function Sidebar({
         </div>
 
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center h-14 px-4 border-b border-sidebar-border">
-          <span className="font-semibold text-lg tracking-tight">Menu</span>
+        <div className="md:hidden flex items-center h-14 px-4 border-b border-sidebar-border gap-2">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <FileText className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Mosaic</span>
         </div>
 
         {/* Main Content */}
@@ -160,7 +168,7 @@ export function Sidebar({
                                         className={cn(
                                           "w-full justify-start h-9 px-2 text-sm font-medium transition-all group rounded-lg",
                                           activeWorkspace?.id === w.id 
-                                             ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" 
+                                             ? "bg-sidebar-accent text-primary shadow-sm" 
                                              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                                         )}
                                         onClick={() => setActiveWorkspace(w.id)}
@@ -198,7 +206,7 @@ export function Sidebar({
           <div className="px-3">
              {!isCollapsed && (
                <div className="px-2 pb-2 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                 Menu
+                 Mosaic
                </div>
              )}
             <div className="space-y-0.5">
@@ -226,13 +234,53 @@ export function Sidebar({
         </div>
 
         {/* Bottom */}
-        <div className="p-3 border-t border-sidebar-border bg-sidebar/50 backdrop-blur-sm">
-          <SidebarItem 
-            icon={HelpCircle} 
-            label="Shortcuts" 
-            onClick={onShowShortcuts}
-            shortcut="?"
-          />
+        <div className="p-3 border-t border-sidebar-border bg-sidebar/50 backdrop-blur-sm space-y-1">
+          <div className={cn("flex mb-1", isCollapsed ? "justify-center" : "justify-start px-2")}>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all"
+                    onClick={onShowShortcuts}
+                  >
+                    <HelpCircle className="h-4 w-4 shrink-0" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Keyboard Shortcuts
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          <div className={cn(
+            "flex items-center gap-3 px-2 py-2 rounded-lg transition-colors hover:bg-sidebar-accent group",
+            isCollapsed ? "justify-center px-0" : "justify-start"
+          )}>
+            <UserAvatar className="h-8 w-8 shrink-0" />
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.name || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </p>
+              </div>
+            )}
+            {!isCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                onClick={signOut}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
       </aside>

@@ -72,7 +72,7 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="glass w-10 h-10 rounded-xl flex items-center justify-center">
+            <div className="bg-background/80 backdrop-blur-md border border-border shadow-sm w-10 h-10 rounded-xl flex items-center justify-center">
               <Download className="w-5 h-5 text-primary" />
             </div>
             Export Document
@@ -87,10 +87,10 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
           <div className="space-y-3">
             <Label className="text-sm font-medium">Format</Label>
             <RadioGroup value={format} onValueChange={(value: 'markdown' | 'pdf') => setFormat(value)}>
-              <div className="flex items-center space-x-3 neu-card p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
+              <div className="flex items-center space-x-3 bg-card border border-border rounded-xl shadow-sm transition-all p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
                 <RadioGroupItem value="markdown" id="markdown" />
                 <Label htmlFor="markdown" className="flex items-center gap-3 cursor-pointer flex-1">
-                  <div className="glass w-10 h-10 rounded-lg flex items-center justify-center">
+                  <div className="bg-background/80 backdrop-blur-md border border-border shadow-sm w-10 h-10 rounded-lg flex items-center justify-center">
                     <FileText className="w-5 h-5 text-blue-500" />
                   </div>
                   <div className="flex-1">
@@ -102,10 +102,10 @@ export function ExportDialog({ document, open, onOpenChange }: ExportDialogProps
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-3 neu-card p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
+              <div className="flex items-center space-x-3 bg-card border border-border rounded-xl shadow-sm transition-all p-4 cursor-pointer hover:transform hover:-translate-y-1 transition-all rounded-xl">
                 <RadioGroupItem value="pdf" id="pdf" />
                 <Label htmlFor="pdf" className="flex items-center gap-3 cursor-pointer flex-1">
-                  <div className="glass w-10 h-10 rounded-lg flex items-center justify-center">
+                  <div className="bg-background/80 backdrop-blur-md border border-border shadow-sm w-10 h-10 rounded-lg flex items-center justify-center">
                     <File className="w-5 h-5 text-red-500" />
                   </div>
                   <div className="flex-1">

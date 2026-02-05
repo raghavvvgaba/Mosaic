@@ -1,141 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Edit3, Users, Zap } from 'lucide-react';
+import { ArrowRight, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 export function Hero() {
   const { user, loading } = useAuthContext();
   const router = useRouter();
-  const [isHovered, setIsHovered] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleGoToDashboard = () => {
     router.push('/dashboard');
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-transparent">
-      {/* Gradient fade to match Features section */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 backdrop-blur-[2px]" />
+    <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 pb-32 overflow-hidden">
+      {/* Dynamic Background Gradients */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 rounded-full blur-[120px] opacity-30 animate-pulse" />
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[100px] opacity-20" />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-8">
-            <Zap className="w-4 h-4" />
-            <span>Collaborative Editing, Reimagined</span>
-          </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center text-center">
+        
+        {/* Animated Badge */}
+        <div 
+          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+        >
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+          <span className="text-xs font-medium text-white">v2.0 is now live</span>
+        </div>
 
-          {/* Main Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-            Your Ideas,
-            <span className="text-primary"> Better Together</span>
-          </h1>
+        {/* Main Heading with Gradient Text */}
+        <h1 
+          className={`text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tighter mb-8 max-w-5xl transition-all duration-700 delay-100 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+        >
+          Create your <br className="hidden sm:block" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-white/50">
+            Mosaic of ideas.
+          </span>
+        </h1>
 
-          {/* Subheading */}
-          <p className="text-xl sm:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            {user ? (
-              <>
-                Welcome back, <span className="font-semibold text-foreground">{user.name || 'User'}</span>!
-                <br />
-                Ready to continue where you left off?
-              </>
-            ) : (
-              <>
-                A powerful collaborative document editor that brings teams together.
-                <br />
-                Edit in real-time, organize your thoughts, and watch your productivity soar.
-              </>
-            )}
-          </p>
+        {/* Subheading */}
+        <p 
+          className={`text-xl text-muted-foreground mb-12 max-w-2xl leading-relaxed transition-all duration-700 delay-200 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+        >
+          Mosaic is the all-in-one workspace that blends <span className="text-foreground font-semibold">AI assistance</span> with real-time collaboration. Designed for teams who move fast.
+        </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                Loading...
-              </div>
-            ) : user ? (
-              // Authenticated user - Show dashboard button
-              <Button
-                size="lg"
-                className="w-full sm:w-auto text-base px-8 py-3 h-auto"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                onClick={handleGoToDashboard}
-              >
-                Go to Dashboard
-                <ArrowRight className={`ml-2 w-4 h-4 transition-transform duration-300 ${
-                  isHovered ? 'translate-x-1' : ''
-                }`} />
-              </Button>
-            ) : (
-              // Unauthenticated user - Show signup and signin buttons
-              <>
-                <Link href="/signup">
-                  <Button
-                    size="lg"
-                    className="w-full sm:w-auto text-base px-8 py-3 h-auto"
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
-                  >
-                    Start Writing Free
-                    <ArrowRight className={`ml-2 w-4 h-4 transition-transform duration-300 ${
-                      isHovered ? 'translate-x-1' : ''
-                    }`} />
-                  </Button>
-                </Link>
+        {/* CTA Buttons */}
+        <div 
+          className={`flex flex-col sm:flex-row gap-4 w-full sm:w-auto transition-all duration-700 delay-300 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+        >
+          {loading ? (
+            <div className="h-12 w-32 bg-white/5 animate-pulse rounded-lg" />
+          ) : user ? (
+            <Button
+              size="lg"
+              className="group relative overflow-hidden bg-primary hover:bg-primary/90 text-primary-foreground px-8 h-12 rounded-full transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_theme(colors.primary/30%)]"
+              onClick={handleGoToDashboard}
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <span className="relative flex items-center gap-2">
+                Open Dashboard <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Button>
+          ) : (
+            <>
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="group relative overflow-hidden bg-white text-black hover:bg-white/90 px-8 h-12 rounded-full transition-all hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] font-semibold"
+                >
+                  <span className="relative flex items-center gap-2">
+                    Start Building Free <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  </span>
+                </Button>
+              </Link>
 
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full sm:w-auto text-base px-8 py-3 h-auto"
-                  >
-                    Sign In
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Feature Highlights */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Edit3 className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Rich Editor</h3>
-              <p className="text-sm text-muted-foreground">Block-based editor with formatting, tables, and more</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Real-time Sync</h3>
-              <p className="text-sm text-muted-foreground">Collaborate with your team in real-time from anywhere</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Lightning Fast</h3>
-              <p className="text-sm text-muted-foreground">Built for speed with instant loading and smooth editing</p>
-            </div>
-          </div>
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="px-8 h-12 rounded-full border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 text-white backdrop-blur-sm transition-all"
+                >
+                  Sign In
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Decorative Elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 bg-primary/10 rounded-full blur-xl" />
-      <div className="absolute bottom-20 right-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl" />
     </section>
   );
 }

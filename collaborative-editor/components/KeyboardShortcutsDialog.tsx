@@ -69,7 +69,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="glass w-10 h-10 rounded-xl flex items-center justify-center">
+            <div className="bg-background/80 backdrop-blur-md border border-border shadow-sm w-10 h-10 rounded-xl flex items-center justify-center">
               <Keyboard className="w-5 h-5 text-primary" />
             </div>
             Keyboard Shortcuts
@@ -113,11 +113,11 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
                   {shortcuts.map((shortcut) => (
                     <div
                       key={shortcut.id}
-                      className="flex items-center justify-between py-3 px-4 neu-card hover:transform hover:-translate-y-1 transition-all rounded-xl group"
+                      className="flex items-center justify-between py-3 px-4 bg-card border border-border rounded-xl shadow-sm transition-all hover:transform hover:-translate-y-1 transition-all rounded-xl group"
                     >
                       <span className="text-sm">{shortcut.description}</span>
                       <div className="flex items-center gap-1">
-                        <kbd className="px-3 py-1.5 text-xs font-semibold glass rounded-lg border-0 group-hover:bg-white/10 transition-colors">
+                        <kbd className="px-3 py-1.5 text-xs font-semibold bg-background/80 backdrop-blur-md border border-border shadow-sm rounded-lg border-0 group-hover:bg-accent/50 transition-colors">
                           {formatKeys(shortcut.keys)}
                         </kbd>
                       </div>

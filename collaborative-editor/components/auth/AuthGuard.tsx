@@ -17,7 +17,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!loading) {
       if (!user) {
         // User is not authenticated, redirect to landing page
-        console.log('AuthGuard: User not authenticated, redirecting to /');
         router.push('/');
       }
     }
@@ -28,7 +27,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-        <span className="ml-2 text-gray-600">Loading...</span>
+        <span className="ml-2 text-muted-foreground">Loading...</span>
       </div>
     );
   }

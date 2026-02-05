@@ -5,7 +5,8 @@ import {
   Pencil, 
   Trash2, 
   Star,
-  FolderInput 
+  FolderInput,
+  ExternalLink
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 interface DocumentActionsMenuProps {
+  documentId: string;
   onRename: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
@@ -26,6 +28,7 @@ interface DocumentActionsMenuProps {
 }
 
 export function DocumentActionsMenu({
+  documentId,
   onRename,
   onDelete,
   onToggleFavorite,
@@ -42,6 +45,13 @@ export function DocumentActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={(e) => { 
+          e.stopPropagation(); 
+          window.open(`/dashboard/documents/${documentId}`, '_blank');
+        }}>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          <span>Open in new tab</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename(); }}>
           <Pencil className="mr-2 h-4 w-4" />
           <span>Rename</span>
