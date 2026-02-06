@@ -4,7 +4,6 @@ export type GenerateParams = {
   temperature?: number
   tone?: 'neutral' | 'friendly' | 'formal'
   length?: 'short' | 'medium' | 'long'
-  model?: string
   context?: string
 }
 

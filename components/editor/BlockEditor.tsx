@@ -21,6 +21,7 @@ import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
 import { MobileToolbar } from './MobileToolbar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { sanitizeMarkdownForInsert } from '@/lib/ai/markdown-insert';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -31,8 +32,10 @@ interface EditorBlock { type?: string; content?: BlockContent; [key: string]: un
 type MaybeExtraEditor = BlockNoteEditor & {
   getTextCursorPosition?: () => { block?: EditorBlock } | undefined;
   updateBlock?: (oldBlock: EditorBlock, newBlock: EditorBlock) => void;
-  insertBlocks?: unknown;
-  replaceDocument?: unknown;
+  insertBlocks?: (blocks: unknown[], target?: unknown, position?: 'after' | 'before' | 'replace') => void;
+  replaceBlocks?: (blocksToRemove: unknown[], blocksToInsert: unknown[]) => void;
+  replaceDocument?: (doc: unknown[]) => void;
+  tryParseMarkdownToBlocks?: (markdown: string) => unknown[];
 };
 
 export interface BlockEditorProps {
@@ -193,28 +196,66 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
 
   useImperativeHandle(ref, () => ({
     insertTextAtCursor(text: string) {
-      try {
-        // Create a paragraph block with text
-        const block: EditorBlock = { type: 'paragraph', content: [{ type: 'text', text }] };
-        // Prefer inserting after current block; if current block is empty, replace it
+      const insertBlocksSafely = (blocksToInsert: unknown[]): boolean => {
+        if (!Array.isArray(blocksToInsert) || blocksToInsert.length === 0) return false
+
         const cursor = editor.getTextCursorPosition?.();
-        const currentBlock = cursor?.block;
-        if (currentBlock && Array.isArray(currentBlock.content) && currentBlock.content.length === 0) {
-          (editor as unknown as { updateBlock?: (a: unknown, b: unknown) => void }).updateBlock?.(currentBlock, block);
-        } else {
-          // Try insertBlocks when available
-          const insertBlocks = editor.insertBlocks as unknown as ((blocks: unknown[], target?: unknown, position?: 'after' | 'before' | 'replace') => void) | undefined;
-          insertBlocks?.([block], currentBlock, 'after');
-          // Fallback: append block at end by setting document when insertBlocks is unavailable
-          if (!insertBlocks) {
-            const doc = (editor as unknown as { document?: EditorBlock[] }).document ?? [];
-            const next: EditorBlock[] = [...doc, block];
-            const replaceDocument = editor.replaceDocument as unknown as ((doc: unknown[]) => void) | undefined;
-            replaceDocument?.(next as unknown[]);
-          }
+        const currentBlock = cursor?.block as EditorBlock | undefined;
+        const isCurrentEmptyBlock =
+          !!currentBlock &&
+          ((Array.isArray(currentBlock.content) && currentBlock.content.length === 0) ||
+            (typeof currentBlock.content === 'string' && currentBlock.content.trim().length === 0));
+
+        if (isCurrentEmptyBlock && typeof editor.replaceBlocks === 'function') {
+          editor.replaceBlocks([currentBlock], blocksToInsert);
+          return true
+        }
+
+        if (currentBlock && typeof editor.insertBlocks === 'function') {
+          editor.insertBlocks(blocksToInsert, currentBlock, 'after');
+          return true
+        }
+
+        const doc = (editor as unknown as { document?: unknown[] }).document ?? [];
+        if (doc.length > 0 && typeof editor.insertBlocks === 'function') {
+          const lastBlock = doc[doc.length - 1];
+          editor.insertBlocks(blocksToInsert, lastBlock, 'after');
+          return true
+        }
+
+        if (typeof editor.replaceDocument === 'function') {
+          editor.replaceDocument([...(doc as unknown[]), ...blocksToInsert]);
+          return true
+        }
+
+        return false
+      }
+
+      try {
+        const fallbackBlock: EditorBlock = { type: 'paragraph', content: [{ type: 'text', text }] };
+        const sanitizedMarkdown = sanitizeMarkdownForInsert(text);
+        const parsedBlocks =
+          typeof editor.tryParseMarkdownToBlocks === 'function' && sanitizedMarkdown
+            ? editor.tryParseMarkdownToBlocks(sanitizedMarkdown)
+            : [];
+
+        if (Array.isArray(parsedBlocks) && parsedBlocks.length > 0) {
+          if (insertBlocksSafely(parsedBlocks)) return;
+        }
+
+        if (!insertBlocksSafely([fallbackBlock])) {
+          console.error('Failed to insert AI draft content: no compatible insertion API found');
         }
       } catch (e) {
         console.error('Failed to insert text into editor', e);
+        try {
+          const fallbackBlock: EditorBlock = { type: 'paragraph', content: [{ type: 'text', text }] };
+          if (!insertBlocksSafely([fallbackBlock])) {
+            console.error('Fallback insertion failed: no compatible insertion API found');
+          }
+        } catch (fallbackError) {
+          console.error('Fallback insertion failed', fallbackError);
+        }
       }
     },
     getContextWindow({ around = 2, maxChars = 1400 } = {}) {

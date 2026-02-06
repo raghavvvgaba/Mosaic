@@ -13,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useAiDraft, type AiOptions } from '@/hooks/useAiDraft';
+import { useAiDraft } from '@/hooks/useAiDraft';
+import type { AiOptions } from '@/hooks/aiDraftOptions';
 
 interface Props {
   open: boolean;

@@ -1,13 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { streamGenerate, type GenerateParams } from '@/lib/ai/openrouter-client'
-
-export type AiOptions = {
-  tone: 'neutral' | 'friendly' | 'formal'
-  length: 'short' | 'medium' | 'long'
-  temperature: number
-  includeContext: boolean
-  model?: string
-}
+import { DEFAULT_AI_OPTIONS, normalizeAiDraftOptions, type AiOptions } from './aiDraftOptions'
 
 export function useAiDraft() {
   const [open, setOpen] = useState(false)
@@ -19,17 +12,18 @@ export function useAiDraft() {
   const [options, setOptions] = useState<AiOptions>(() => {
     try {
       const raw = localStorage.getItem('ai:draft:opts')
-      if (raw) return JSON.parse(raw)
+      if (raw) return normalizeAiDraftOptions(JSON.parse(raw))
     } catch {}
-    return { tone: 'neutral', length: 'medium', temperature: 0.7, includeContext: false }
+    return DEFAULT_AI_OPTIONS
   })
 
   const stopRef = useRef<() => void>(() => {})
   const cooldownRef = useRef<number>(0)
 
   const persist = useCallback((next: AiOptions) => {
-    setOptions(next)
-    try { localStorage.setItem('ai:draft:opts', JSON.stringify(next)) } catch {}
+    const normalized = normalizeAiDraftOptions(next)
+    setOptions(normalized)
+    try { localStorage.setItem('ai:draft:opts', JSON.stringify(normalized)) } catch {}
   }, [])
 
   const start = useCallback(async (params: { prompt: string; context?: string }) => {
@@ -50,7 +44,6 @@ export function useAiDraft() {
       temperature: options.temperature,
       tone: options.tone,
       length: options.length,
-      model: options.model,
       context: options.includeContext ? params.context : undefined,
     }
 

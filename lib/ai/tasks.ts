@@ -1,11 +1,7 @@
 export const openrouterConfig = {
   apiKey: process.env.OPENROUTER_API_KEY,
-  model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
   site: process.env.OPENROUTER_SITE || 'http://localhost:3000',
   title: process.env.OPENROUTER_TITLE || 'Notes AI Draft',
-  modelDraft: process.env.OPENROUTER_MODEL_DRAFT || 'qwen/qwen-2.5-72b-instruct:free',
-  modelTitle: process.env.OPENROUTER_MODEL_TITLE || 'meta-llama/llama-3.3-70b-instruct:free',
-  modelImprove: process.env.OPENROUTER_MODEL_IMPROVE || 'anthropic/claude-3.5-sonnet',
 };
 
 export type TaskName = 'draft' | 'title' | 'improve' | string
@@ -14,7 +10,6 @@ export type CommonParams = {
   prompt: string
   context?: string
   temperature?: number
-  model?: string
   tone?: 'neutral' | 'friendly' | 'formal'
   length?: 'short' | 'medium' | 'long'
 }
@@ -26,18 +21,16 @@ export type TaskDefinition = {
   systemPrompt: (params: CommonParams) => string
 }
 
-// Centralized per-task model preferences (runtime access)
-function getTaskModels(): Record<string, string> {
-  return {
-    draft: openrouterConfig.modelDraft || openrouterConfig.model,
-    title: openrouterConfig.modelTitle || openrouterConfig.model,
-    improve: openrouterConfig.modelImprove || openrouterConfig.model,
-  };
+const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet'
+
+const TASK_MODELS: Record<string, string> = {
+  draft: 'google/gemini-2.5-flash-lite',
+  title: 'google/gemini-2.5-flash-lite-preview-09-2025',
+  improve: DEFAULT_MODEL,
 }
 
-export function resolveModel(task: string, params: CommonParams): string {
-  const taskModels = getTaskModels();
-  return params.model || taskModels[task] || openrouterConfig.model
+export function resolveModel(task: string): string {
+  return TASK_MODELS[task] || DEFAULT_MODEL
 }
 
 // Centralized per-task defaults (e.g., temperature)
@@ -71,7 +64,7 @@ function buildDraftSystemPrompt(opts: { tone?: CommonParams['tone']; length?: Co
       : length === 'long'
       ? 'Target roughly 400-600 words.'
       : 'Target roughly 200-300 words.'
-  return `${toneText} ${lengthText} Avoid excessive preamble. Provide clean, ready-to-paste prose.`
+  return `${toneText} ${lengthText} Use clean Markdown structure with short section headings and bullet lists when helpful. Do not use trailing backslashes for line breaks. Do not output standalone backslash lines. Do not wrap the entire response in a single code fence. Avoid excessive preamble. Provide clean, ready-to-paste prose.`
 }
 
 const draftTask: TaskDefinition = {

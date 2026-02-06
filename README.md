@@ -228,10 +228,13 @@ Setup (.env.local):
 
 ```
 OPENROUTER_API_KEY=your_key_here
-OPENROUTER_MODEL=openai/gpt-oss-20b:free
 OPENROUTER_SITE=http://localhost:3000
 OPENROUTER_TITLE=Notes AI Draft
 ```
+
+Model selection is server-locked in code (not environment-configured):
+- Draft: `google/gemini-2.5-flash-lite`
+- Title: `google/gemini-2.5-flash-lite-preview-09-2025`
 
 How to use:
 - In a document, click the toolbar button “AI Draft” (✨), or

@@ -44,18 +44,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
   }
 
   const body = (await req.json()) as CommonParams
-  const { prompt, context, temperature, model, tone, length } = body
+  const { prompt, context, temperature, tone, length } = body
   if (!prompt || typeof prompt !== 'string') {
     return new Response(JSON.stringify({ error: 'Invalid prompt' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
   }
 
   const controller = new AbortController()
-  const system = def.systemPrompt({ prompt, context, temperature, model, tone, length })
+  const system = def.systemPrompt({ prompt, context, temperature, tone, length })
   const messages = [
     { role: 'system', content: system },
     ...(context ? [{ role: 'system', content: `Context (may inform style/topic):\n${context}` }] : []),
     { role: 'user', content: prompt },
   ]
+  const selectedModel = resolveModel(task)
 
   const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
       'X-Title': openrouterConfig.title,
     },
     body: JSON.stringify({
-      model: resolveModel(task, body),
+      model: selectedModel,
       messages,
       temperature: resolveTemperature(task, body),
       stream: def.stream,
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
     const text = await upstream.text().catch(() => '')
     return new Response(JSON.stringify({ error: 'Upstream error', detail: text }), {
       status: upstream.status || 502,
-      headers: { 'Content-Type': 'application/json', 'X-AI-Task': task },
+      headers: { 'Content-Type': 'application/json', 'X-AI-Task': task, 'X-AI-Model': selectedModel },
     })
   }
 
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
         'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive',
         'X-AI-Task': task,
+        'X-AI-Model': selectedModel,
         'X-Upstream-Status': String(upstream.status),
       },
     })
@@ -120,9 +122,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ task: stri
     const text: string = choice?.message?.content || choice?.text || ''
     return new Response((text || '').toString(), {
       status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-AI-Task': task, 'X-Upstream-Status': String(upstream.status) },
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-AI-Task': task, 'X-AI-Model': selectedModel, 'X-Upstream-Status': String(upstream.status) },
     })
   } catch {
-    return new Response('', { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-AI-Task': task, 'X-Upstream-Status': String(upstream.status) } })
+    return new Response('', { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-AI-Task': task, 'X-AI-Model': selectedModel, 'X-Upstream-Status': String(upstream.status) } })
   }
 }

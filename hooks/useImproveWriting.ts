@@ -3,7 +3,6 @@ import { completeGenerate, type GenerateParams } from '@/lib/ai/openrouter-clien
 
 export type ImproveOptions = {
   tone: 'neutral' | 'friendly' | 'formal'
-  model?: string
 }
 
 export type ImproveAction = 'accept' | 'discard' | 'try-again' | 'insert-below'
@@ -41,7 +40,6 @@ export function useImproveWriting() {
         prompt: text,
         mode: 'improve',
         tone: options.tone,
-        model: options.model,
       }
 
       // Add timeout for AI request
