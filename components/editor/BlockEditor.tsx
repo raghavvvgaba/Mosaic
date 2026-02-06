@@ -22,6 +22,8 @@ import { MobileToolbar } from './MobileToolbar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { sanitizeMarkdownForInsert } from '@/lib/ai/markdown-insert';
+import { completeGenerate } from '@/lib/ai/openrouter-client';
+import { extractPlainTextFromEditorBlocks } from '@/lib/editor/text-extract';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -333,6 +335,21 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     }
   }, [editor, improveWriting]);
 
+  const handleSummarize = useCallback(async (): Promise<string> => {
+    const blocks = (editor as unknown as { document?: unknown[] }).document ?? [];
+    const extracted = extractPlainTextFromEditorBlocks(blocks, { maxChars: 12000 }).trim();
+    if (!extracted) {
+      throw new Error('There is no content in this note to summarize yet.')
+    }
+
+    const summary = (await completeGenerate('summarize', { prompt: extracted })).trim();
+    if (!summary) {
+      throw new Error('Summary generation returned an empty response. Please try again.')
+    }
+
+    return summary
+  }, [editor]);
+
   // Custom formatting toolbar that extends default items
   const CustomFormattingToolbar = useCallback(() => {
     // Custom toolbar component that uses the context internally
@@ -410,22 +427,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         <AIAssistantButton
           onImproveWriting={handleImproveWriting}
           onAIDraft={onOpenAIDraft}
-          onSummarize={() => {
-            // TODO: Implement summarize functionality
-            toast.info('Summarize feature coming soon');
-          }}
-          onTranslate={() => {
-            // TODO: Implement translate functionality
-            toast.info('Translate feature coming soon');
-          }}
-          onBrainstorm={() => {
-            // TODO: Implement brainstorm functionality
-            toast.info('Brainstorm feature coming soon');
-          }}
-          onAskAI={() => {
-            // TODO: Implement AI chat functionality
-            toast.info('AI Chat feature coming soon');
-          }}
+          onSummarize={handleSummarize}
         />
 
         <MobileToolbar 

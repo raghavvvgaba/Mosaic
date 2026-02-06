@@ -4,7 +4,7 @@ export const openrouterConfig = {
   title: process.env.OPENROUTER_TITLE || 'Notes AI Draft',
 };
 
-export type TaskName = 'draft' | 'title' | 'improve' | string
+export type TaskName = 'draft' | 'title' | 'improve' | 'summarize' | string
 
 export type CommonParams = {
   prompt: string
@@ -25,6 +25,7 @@ const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet'
 
 const TASK_MODELS: Record<string, string> = {
   draft: 'google/gemini-2.5-flash-lite',
+  summarize: 'google/gemini-2.5-flash-lite',
   title: 'google/gemini-2.5-flash-lite-preview-09-2025',
   improve: DEFAULT_MODEL,
 }
@@ -36,6 +37,7 @@ export function resolveModel(task: string): string {
 // Centralized per-task defaults (e.g., temperature)
 const TASK_DEFAULTS: Record<string, { temperature?: number }> = {
   draft: { temperature: 0.7 },
+  summarize: { temperature: 0.3 },
   title: { temperature: 0.3 },
   improve: { temperature: 0.3 },
 }
@@ -82,6 +84,17 @@ const titleTask: TaskDefinition = {
     'Return ONLY a short, human-friendly title in 2-3 words, in the same language as the input. No punctuation, no quotes, no code tokens, no file extensions, no trailing period.',
 }
 
+function buildSummarizeSystemPrompt() {
+  return 'Summarize the user content accurately and concisely. Preserve facts and intent, do not invent details, and avoid boilerplate. Return only the summary.'
+}
+
+const summarizeTask: TaskDefinition = {
+  name: 'summarize',
+  stream: false,
+  output: 'text',
+  systemPrompt: () => buildSummarizeSystemPrompt(),
+}
+
 // Prompt builder for improve task
 function buildImproveSystemPrompt(opts: { tone?: CommonParams['tone'] }) {
   const tone = (opts.tone || 'neutral').toLowerCase()
@@ -104,6 +117,7 @@ const improveTask: TaskDefinition = {
 
 const registry: Record<string, TaskDefinition> = {
   [draftTask.name]: draftTask,
+  [summarizeTask.name]: summarizeTask,
   [titleTask.name]: titleTask,
   [improveTask.name]: improveTask,
 }
