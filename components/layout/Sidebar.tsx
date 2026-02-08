@@ -124,7 +124,7 @@ export function Sidebar({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed md:relative z-50 h-screen bg-transparent transition-all duration-300 ease-in-out flex flex-col",
+          "fixed md:relative z-50 h-screen bg-background md:bg-transparent transition-all duration-300 ease-in-out flex flex-col",
           isMobileOpen ? "translate-x-0 w-72 shadow-2xl" : "-translate-x-full md:translate-x-0",
           !isMobileOpen && (isCollapsed ? "md:w-[60px]" : "md:w-64")
         )}
