@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Wand2, FileText, Send, Loader2, Trash2, Maximize2, Minimize2, LayoutGrid, Minus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { completeGenerate } from '@/lib/ai/openrouter-client';
 
 interface AIAssistantButtonProps {
   onImproveWriting?: () => void;
@@ -41,6 +42,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const chatSessionRef = useRef(0);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -74,12 +76,22 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
     }
   }, [isOpen]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const buildConversationContext = (history: Message[]): string => {
+    if (history.length === 0) return '';
+    return history
+      .map((message) => `${message.sender === 'user' ? 'User' : 'Assistant'}: ${message.text}`)
+      .join('\n');
+  };
+
+  const handleSendMessage = async () => {
+    const prompt = inputValue.trim();
+    if (!prompt || isTyping) return;
+    const history = [...messages];
+    const sessionId = chatSessionRef.current;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: prompt,
       sender: 'user',
       timestamp: new Date(),
     };
@@ -88,17 +100,31 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const context = buildConversationContext(history);
+      const response = (await completeGenerate('chat', { prompt, context: context || undefined })).trim();
+      if (sessionId !== chatSessionRef.current) return;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm your AI assistant! I can help you improve your writing, generate content, translate text, and more. What would you like to do?",
+        text: response || 'I could not generate a response right now.',
         sender: 'assistant',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      if (sessionId !== chatSessionRef.current) return;
+      const message = error instanceof Error ? error.message : 'Failed to get a response. Please try again.'
+      const assistantError: Message = {
+        id: (Date.now() + 1).toString(),
+        text: message,
+        sender: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantError]);
+    } finally {
+      if (sessionId !== chatSessionRef.current) return;
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -110,6 +136,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
 
   const handleSummarize = async () => {
     if (isTyping) return;
+    const sessionId = chatSessionRef.current;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -127,6 +154,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
       }
 
       const summary = (await onSummarize()).trim();
+      if (sessionId !== chatSessionRef.current) return;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: summary || 'I could not generate a summary right now.',
@@ -135,6 +163,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
+      if (sessionId !== chatSessionRef.current) return;
       const message = error instanceof Error ? error.message : 'Failed to summarize this note. Please try again.'
       const assistantError: Message = {
         id: (Date.now() + 1).toString(),
@@ -144,14 +173,17 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
       };
       setMessages(prev => [...prev, assistantError]);
     } finally {
+      if (sessionId !== chatSessionRef.current) return;
       setIsTyping(false);
     }
   };
 
   const clearChat = () => {
+    chatSessionRef.current += 1;
     setMessages([]);
     setInputValue('');
     setShowQuickActions(false);
+    setIsTyping(false);
   };
 
   const suggestedTools: SuggestedTool[] = [
