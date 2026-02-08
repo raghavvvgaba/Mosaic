@@ -26,6 +26,122 @@ type SuggestedTool = {
   disabled?: boolean;
 };
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function formatInlineMarkdown(text: string): string {
+  let out = escapeHtml(text)
+  out = out.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2">$1</a>'
+  )
+  out = out.replace(/`([^`]+)`/g, '<code class="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">$1</code>')
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  out = out.replace(/\n/g, '<br />')
+  return out
+}
+
+function markdownToHtml(markdown: string): string {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n')
+  const html: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      i++
+      continue
+    }
+
+    if (trimmed.startsWith('```')) {
+      i++
+      const codeLines: string[] = []
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i])
+        i++
+      }
+      if (i < lines.length && lines[i].trim().startsWith('```')) i++
+      html.push(
+        `<pre class="overflow-x-auto rounded-lg bg-muted/70 p-3"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`
+      )
+      continue
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.+)$/)
+    if (heading) {
+      const level = Math.min(6, heading[1].length)
+      html.push(`<h${level} class="font-semibold mt-3 mb-1">${formatInlineMarkdown(heading[2])}</h${level}>`)
+      i++
+      continue
+    }
+
+    const ulMatch = line.match(/^[-*+]\s+(.+)$/)
+    if (ulMatch) {
+      const items: string[] = []
+      while (i < lines.length) {
+        const match = lines[i].match(/^[-*+]\s+(.+)$/)
+        if (!match) break
+        items.push(`<li>${formatInlineMarkdown(match[1])}</li>`)
+        i++
+      }
+      html.push(`<ul class="list-disc pl-5 space-y-1">${items.join('')}</ul>`)
+      continue
+    }
+
+    const olMatch = line.match(/^\d+\.\s+(.+)$/)
+    if (olMatch) {
+      const items: string[] = []
+      while (i < lines.length) {
+        const match = lines[i].match(/^\d+\.\s+(.+)$/)
+        if (!match) break
+        items.push(`<li>${formatInlineMarkdown(match[1])}</li>`)
+        i++
+      }
+      html.push(`<ol class="list-decimal pl-5 space-y-1">${items.join('')}</ol>`)
+      continue
+    }
+
+    const paragraph: string[] = []
+    while (i < lines.length) {
+      const current = lines[i]
+      const currentTrimmed = current.trim()
+      if (
+        !currentTrimmed ||
+        currentTrimmed.startsWith('```') ||
+        /^(#{1,6})\s+/.test(current) ||
+        /^[-*+]\s+/.test(current) ||
+        /^\d+\.\s+/.test(current)
+      ) {
+        break
+      }
+      paragraph.push(current)
+      i++
+    }
+    html.push(`<p>${formatInlineMarkdown(paragraph.join('\n'))}</p>`)
+  }
+
+  return html.join('')
+}
+
+function MarkdownMessage({ text }: { text: string }) {
+  const html = markdownToHtml(text)
+  return (
+    <div
+      className="text-sm leading-relaxed whitespace-normal space-y-2 [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_h1]:text-base [&_h2]:text-[15px] [&_h3]:text-sm"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
 export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   onImproveWriting,
   onSummarize,
@@ -348,7 +464,11 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                       : 'bg-muted text-foreground'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                  {message.sender === 'assistant' ? (
+                    <MarkdownMessage text={message.text} />
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                  )}
                 </div>
               </div>
             ))}
