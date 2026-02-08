@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { CheckSquare, Plus, Loader2 } from 'lucide-react';
+import { CheckSquare, Plus, Loader2, Home, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { SearchBar } from '@/components/sidebar/SearchBar'; // Reusing existing search for now
@@ -45,8 +45,8 @@ export function DashboardTopBar({
 
   // Desktop Tabs
   const tabs = [
-    { name: 'Home', href: '/dashboard' },
-    { name: 'Favorites', href: '/dashboard/favorites' },
+    { name: 'Home', href: '/dashboard', icon: Home },
+    { name: 'Favorites', href: '/dashboard/favorites', icon: Star },
   ];
 
   return (
@@ -54,31 +54,37 @@ export function DashboardTopBar({
       <div className="w-full h-16 flex items-center gap-4 px-4 pl-14 md:pl-8">
         
         {/* Left Section: Tabs (Desktop Only) */}
-        <div className="hidden md:flex items-center gap-6 mr-auto">
+        <div className="hidden md:flex items-center bg-muted/30 p-1 rounded-full border border-border/40 flex-shrink-0">
            {tabs.map(tab => {
              const isActive = pathname === tab.href;
+             const Icon = tab.icon;
              return (
                <Link 
                  key={tab.href} 
                  href={tab.href}
                  className={cn(
-                   "text-sm font-medium transition-colors hover:text-primary relative py-5 whitespace-nowrap",
-                   isActive ? "text-foreground" : "text-muted-foreground"
+                   "flex items-center gap-2 px-3 py-1.5 lg:px-4 rounded-full transition-all duration-300 ease-in-out whitespace-nowrap",
+                   isActive 
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
                  )}
                >
-                 {tab.name}
-                 {isActive && (
-                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
-                 )}
+                 <Icon className={cn("w-4 h-4 transition-transform duration-300", isActive && "fill-current scale-110")} />
+                 <span className={cn(
+                   "text-sm font-medium transition-all duration-300 overflow-hidden hidden xl:block",
+                   isActive && "lg:block"
+                 )}>
+                   {tab.name}
+                 </span>
                </Link>
              );
            })}
         </div>
 
         {/* Right Section: Search + Actions */}
-        <div className="flex flex-1 items-center justify-end gap-4 min-w-0">
+        <div className="flex flex-1 items-center justify-end gap-2 md:gap-3 min-w-0 ml-2 md:ml-4">
            {/* Search Bar Section */}
-           <div className="flex-1 md:flex-none md:w-64 lg:w-80 max-w-md">
+           <div className="flex-1 md:flex-none md:w-36 lg:w-64 xl:w-80 max-w-md">
               <div className="rounded-full border border-border bg-muted/30 px-1 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30 transition-all">
                 <SearchBar 
                   onResultClick={(doc) => openDocument(doc.id, doc.title)} 
@@ -93,14 +99,14 @@ export function DashboardTopBar({
                 onClick={handleCreateDocument}
                 disabled={isCreating}
                 size="sm"
-                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground hidden sm:flex"
+                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground hidden sm:flex px-2 lg:px-3"
               >
                 {isCreating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                <span>New</span>
+                <span className="hidden lg:inline">New</span>
               </Button>
 
               {/* Selection Mode Toggle */}
