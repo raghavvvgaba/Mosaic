@@ -88,3 +88,14 @@ export interface UserPreferences {
   fontSize?: number;              // Base font size (12-20px)
   avatarId?: string;              // Avatar file ID in Storage
 }
+
+export interface SemanticSearchHit {
+  noteId: string;
+  score: number;
+  snippet?: string;
+}
+
+export interface SemanticSearchFunctionResponse {
+  results: SemanticSearchHit[];
+  notes: Record<string, unknown>[];
+}
