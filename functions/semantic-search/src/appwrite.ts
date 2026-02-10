@@ -1,4 +1,4 @@
-import type { AppwriteDocumentRow } from './types';
+import type { AppwriteDocumentRow } from './types.ts';
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];

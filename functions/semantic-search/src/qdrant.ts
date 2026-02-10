@@ -1,4 +1,4 @@
-import type { ChunkEmbeddingPoint, QdrantSearchHit } from './types';
+import type { ChunkEmbeddingPoint, QdrantSearchHit } from './types.ts';
 
 const DEFAULT_QDRANT_COLLECTION = 'notes_chunks_v1';
 const DEFAULT_VECTOR_DISTANCE = 'Cosine';

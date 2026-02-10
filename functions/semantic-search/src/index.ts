@@ -1,7 +1,7 @@
-import { fetchDocumentById, fetchDocumentsByIds } from './appwrite';
-import { buildEmbeddingSourceText, splitTextIntoChunks } from './chunk';
-import { embedTexts, getEmbeddingModel } from './openrouter';
-import { ensureCollection, replaceNoteVectors, searchVectors } from './qdrant';
+import { fetchDocumentById, fetchDocumentsByIds } from './appwrite.ts';
+import { buildEmbeddingSourceText, splitTextIntoChunks } from './chunk.ts';
+import { embedTexts, getEmbeddingModel } from './openrouter.ts';
+import { ensureCollection, replaceNoteVectors, searchVectors } from './qdrant.ts';
 import type {
   AppwriteFunctionContext,
   AppwriteFunctionRequest,
@@ -10,7 +10,7 @@ import type {
   IndexRequestBody,
   SearchRequestBody,
   SemanticSearchResult,
-} from './types';
+} from './types.ts';
 
 const MIN_EMBEDDABLE_TEXT_LENGTH = 20;
 const DEFAULT_SEARCH_LIMIT = 8;
