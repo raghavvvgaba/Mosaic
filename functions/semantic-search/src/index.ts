@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { fetchDocumentById, fetchDocumentsByIds } from './appwrite.ts';
 import { buildEmbeddingSourceText, splitTextIntoChunks } from './chunk.ts';
 import { embedTexts, getEmbeddingModel } from './openrouter.ts';
@@ -16,6 +17,19 @@ const MIN_EMBEDDABLE_TEXT_LENGTH = 20;
 const DEFAULT_SEARCH_LIMIT = 8;
 const MAX_SEARCH_LIMIT = 25;
 const QDRANT_CANDIDATE_LIMIT = 40;
+
+function toDeterministicPointId(noteId: string, chunkIndex: number): string {
+  const hash = createHash('sha1').update(`${noteId}:${chunkIndex}`).digest('hex').slice(0, 32);
+  const chars = hash.split('');
+
+  // Force UUID version (5) and variant bits.
+  chars[12] = '5';
+  const variantNibble = parseInt(chars[16], 16);
+  chars[16] = ((variantNibble & 0x3) | 0x8).toString(16);
+
+  const hex = chars.join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
 
 function normalizePath(pathOrUrl: string | undefined): string {
   if (!pathOrUrl || !pathOrUrl.trim()) return '/';
@@ -222,7 +236,7 @@ async function handleIndex(
   await ensureCollection(vectors[0]?.length ?? 1536);
 
   const points: ChunkEmbeddingPoint[] = chunks.map((chunk, index) => ({
-    id: `${note.$id}:${chunk.chunkIndex}`,
+    id: toDeterministicPointId(note.$id, chunk.chunkIndex),
     vector: vectors[index],
     payload: {
       noteId: note.$id,
