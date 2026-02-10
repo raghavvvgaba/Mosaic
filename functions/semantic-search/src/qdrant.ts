@@ -5,6 +5,7 @@ const DEFAULT_VECTOR_DISTANCE = 'Cosine';
 const DEFAULT_VECTOR_SIZE = 1536;
 
 let collectionInitialized = false;
+let payloadIndexesInitialized = false;
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -82,6 +83,27 @@ export async function ensureCollection(vectorSize: number = DEFAULT_VECTOR_SIZE)
   }
 
   collectionInitialized = true;
+  await ensurePayloadIndexes();
+}
+
+async function ensurePayloadIndexes(): Promise<void> {
+  if (payloadIndexesInitialized) return;
+
+  const collection = getQdrantCollectionName();
+  const fields: string[] = ['noteId', 'userId', 'workspaceId'];
+
+  for (const field of fields) {
+    await qdrantRequest(`/collections/${encodeURIComponent(collection)}/index?wait=true`, {
+      method: 'PUT',
+      body: {
+        field_name: field,
+        field_schema: 'keyword',
+      },
+      acceptedStatuses: [200],
+    });
+  }
+
+  payloadIndexesInitialized = true;
 }
 
 export async function replaceNoteVectors(noteId: string, points: ChunkEmbeddingPoint[]): Promise<void> {
