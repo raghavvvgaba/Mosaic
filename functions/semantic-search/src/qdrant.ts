@@ -3,6 +3,7 @@ import type { ChunkEmbeddingPoint, QdrantSearchHit } from './types.ts';
 const DEFAULT_QDRANT_COLLECTION = 'notes_chunks_v1';
 const DEFAULT_VECTOR_DISTANCE = 'Cosine';
 const DEFAULT_VECTOR_SIZE = 1536;
+const DEFAULT_QDRANT_HTTP_TIMEOUT_MS = 20000;
 
 let collectionInitialized = false;
 let payloadIndexesInitialized = false;
@@ -24,6 +25,20 @@ function getQdrantBaseUrl(): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
+function getQdrantTimeoutMs(): number {
+  const raw = process.env.QDRANT_HTTP_TIMEOUT_MS;
+  const parsed = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(parsed)) return DEFAULT_QDRANT_HTTP_TIMEOUT_MS;
+  return Math.max(1000, Math.min(120000, Math.floor(parsed)));
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { name?: string; code?: string };
+  return err.name === 'AbortError' || err.code === 'ABORT_ERR';
+}
+
 async function qdrantRequest<TResponse>(
   path: string,
   options: {
@@ -35,15 +50,29 @@ async function qdrantRequest<TResponse>(
   const apiKey = getRequiredEnv('QDRANT_API_KEY');
   const baseUrl = getQdrantBaseUrl();
   const acceptedStatuses = options.acceptedStatuses ?? [200];
+  const timeoutMs = getQdrantTimeoutMs();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: options.method,
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': apiKey,
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method: options.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(`Qdrant request timed out after ${timeoutMs}ms for path: ${path}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!acceptedStatuses.includes(response.status)) {
     const detail = await response.text().catch(() => '');
@@ -91,8 +120,20 @@ async function ensurePayloadIndexes(): Promise<void> {
 
   const collection = getQdrantCollectionName();
   const fields: string[] = ['noteId', 'userId', 'workspaceId'];
+  const info = await qdrantRequest<{
+    result?: {
+      payload_schema?: Record<string, unknown>;
+    };
+  }>(`/collections/${encodeURIComponent(collection)}`, {
+    method: 'GET',
+    acceptedStatuses: [200],
+  });
+  const payloadSchema = info.result?.payload_schema ?? {};
+  const missingFields = fields.filter(
+    (field) => !Object.prototype.hasOwnProperty.call(payloadSchema, field)
+  );
 
-  for (const field of fields) {
+  for (const field of missingFields) {
     await qdrantRequest(`/collections/${encodeURIComponent(collection)}/index?wait=true`, {
       method: 'PUT',
       body: {
@@ -109,7 +150,7 @@ async function ensurePayloadIndexes(): Promise<void> {
 export async function replaceNoteVectors(noteId: string, points: ChunkEmbeddingPoint[]): Promise<void> {
   const collection = getQdrantCollectionName();
 
-  await qdrantRequest(`/collections/${encodeURIComponent(collection)}/points/delete?wait=true`, {
+  await qdrantRequest(`/collections/${encodeURIComponent(collection)}/points/delete?wait=false`, {
     method: 'POST',
     body: {
       filter: {
@@ -126,7 +167,7 @@ export async function replaceNoteVectors(noteId: string, points: ChunkEmbeddingP
 
   if (points.length === 0) return;
 
-  await qdrantRequest(`/collections/${encodeURIComponent(collection)}/points?wait=true`, {
+  await qdrantRequest(`/collections/${encodeURIComponent(collection)}/points?wait=false`, {
     method: 'PUT',
     body: {
       points,

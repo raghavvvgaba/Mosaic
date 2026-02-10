@@ -17,6 +17,40 @@ const MIN_EMBEDDABLE_TEXT_LENGTH = 20;
 const DEFAULT_SEARCH_LIMIT = 8;
 const MAX_SEARCH_LIMIT = 25;
 const QDRANT_CANDIDATE_LIMIT = 40;
+const DEFAULT_INDEX_CHUNK_SIZE_CHARS = 1400;
+const DEFAULT_INDEX_CHUNK_OVERLAP_CHARS = 200;
+const DEFAULT_INDEX_MAX_CHUNKS = 12;
+
+function getPositiveIntFromEnv(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  const parsed = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed)) return fallback;
+
+  return Math.max(min, Math.min(max, Math.floor(parsed)));
+}
+
+function getChunkingConfig() {
+  const chunkSizeChars = getPositiveIntFromEnv(
+    'SEMANTIC_CHUNK_SIZE_CHARS',
+    DEFAULT_INDEX_CHUNK_SIZE_CHARS,
+    200,
+    5000
+  );
+  const overlapCharsRaw = getPositiveIntFromEnv(
+    'SEMANTIC_CHUNK_OVERLAP_CHARS',
+    DEFAULT_INDEX_CHUNK_OVERLAP_CHARS,
+    0,
+    2000
+  );
+  const overlapChars = Math.min(overlapCharsRaw, Math.floor(chunkSizeChars / 2));
+  const maxChunks = getPositiveIntFromEnv('SEMANTIC_MAX_CHUNKS', DEFAULT_INDEX_MAX_CHUNKS, 1, 64);
+
+  return {
+    chunkSizeChars,
+    overlapChars,
+    maxChunks,
+  };
+}
 
 function toDeterministicPointId(noteId: string, chunkIndex: number): string {
   const hash = createHash('sha1').update(`${noteId}:${chunkIndex}`).digest('hex').slice(0, 32);
@@ -168,8 +202,10 @@ function clampLimit(value: number | undefined): number {
 async function handleIndex(
   req: AppwriteFunctionRequest,
   res: AppwriteFunctionResponse | undefined,
-  userId: string
+  userId: string,
+  log: (...args: unknown[]) => void
 ): Promise<unknown> {
+  const startedAt = Date.now();
   const body = parseBody(req);
   const payload = parseIndexRequest(body);
 
@@ -177,7 +213,14 @@ async function handleIndex(
     return sendJson(res, 400, { error: 'Invalid request body. Expected { noteId: string }.' });
   }
 
+  log(`[semantic-search] /index start noteId=${payload.noteId}`);
+
+  const noteFetchStartedAt = Date.now();
   const note = await fetchDocumentById(payload.noteId);
+  log(
+    `[semantic-search] /index note fetch completed noteId=${payload.noteId} durationMs=${Date.now() - noteFetchStartedAt}`
+  );
+
   if (!note) {
     return sendJson(res, 404, { error: 'Note not found.' });
   }
@@ -214,11 +257,12 @@ async function handleIndex(
     });
   }
 
-  const chunks = splitTextIntoChunks(sourceText, {
-    chunkSizeChars: 1400,
-    overlapChars: 200,
-    maxChunks: 32,
-  });
+  const chunking = getChunkingConfig();
+  const chunkingStartedAt = Date.now();
+  const chunks = splitTextIntoChunks(sourceText, chunking);
+  log(
+    `[semantic-search] /index chunking completed noteId=${note.$id} chunks=${chunks.length} chunkSizeChars=${chunking.chunkSizeChars} overlapChars=${chunking.overlapChars} maxChunks=${chunking.maxChunks} durationMs=${Date.now() - chunkingStartedAt}`
+  );
 
   if (chunks.length === 0) {
     await ensureCollection();
@@ -232,7 +276,13 @@ async function handleIndex(
     });
   }
 
+  const embedStartedAt = Date.now();
   const vectors = await embedTexts(chunks.map((chunk) => chunk.text));
+  log(
+    `[semantic-search] /index embedding completed noteId=${note.$id} chunkEmbeddings=${vectors.length} durationMs=${Date.now() - embedStartedAt}`
+  );
+
+  const qdrantStartedAt = Date.now();
   await ensureCollection(vectors[0]?.length ?? 1536);
 
   const points: ChunkEmbeddingPoint[] = chunks.map((chunk, index) => ({
@@ -251,6 +301,12 @@ async function handleIndex(
   }));
 
   await replaceNoteVectors(note.$id, points);
+  log(
+    `[semantic-search] /index qdrant write completed noteId=${note.$id} points=${points.length} durationMs=${Date.now() - qdrantStartedAt}`
+  );
+  log(
+    `[semantic-search] /index success noteId=${note.$id} indexedChunks=${points.length} totalMs=${Date.now() - startedAt}`
+  );
 
   return sendJson(res, 200, {
     ok: true,
@@ -351,7 +407,7 @@ export default async function main(context: AppwriteFunctionContext): Promise<un
     }
 
     if (path === '/index') {
-      return await handleIndex(req, res, userId);
+      return await handleIndex(req, res, userId, log);
     }
 
     if (path === '/search') {

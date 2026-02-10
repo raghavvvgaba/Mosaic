@@ -1,11 +1,27 @@
 import type { AppwriteDocumentRow } from './types.ts';
 
+const DEFAULT_APPWRITE_HTTP_TIMEOUT_MS = 15000;
+
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value || !value.trim()) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value.trim();
+}
+
+function getAppwriteTimeoutMs(): number {
+  const raw = process.env.APPWRITE_HTTP_TIMEOUT_MS;
+  const parsed = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(parsed)) return DEFAULT_APPWRITE_HTTP_TIMEOUT_MS;
+  return Math.max(1000, Math.min(120000, Math.floor(parsed)));
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { name?: string; code?: string };
+  return err.name === 'AbortError' || err.code === 'ABORT_ERR';
 }
 
 function getAppwriteConfig() {
@@ -26,15 +42,30 @@ function getAppwriteConfig() {
 
 async function appwriteRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const config = getAppwriteConfig();
-  const response = await fetch(`${config.endpoint}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Appwrite-Project': config.projectId,
-      'X-Appwrite-Key': config.apiKey,
-      ...(init?.headers || {}),
-    },
-  });
+  const timeoutMs = getAppwriteTimeoutMs();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(`${config.endpoint}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Appwrite-Project': config.projectId,
+        'X-Appwrite-Key': config.apiKey,
+        ...(init?.headers || {}),
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(`Appwrite request timed out after ${timeoutMs}ms for path: ${path}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
