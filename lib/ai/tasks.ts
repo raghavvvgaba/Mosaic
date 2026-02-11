@@ -98,7 +98,7 @@ const summarizeTask: TaskDefinition = {
 }
 
 function buildChatSystemPrompt() {
-  return 'You are Mosaic AI, a helpful writing and notes assistant. Continue the conversation using the provided context. Be direct, accurate, and concise. Use markdown only when it improves readability. Do not invent facts and clearly say when information is uncertain.'
+  return 'You are Mosaic AI, a helpful writing and notes assistant. Continue the conversation using the provided context. Be direct, accurate, and concise. Use markdown only when it improves readability. Do not invent facts and clearly say when information is uncertain.gemini'
 }
 
 const chatTask: TaskDefinition = {

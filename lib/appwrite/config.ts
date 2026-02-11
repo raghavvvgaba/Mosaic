@@ -1,4 +1,4 @@
-import { Client, Account, Databases, TablesDB, Storage, ID, Query } from 'appwrite';
+import { Client, Account, Databases, TablesDB, Storage, Functions, ID, Query } from 'appwrite';
 
 export const appwriteConfig = {
   endpoint: process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1',
@@ -16,6 +16,7 @@ export class AppwriteConfig {
   public databases!: Databases;
   public tablesDB!: TablesDB;
   public storage!: Storage;
+  public functions!: Functions;
   // Realtime will be added when needed for Phase 2C
 
   private constructor() {
@@ -38,6 +39,7 @@ export class AppwriteConfig {
     this.databases = new Databases(this.client);
     this.tablesDB = new TablesDB(this.client);
     this.storage = new Storage(this.client);
+    this.functions = new Functions(this.client);
   }
 
   static getInstance(): AppwriteConfig {

@@ -1,5 +1,6 @@
 import { getAppwrite, ID, Query, appwriteConfig, Permission as AppwritePermission, Role } from './config';
 import type { Document, DocumentMetadata, Collaborator } from '../db/types';
+import { enqueueNoteIndex, searchSemantic } from './semantic-search';
 
 // Extend Window interface for custom event
 declare global {
@@ -208,7 +209,10 @@ export async function createDocument(
       ]
     });
 
-    return appwriteDocumentToDocument(response);
+    const createdDocument = appwriteDocumentToDocument(response);
+    enqueueNoteIndex(createdDocument.id, { delayMs: 1500 });
+
+    return createdDocument;
   } catch (error) {
     console.error('Failed to create document:', error);
     throw new Error('Failed to create document');
@@ -246,6 +250,10 @@ export async function updateDocument(
 
     // Set lastChangedAt when title or content changes
     const shouldUpdateLastChangedAt = updates.title !== undefined || updates.content !== undefined;
+    const shouldReindex =
+      updates.title !== undefined ||
+      updates.content !== undefined ||
+      updates.workspaceId !== undefined;
     const updateData = documentToAppwriteDocument({
       ...updates,
       ...(shouldUpdateLastChangedAt ? { lastChangedAt: new Date() } : {})
@@ -258,7 +266,13 @@ export async function updateDocument(
       data: updateData
     });
 
-    return appwriteDocumentToDocument(response);
+    const updatedDocument = appwriteDocumentToDocument(response);
+
+    if (shouldReindex) {
+      enqueueNoteIndex(updatedDocument.id);
+    }
+
+    return updatedDocument;
   } catch (error) {
     console.error('Failed to update document:', error);
     throw new Error('Failed to update document');
@@ -404,7 +418,12 @@ export async function searchDocuments(
   workspaceId: string | undefined,
   query: string
 ): Promise<Document[]> {
-  try {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const searchByTitleKeyword = async (): Promise<Document[]> => {
     const appwrite = getAppwrite();
 
     const response = await appwrite.tablesDB.listRows({
@@ -413,15 +432,35 @@ export async function searchDocuments(
       queries: [
         Query.equal('workspaceId', [workspaceId || 'default']),
         Query.equal('isDeleted', [false]),
-        Query.search('title', query),
+        Query.search('title', normalizedQuery),
         Query.orderDesc('$updatedAt'),
       ]
     });
 
     return response.rows.map(appwriteDocumentToDocument);
+  };
+
+  try {
+    // Keyword search performs better for very short queries.
+    if (normalizedQuery.length < 3) {
+      return await searchByTitleKeyword();
+    }
+
+    const semanticResults = await searchSemantic(normalizedQuery, workspaceId);
+    if (semanticResults.length > 0) {
+      return semanticResults;
+    }
+
+    // No semantic hits (for example, not indexed yet): fall back to keyword search.
+    return await searchByTitleKeyword();
   } catch (error) {
-    console.error('Failed to search documents:', error);
-    return [];
+    console.error('Semantic search failed. Falling back to keyword search:', error);
+    try {
+      return await searchByTitleKeyword();
+    } catch (keywordError) {
+      console.error('Failed to search documents:', keywordError);
+      return [];
+    }
   }
 }
 
@@ -500,7 +539,10 @@ export async function duplicateDocument(documentId: string): Promise<Document> {
       ]
     });
 
-    return appwriteDocumentToDocument(response);
+    const duplicatedDocument = appwriteDocumentToDocument(response);
+    enqueueNoteIndex(duplicatedDocument.id, { delayMs: 1500 });
+
+    return duplicatedDocument;
   } catch (error) {
     console.error('Failed to duplicate document:', error);
     throw new Error('Failed to duplicate document');
@@ -549,7 +591,10 @@ export async function moveDocument(documentId: string, newWorkspaceId: string): 
       }
     });
 
-    return appwriteDocumentToDocument(response);
+    const movedDocument = appwriteDocumentToDocument(response);
+    enqueueNoteIndex(movedDocument.id);
+
+    return movedDocument;
   } catch (error) {
     console.error('Failed to move document:', error);
     throw new Error('Failed to move document');

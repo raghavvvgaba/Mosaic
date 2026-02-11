@@ -154,7 +154,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     (content: string) => {
       onSave(content);
     },
-    2000
+    750
   );
 
   const handleChange = useCallback(() => {
