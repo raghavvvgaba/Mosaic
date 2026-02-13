@@ -39,9 +39,22 @@ export class AuthService {
    */
   static async signInWithGoogle() {
     const { account } = getAppwrite();
-    const successUrl = `${window.location.origin}/dashboard`;
+    const successUrl = `${window.location.origin}/auth/oauth2/callback`;
     const failureUrl = `${window.location.origin}/login?error=google_oauth_failed`;
-    return await account.createOAuth2Session(OAuthProvider.Google, successUrl, failureUrl);
+    return await account.createOAuth2Token({
+      provider: OAuthProvider.Google,
+      success: successUrl,
+      failure: failureUrl,
+    });
+  }
+
+  /**
+   * Complete OAuth token flow by exchanging userId + secret for a session.
+   */
+  static async completeOAuthSession(userId: string, secret: string) {
+    const { account } = getAppwrite();
+    await account.createSession({ userId, secret });
+    return await account.get();
   }
 
   /**
