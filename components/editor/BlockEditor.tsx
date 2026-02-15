@@ -47,6 +47,7 @@ export interface BlockEditorProps {
   className?: string;
   font?: DocumentFont;
   onOpenAIDraft?: () => void;
+  onGenerateTitle?: () => void;
 }
 
 export interface BlockEditorHandle {
@@ -95,6 +96,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
   className,
   font,
   onOpenAIDraft,
+  onGenerateTitle,
 }: BlockEditorProps, ref) {
   const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -428,6 +430,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
           onImproveWriting={handleImproveWriting}
           onAIDraft={onOpenAIDraft}
           onSummarize={handleSummarize}
+          onGenerateTitle={onGenerateTitle}
         />
 
         <MobileToolbar 

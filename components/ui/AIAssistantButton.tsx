@@ -9,6 +9,7 @@ interface AIAssistantButtonProps {
   onImproveWriting?: () => void;
   onSummarize?: () => Promise<string>;
   onAIDraft?: () => void;
+  onGenerateTitle?: () => void;
 }
 
 interface Message {
@@ -146,6 +147,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   onImproveWriting,
   onSummarize,
   onAIDraft,
+  onGenerateTitle,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -320,6 +322,15 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
         void handleSummarize();
       },
       disabled: isTyping,
+    },
+    {
+      icon: <Sparkles size={16} />,
+      label: 'Generate Title',
+      description: 'Auto-generate a title for this note',
+      onClick: () => {
+        onGenerateTitle?.();
+        setShowQuickActions(false);
+      },
     },
     {
       icon: <Wand2 size={16} />,

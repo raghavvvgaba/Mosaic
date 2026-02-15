@@ -88,7 +88,7 @@ export function DocumentCard({
       <div className="flex-1 flex flex-col justify-center items-center text-center space-y-1.5 sm:space-y-2 mt-2 sm:mt-0">
         <h3
           className={cn(
-            'font-medium text-sm sm:text-base line-clamp-2 text-card-foreground transition-colors',
+            'font-medium text-sm sm:text-base break-words text-card-foreground transition-colors',
             !selectionMode && 'group-hover:text-primary'
           )}
         >
