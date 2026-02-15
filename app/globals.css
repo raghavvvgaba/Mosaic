@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../node_modules/@blocknote/shadcn";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -125,15 +126,19 @@
 }
 
 /* BlockNote Overrides adapted for Minimal Theme */
-.bn-shadcn [role="menu"] {
+.bn-shadcn [role="menu"],
+.bn-shadcn [role="listbox"] {
   @apply bg-popover border border-border shadow-md rounded-lg;
 }
-.bn-shadcn [role="menuitem"] {
+.bn-shadcn [role="menuitem"],
+.bn-shadcn [role="option"] {
   @apply text-popover-foreground rounded-sm;
 }
-.bn-shadcn [role="menuitem"][data-highlighted],
 .bn-shadcn [role="menuitem"]:hover,
 .bn-shadcn [role="menuitem"][data-selected],
+.bn-shadcn [role="option"]:hover,
+.bn-shadcn [role="option"][data-selected],
+.bn-shadcn [role="option"][aria-selected="true"],
 .bn-shadcn [data-hovered="true"] {
   background-color: var(--accent) !important;
   color: var(--accent-foreground) !important;
