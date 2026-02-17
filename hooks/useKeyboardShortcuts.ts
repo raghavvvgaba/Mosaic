@@ -106,7 +106,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       showToast('Open a document to use AI Draft');
       return;
     }
-    window.dispatchEvent(new CustomEvent('ai-draft-open', { detail: { documentId } }));
+    window.dispatchEvent(new CustomEvent('ai-assistant-open', { detail: { documentId, intent: 'draft' } }));
   }, [getCurrentDocumentId, showToast]);
 
   // Search and navigation

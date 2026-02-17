@@ -25,6 +25,12 @@ import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 import { generateTitleFromBlocks } from '@/lib/ai/title';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
+import type { AssistantMode } from '@/types/ai-assistant';
+import { completeGenerate } from '@/lib/ai/openrouter-client';
+import { extractPlainTextFromEditorBlocks } from '@/lib/editor/text-extract';
+
+const AI_ASSISTANT_V2_ENABLED = process.env.NEXT_PUBLIC_AI_ASSISTANT_V2 === 'true';
 
 // Save status icon component
 function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Date | null }) {
@@ -79,6 +85,8 @@ export default function DocumentPage() {
   const documentRef = useRef<Document | null>(null);
   const editorRef = useRef<BlockEditorHandle | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const assistantNonceRef = useRef(0);
+  const [assistantOpenRequest, setAssistantOpenRequest] = useState<{ intent: AssistantMode; nonce: number } | null>(null);
   const [titleGenerating, setTitleGenerating] = useState(false);
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -304,6 +312,36 @@ export default function DocumentPage() {
     });
   }, [documentId, deleteDocument]);
 
+  const requestAssistantOpen = useCallback((intent: AssistantMode) => {
+    assistantNonceRef.current += 1;
+    setAssistantOpenRequest({ intent, nonce: assistantNonceRef.current });
+  }, []);
+
+  const handleSummarizeFromAssistant = useCallback(async (): Promise<string> => {
+    const content = documentRef.current?.content ?? '[]';
+    let blocks: unknown[] = [];
+    try {
+      const parsed = JSON.parse(content) as unknown;
+      if (Array.isArray(parsed)) {
+        blocks = parsed;
+      }
+    } catch {
+      blocks = [];
+    }
+
+    const extracted = extractPlainTextFromEditorBlocks(blocks, { maxChars: 12000 }).trim();
+    if (!extracted) {
+      throw new Error('There is no content in this note to summarize yet.');
+    }
+
+    const summary = (await completeGenerate('summarize', { prompt: extracted })).trim();
+    if (!summary) {
+      throw new Error('Summary generation returned an empty response. Please try again.');
+    }
+
+    return summary;
+  }, []);
+
   useEffect(() => {
     function handleDocumentsChanged(event: Event) {
       const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
@@ -337,13 +375,30 @@ export default function DocumentPage() {
     }
 
     function handleAIDraftOpen() {
+      if (AI_ASSISTANT_V2_ENABLED) {
+        requestAssistantOpen('draft');
+        return;
+      }
       setAiOpen(true);
+    }
+
+    function handleAIAssistantOpen(event: Event) {
+      const detail = (event as CustomEvent).detail as { intent?: AssistantMode } | undefined;
+      const intent = detail?.intent === 'draft' ? 'draft' : 'chat';
+      if (AI_ASSISTANT_V2_ENABLED) {
+        requestAssistantOpen(intent);
+        return;
+      }
+      if (intent === 'draft') {
+        setAiOpen(true);
+      }
     }
 
     window.addEventListener('duplicate-document', handleDuplicateDocument);
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
+    window.addEventListener('ai-assistant-open', handleAIAssistantOpen);
     window.addEventListener('ai-draft-open', handleAIDraftOpen);
 
     return () => {
@@ -351,9 +406,10 @@ export default function DocumentPage() {
       window.removeEventListener('export-document', handleExportDocument);
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
+      window.removeEventListener('ai-assistant-open', handleAIAssistantOpen);
       window.removeEventListener('ai-draft-open', handleAIDraftOpen);
     };
-  }, [documentId, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
+  }, [handleDuplicate, handleToggleFavorite, requestAssistantOpen, requestMoveToTrash]);
 
   function getWordCount(): number {
     if (!document) return 0;
@@ -553,8 +609,15 @@ export default function DocumentPage() {
             onSave={handleContentSave}
             className={FONT_CLASS_MAP[documentFont]}
             font={documentFont}
-            onOpenAIDraft={() => setAiOpen(true)}
-            onGenerateTitle={() => void handleGenerateTitle()}
+            onOpenAIAssistant={(intent) => {
+              if (AI_ASSISTANT_V2_ENABLED) {
+                requestAssistantOpen(intent);
+                return;
+              }
+              if (intent === 'draft') {
+                setAiOpen(true);
+              }
+            }}
           />
         </div>
       </div>
@@ -608,6 +671,30 @@ export default function DocumentPage() {
           onOpenChange={setShowExportDialog}
         />
       )}
+
+      <AIAssistantButton
+        documentId={documentId}
+        documentTitle={documentRef.current?.title || localTitle || 'Untitled'}
+        getContextWindow={() => {
+          return editorRef.current?.getContextWindow?.({ around: 2, maxChars: 1400 }) || '';
+        }}
+        getSelectedText={() => {
+          return editorRef.current?.getSelectedText?.() || '';
+        }}
+        insertAtCursor={(text) => {
+          editorRef.current?.insertTextAtCursor(text);
+        }}
+        replaceSelection={(text) => {
+          return editorRef.current?.replaceSelection?.(text) ?? false;
+        }}
+        onImproveWriting={() => {
+          editorRef.current?.improveSelectedText?.();
+        }}
+        onSummarize={handleSummarizeFromAssistant}
+        onGenerateTitle={() => void handleGenerateTitle()}
+        openRequest={assistantOpenRequest}
+        onOpenRequestHandled={() => setAssistantOpenRequest(null)}
+      />
 
       <AIDraftDialog
         open={aiOpen}
