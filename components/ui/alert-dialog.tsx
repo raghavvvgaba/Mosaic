@@ -132,9 +132,7 @@ function AlertDialogAction({
   return (
     <AlertDialogPrimitive.Action
       className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 px-6 py-2.5 font-medium transition-all duration-200",
-        "hover:shadow-[10px_10px_20px_rgba(0,0,0,0.6),-5px_-5px_10px_rgba(255,255,255,0.02)] hover:-translate-y-0.5",
-        "active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.02)] active:translate-y-0",
+        "inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 px-6 py-2.5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
         className
       )}
@@ -150,7 +148,7 @@ function AlertDialogCancel({
   return (
     <AlertDialogPrimitive.Cancel
       className={cn(
-        "bg-muted/50 rounded-lg border border-transparent px-6 py-2.5 font-medium text-sm text-muted-foreground transition-all duration-200",
+        "bg-muted/50 rounded-xl border border-transparent px-6 py-2.5 font-medium text-sm text-muted-foreground transition-all duration-200",
         "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
         className
       )}

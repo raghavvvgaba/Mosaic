@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useParams } from 'next/navigation';
-import { MoreVertical, Copy, Star, Trash2, Sparkles, Loader2, CircleCheck, Save, Download } from 'lucide-react';
+import { MoreVertical, Copy, Star, Trash2, Loader2, CircleCheck, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,6 +25,12 @@ import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
 import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 import { generateTitleFromBlocks } from '@/lib/ai/title';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
+import type { AssistantMode } from '@/types/ai-assistant';
+import { completeGenerate } from '@/lib/ai/openrouter-client';
+import { extractPlainTextFromEditorBlocks } from '@/lib/editor/text-extract';
+
+const AI_ASSISTANT_V2_ENABLED = process.env.NEXT_PUBLIC_AI_ASSISTANT_V2 === 'true';
 
 // Save status icon component
 function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Date | null }) {
@@ -79,7 +85,18 @@ export default function DocumentPage() {
   const documentRef = useRef<Document | null>(null);
   const editorRef = useRef<BlockEditorHandle | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const assistantNonceRef = useRef(0);
+  const [assistantOpenRequest, setAssistantOpenRequest] = useState<{ intent: AssistantMode; nonce: number } | null>(null);
   const [titleGenerating, setTitleGenerating] = useState(false);
+  const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize title textarea
+  useEffect(() => {
+    if (titleTextareaRef.current) {
+      titleTextareaRef.current.style.height = 'auto';
+      titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`;
+    }
+  }, [localTitle]);
 
   // Sync documentRef with SWR data and set workspace
   useEffect(() => {
@@ -158,7 +175,7 @@ export default function DocumentPage() {
     1000 // 1000ms debounce delay - balances responsiveness with performance
   );
 
-  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleTitleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const newTitle = e.target.value;
     // Update local state immediately for responsive typing
     setLocalTitle(newTitle);
@@ -295,6 +312,36 @@ export default function DocumentPage() {
     });
   }, [documentId, deleteDocument]);
 
+  const requestAssistantOpen = useCallback((intent: AssistantMode) => {
+    assistantNonceRef.current += 1;
+    setAssistantOpenRequest({ intent, nonce: assistantNonceRef.current });
+  }, []);
+
+  const handleSummarizeFromAssistant = useCallback(async (): Promise<string> => {
+    const content = documentRef.current?.content ?? '[]';
+    let blocks: unknown[] = [];
+    try {
+      const parsed = JSON.parse(content) as unknown;
+      if (Array.isArray(parsed)) {
+        blocks = parsed;
+      }
+    } catch {
+      blocks = [];
+    }
+
+    const extracted = extractPlainTextFromEditorBlocks(blocks, { maxChars: 12000 }).trim();
+    if (!extracted) {
+      throw new Error('There is no content in this note to summarize yet.');
+    }
+
+    const summary = (await completeGenerate('summarize', { prompt: extracted })).trim();
+    if (!summary) {
+      throw new Error('Summary generation returned an empty response. Please try again.');
+    }
+
+    return summary;
+  }, []);
+
   useEffect(() => {
     function handleDocumentsChanged(event: Event) {
       const detail = (event as CustomEvent).detail as { workspaceId?: string } | undefined;
@@ -328,13 +375,30 @@ export default function DocumentPage() {
     }
 
     function handleAIDraftOpen() {
+      if (AI_ASSISTANT_V2_ENABLED) {
+        requestAssistantOpen('draft');
+        return;
+      }
       setAiOpen(true);
+    }
+
+    function handleAIAssistantOpen(event: Event) {
+      const detail = (event as CustomEvent).detail as { intent?: AssistantMode } | undefined;
+      const intent = detail?.intent === 'draft' ? 'draft' : 'chat';
+      if (AI_ASSISTANT_V2_ENABLED) {
+        requestAssistantOpen(intent);
+        return;
+      }
+      if (intent === 'draft') {
+        setAiOpen(true);
+      }
     }
 
     window.addEventListener('duplicate-document', handleDuplicateDocument);
     window.addEventListener('export-document', handleExportDocument);
     window.addEventListener('toggle-favorite', handleToggleFavoriteEvent);
     window.addEventListener('move-to-trash', handleMoveToTrashEvent);
+    window.addEventListener('ai-assistant-open', handleAIAssistantOpen);
     window.addEventListener('ai-draft-open', handleAIDraftOpen);
 
     return () => {
@@ -342,9 +406,10 @@ export default function DocumentPage() {
       window.removeEventListener('export-document', handleExportDocument);
       window.removeEventListener('toggle-favorite', handleToggleFavoriteEvent);
       window.removeEventListener('move-to-trash', handleMoveToTrashEvent);
+      window.removeEventListener('ai-assistant-open', handleAIAssistantOpen);
       window.removeEventListener('ai-draft-open', handleAIDraftOpen);
     };
-  }, [documentId, handleDuplicate, handleToggleFavorite, requestMoveToTrash]);
+  }, [handleDuplicate, handleToggleFavorite, requestAssistantOpen, requestMoveToTrash]);
 
   function getWordCount(): number {
     if (!document) return 0;
@@ -445,93 +510,91 @@ export default function DocumentPage() {
     <TooltipProvider>
       <div className={`h-full flex flex-col bg-background ${FONT_CLASS_MAP[documentFont]}`}>
         <header className="border-b sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="pl-14 pr-[5px] md:px-8 py-4">
+          <div className="pl-14 pr-2 md:px-8 py-4">
           {/* Title bar */}
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0 relative">
+                <textarea
+                  ref={titleTextareaRef}
+                  rows={1}
                   value={localTitle}
                   onChange={handleTitleChange}
-                  className="w-full text-2xl font-bold border-none outline-none bg-transparent pr-8"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
+                  className="w-full text-xl sm:text-2xl font-bold border-none outline-none bg-transparent resize-none py-0 block min-h-[1.5em] leading-tight whitespace-pre-wrap break-words"
                   placeholder="Untitled"
                 />
-                {titleSaving && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
-                    Saving...
-                  </div>
-                )}
               </div>
 
-            <SaveStatusIcon saving={saving} lastSaved={lastSaved} />
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
-                <div className="px-1 py-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    {fontOptions.map((option) => {
-                      const isActive = documentFont === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => handleFontChange(option.id)}
-                          className={`rounded-md border px-2 py-2 text-center transition-colors ${
-                            isActive
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-transparent bg-muted/40 hover:bg-muted'
-                          }`}
-                        >
-                          <div className={`text-lg leading-none ${option.sampleClass}`}>{option.label}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{option.description}</div>
-                        </button>
-                      );
-                    })}
-                </div>
-                </div>
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={handleToggleFavorite}>
-                  <Star className={`w-4 h-4 mr-2 ${document.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-                  {document.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                </DropdownMenuItem>
+            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 mt-1">
+              <SaveStatusIcon saving={saving || titleGenerating || titleSaving} lastSaved={lastSaved} />
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">Note font</DropdownMenuLabel>
+                  <div className="px-1 py-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      {fontOptions.map((option) => {
+                        const isActive = documentFont === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => handleFontChange(option.id)}
+                            className={`rounded-md border px-2 py-2 text-center transition-colors ${
+                              isActive
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-transparent bg-muted/40 hover:bg-muted'
+                            }`}
+                          >
+                            <div className={`text-lg leading-none ${option.sampleClass}`}>{option.label}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{option.description}</div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={handleToggleFavorite}>
+                    <Star className={`w-4 h-4 mr-2 ${document.isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                    {document.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => void handleGenerateTitle()} disabled={titleGenerating}>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {titleGenerating ? 'Generating Title...' : 'Generate Title'}
-                </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={handleDuplicate}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                
-                <DropdownMenuItem
-                  onClick={(event) => {
-                    event.preventDefault();
-                    requestMoveToTrash();
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Move to Trash
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={handleDuplicate}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem
+                    onClick={(event) => {
+                      event.preventDefault();
+                      requestMoveToTrash();
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Move to Trash
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             </div>
           </div>
         </div>
@@ -546,7 +609,15 @@ export default function DocumentPage() {
             onSave={handleContentSave}
             className={FONT_CLASS_MAP[documentFont]}
             font={documentFont}
-            onOpenAIDraft={() => setAiOpen(true)}
+            onOpenAIAssistant={(intent) => {
+              if (AI_ASSISTANT_V2_ENABLED) {
+                requestAssistantOpen(intent);
+                return;
+              }
+              if (intent === 'draft') {
+                setAiOpen(true);
+              }
+            }}
           />
         </div>
       </div>
@@ -600,6 +671,30 @@ export default function DocumentPage() {
           onOpenChange={setShowExportDialog}
         />
       )}
+
+      <AIAssistantButton
+        documentId={documentId}
+        documentTitle={documentRef.current?.title || localTitle || 'Untitled'}
+        getContextWindow={() => {
+          return editorRef.current?.getContextWindow?.({ around: 2, maxChars: 1400 }) || '';
+        }}
+        getSelectedText={() => {
+          return editorRef.current?.getSelectedText?.() || '';
+        }}
+        insertAtCursor={(text) => {
+          editorRef.current?.insertTextAtCursor(text);
+        }}
+        replaceSelection={(text) => {
+          return editorRef.current?.replaceSelection?.(text) ?? false;
+        }}
+        onImproveWriting={() => {
+          editorRef.current?.improveSelectedText?.();
+        }}
+        onSummarize={handleSummarizeFromAssistant}
+        onGenerateTitle={() => void handleGenerateTitle()}
+        openRequest={assistantOpenRequest}
+        onOpenRequestHandled={() => setAssistantOpenRequest(null)}
+      />
 
       <AIDraftDialog
         open={aiOpen}

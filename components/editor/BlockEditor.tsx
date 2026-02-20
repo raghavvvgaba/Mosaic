@@ -17,13 +17,10 @@ import { StorageService } from '@/lib/appwrite/storage';
 import { useTheme } from 'next-themes';
 import type { DocumentFont } from '@/lib/db/types';
 import { Sparkles, X } from 'lucide-react';
-import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
 import { MobileToolbar } from './MobileToolbar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { sanitizeMarkdownForInsert } from '@/lib/ai/markdown-insert';
-import { completeGenerate } from '@/lib/ai/openrouter-client';
-import { extractPlainTextFromEditorBlocks } from '@/lib/editor/text-extract';
 
 // Minimal shapes to avoid `any` while remaining version-tolerant
 type InlineNode = { type?: string; text?: string } & Record<string, unknown>;
@@ -46,12 +43,15 @@ export interface BlockEditorProps {
   onSave: (content: string) => void;
   className?: string;
   font?: DocumentFont;
-  onOpenAIDraft?: () => void;
+  onOpenAIAssistant?: (intent: 'chat' | 'draft') => void;
 }
 
 export interface BlockEditorHandle {
   insertTextAtCursor: (text: string) => void;
   getContextWindow: (opts?: { around?: number; maxChars?: number }) => string;
+  getSelectedText: () => string;
+  replaceSelection: (text: string) => boolean;
+  improveSelectedText: () => void;
 }
 
 // Custom Improve Writing Button component
@@ -94,7 +94,7 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
   onSave,
   className,
   font,
-  onOpenAIDraft,
+  onOpenAIAssistant,
 }: BlockEditorProps, ref) {
   const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -196,6 +196,17 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
     };
   }, [debouncedSave]);
 
+  // Improve Writing functionality
+  const improveWriting = useImproveWriting();
+
+  // Handle improve writing click
+  const handleImproveWriting = useCallback(() => {
+    const selection = getSelectedText(editor);
+    if (selection.text) {
+      improveWriting.actions.improve(selection.text);
+    }
+  }, [editor, improveWriting.actions]);
+
   useImperativeHandle(ref, () => ({
     insertTextAtCursor(text: string) {
       const insertBlocksSafely = (blocksToInsert: unknown[]): boolean => {
@@ -283,31 +294,30 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         return '';
       }
     },
-  }), [editor]);
+    getSelectedText() {
+      const selection = getSelectedText(editor);
+      return selection.text;
+    },
+    replaceSelection(text: string) {
+      if (!text || !text.trim()) return false;
+      return replaceSelectedText(editor, text);
+    },
+    improveSelectedText() {
+      handleImproveWriting();
+    },
+  }), [editor, handleImproveWriting]);
 
-  // Custom Slash Menu item to open AI Draft dialog
+  // Custom Slash Menu item to open AI Assistant in draft mode
   const getAiSlashItem = useCallback(() => ({
     title: "AI Draft",
     onItemClick: () => {
-      onOpenAIDraft?.();
+      onOpenAIAssistant?.('draft');
     },
     aliases: ["ai", "aidraft", "ai draft"],
     group: "AI",
     subtext: "Generate content with AI assistance",
     icon: <Sparkles size={16} />,
-  }), [onOpenAIDraft]);
-
-  // Improve Writing functionality
-  const improveWriting = useImproveWriting();
-
-  // Handle improve writing click
-  const handleImproveWriting = useCallback(() => {
-    const selection = getSelectedText(editor);
-    if (selection.text) {
-      // Start the improvement process
-      improveWriting.actions.improve(selection.text);
-    }
-  }, [editor, improveWriting.actions]);
+  }), [onOpenAIAssistant]);
 
   // Handle improve writing actions
   const handleImproveAction = useCallback((action: 'accept' | 'discard' | 'try-again' | 'insert-below') => {
@@ -334,21 +344,6 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
         break;
     }
   }, [editor, improveWriting]);
-
-  const handleSummarize = useCallback(async (): Promise<string> => {
-    const blocks = (editor as unknown as { document?: unknown[] }).document ?? [];
-    const extracted = extractPlainTextFromEditorBlocks(blocks, { maxChars: 12000 }).trim();
-    if (!extracted) {
-      throw new Error('There is no content in this note to summarize yet.')
-    }
-
-    const summary = (await completeGenerate('summarize', { prompt: extracted })).trim();
-    if (!summary) {
-      throw new Error('Summary generation returned an empty response. Please try again.')
-    }
-
-    return summary
-  }, [editor]);
 
   // Custom formatting toolbar that extends default items
   const CustomFormattingToolbar = useCallback(() => {
@@ -423,16 +418,9 @@ export const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(funct
           </div>
         )}
 
-        {/* AI Assistant Button */}
-        <AIAssistantButton
-          onImproveWriting={handleImproveWriting}
-          onAIDraft={onOpenAIDraft}
-          onSummarize={handleSummarize}
-        />
-
         <MobileToolbar 
           editor={editor} 
-          onOpenAIDraft={onOpenAIDraft} 
+          onOpenAIAssistant={onOpenAIAssistant}
         />
       </div>
     </div>

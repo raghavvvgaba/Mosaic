@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { AuthService } from '@/lib/appwrite/auth';
 import { PreferencesService } from '@/lib/appwrite/preferences';
 import { StorageService } from '@/lib/appwrite/storage';
-import { createWorkspace } from '@/lib/appwrite/workspaces';
+import { createWorkspace, getWorkspaces } from '@/lib/appwrite/workspaces';
 import type { User, UserPreferences } from '@/lib/db/types';
 
 type AppwriteUser = {
@@ -59,6 +59,7 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const DEFAULT_WORKSPACE_NAME = 'Default';
 
   // Convert Appwrite user to our User type
   const convertAppwriteUser = async (appwriteUser: AppwriteUser): Promise<User> => {
@@ -82,6 +83,15 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     };
   };
 
+  const ensureDefaultWorkspace = async (userId: string) => {
+    const existingWorkspaces = await getWorkspaces();
+    if (existingWorkspaces.length > 0) {
+      return;
+    }
+
+    await createWorkspace(DEFAULT_WORKSPACE_NAME, userId, { isDefault: true });
+  };
+
   // Check for existing session on mount
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -94,6 +104,13 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
           const appwriteUser = await AuthService.getCurrentUser();
           const user = await convertAppwriteUser(appwriteUser);
           setUser(user);
+
+          try {
+            await ensureDefaultWorkspace(user.id);
+          } catch (workspaceError) {
+            console.error('Failed to ensure default workspace:', workspaceError);
+            setError('Signed in successfully, but default workspace setup failed. You may need to create a workspace manually.');
+          }
         }
       } catch (err) {
         console.error('Auth status check failed:', err);
@@ -115,6 +132,13 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       const { user: appwriteUser } = await AuthService.signIn(email, password);
       const user = await convertAppwriteUser(appwriteUser);
       setUser(user);
+
+      try {
+        await ensureDefaultWorkspace(user.id);
+      } catch (workspaceError) {
+        console.error('Failed to ensure default workspace:', workspaceError);
+        setError('Signed in successfully, but default workspace setup failed. You may need to create a workspace manually.');
+      }
     } catch (err: unknown) {
       console.error('Sign in failed:', err);
       const errorMessage = getErrorMessage(err, 'Invalid email or password');
@@ -149,13 +173,13 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
       const user = await convertAppwriteUser(appwriteUser);
       setUser(user);
 
-      // Create personal workspace for the new user
+      // Create default workspace for new users.
       try {
-        await createWorkspace(`${name}'s Workspace`, user.id);
+        await ensureDefaultWorkspace(user.id);
       } catch (workspaceError) {
-        console.error('Failed to create personal workspace:', workspaceError);
+        console.error('Failed to create default workspace:', workspaceError);
         // Don't fail signup if workspace creation fails, but notify user
-        setError('Account created successfully, but workspace creation failed. You may need to create a workspace manually.');
+        setError('Account created successfully, but default workspace creation failed. You may need to create a workspace manually.');
         // Still allow signup to complete since user account was created
       }
     } catch (err: unknown) {

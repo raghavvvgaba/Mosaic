@@ -28,11 +28,11 @@ type MobileEditor = {
 
 interface MobileToolbarProps {
   editor: MobileEditor | null;
-  onOpenAIDraft?: () => void;
+  onOpenAIAssistant?: (intent: 'chat' | 'draft') => void;
   className?: string;
 }
 
-export function MobileToolbar({ editor, onOpenAIDraft, className }: MobileToolbarProps) {
+export function MobileToolbar({ editor, onOpenAIAssistant, className }: MobileToolbarProps) {
   if (!editor) return null;
 
   const toggleBold = () => editor.addStyles?.({ bold: true });
@@ -108,12 +108,12 @@ export function MobileToolbar({ editor, onOpenAIDraft, className }: MobileToolba
         </Button>
       </div>
 
-      {onOpenAIDraft && (
+      {onOpenAIAssistant && (
         <Button 
           variant="ghost" 
           size="icon" 
           className="h-9 w-9 shrink-0 text-primary" 
-          onClick={onOpenAIDraft}
+          onClick={() => onOpenAIAssistant('draft')}
         >
           <Sparkles className="h-4 w-4" />
         </Button>

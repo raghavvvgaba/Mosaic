@@ -1,4 +1,5 @@
 import type { BlockNoteEditor, Block } from '@blocknote/core'
+import { sanitizeMarkdownForInsert } from '@/lib/ai/markdown-insert'
 
 export interface SelectionInfo {
   text: string
@@ -26,9 +27,38 @@ type TiptapEditor = {
   view: { dispatch: (tr: unknown) => void }
 }
 
+type MarkdownCapableEditor = BlockNoteEditor & {
+  tryParseMarkdownToBlocks?: (markdown: string) => unknown[]
+}
+
 function getTiptapEditor(editor: BlockNoteEditor): TiptapEditor | null {
   const maybe = (editor as unknown as { _tiptapEditor?: TiptapEditor })._tiptapEditor
   return maybe ?? null
+}
+
+function hasLikelyBlockMarkdown(text: string): boolean {
+  return /(^\s*#{1,6}\s)|(^\s*[-*+]\s)|(^\s*\d+\.\s)|(^\s*>\s)|```|\n/m.test(text)
+}
+
+function replaceSelectionWithMarkdownBlocks(editor: BlockNoteEditor, newText: string): boolean {
+  if (!hasLikelyBlockMarkdown(newText)) return false
+  try {
+    const markdownEditor = editor as MarkdownCapableEditor
+    if (typeof markdownEditor.tryParseMarkdownToBlocks !== 'function') return false
+    const selection = editor.getSelection()
+    if (!selection || selection.blocks.length === 0) return false
+
+    const sanitized = sanitizeMarkdownForInsert(newText)
+    const parsedBlocks = markdownEditor.tryParseMarkdownToBlocks(sanitized)
+    if (!Array.isArray(parsedBlocks) || parsedBlocks.length === 0) return false
+
+    editor.insertBlocks(parsedBlocks as unknown as Block[], selection.blocks[0], 'before')
+    editor.removeBlocks(selection.blocks)
+    return true
+  } catch (error) {
+    console.error('Markdown block replacement failed:', error)
+    return false
+  }
 }
 
 /**
@@ -127,6 +157,10 @@ export function replaceSelectedText(editor: BlockNoteEditor, newText: string): b
 
     if (!pmSelection || pmSelection.empty) {
       return false
+    }
+
+    if (replaceSelectionWithMarkdownBlocks(editor, newText)) {
+      return true
     }
 
     // Use ProseMirror's transaction to replace the selected text

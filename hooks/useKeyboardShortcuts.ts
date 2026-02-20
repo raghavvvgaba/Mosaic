@@ -106,7 +106,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       showToast('Open a document to use AI Draft');
       return;
     }
-    window.dispatchEvent(new CustomEvent('ai-draft-open', { detail: { documentId } }));
+    window.dispatchEvent(new CustomEvent('ai-assistant-open', { detail: { documentId, intent: 'draft' } }));
   }, [getCurrentDocumentId, showToast]);
 
   // Search and navigation
@@ -274,19 +274,25 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     if (!enabled) return;
 
     // Don't trigger shortcuts when typing in input fields
-    const target = event.target as HTMLElement;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
 
-    // Check if we're in a BlockNote suggestion menu (slash commands)
-    const isInSuggestionMenu = target.closest('[role="menu"]') !== null ||
-                              target.closest('[data-suggestion-menu]') !== null ||
-                              target.closest('.bn-suggestion-menu-item') !== null;
+    // When BlockNote slash menu is open, always let BlockNote own nav keys.
+    const isBlockNoteEditorEvent =
+      target.closest('.bn-container, .bn-editor, .bn-suggestion-menu, #bn-suggestion-menu, #ai-suggestion-menu') !== null;
+    const isSuggestionMenuOpen =
+      document.querySelector('#bn-suggestion-menu, #ai-suggestion-menu, .bn-suggestion-menu') !== null;
+    const isSuggestionNavigationKey =
+      event.key === 'ArrowUp' ||
+      event.key === 'ArrowDown' ||
+      event.key === 'Enter' ||
+      event.key === 'Escape';
 
-    // Allow arrow key navigation in suggestion menus
-    if (isInSuggestionMenu && (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter' || event.key === 'Escape')) {
-      return; // Let the menu handle these keys
+    if (isBlockNoteEditorEvent && isSuggestionMenuOpen && isSuggestionNavigationKey) {
+      return;
     }
 
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       // Only allow escape and specific shortcuts in input fields
       if (event.key !== 'Escape') return;
     }
