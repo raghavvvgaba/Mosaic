@@ -704,29 +704,6 @@ export async function getFavoriteDocumentsMetadata(workspaceId?: string): Promis
   }
 }
 
-// ===== CLIENT-SIDE FILTERING HELPERS FOR PERFORMANCE =====
-// These functions allow fetching all metadata once and filtering client-side,
-// reducing multiple API calls to a single call.
-
-// Get all documents metadata (including deleted) for client-side filtering
-// This replaces the need for multiple specialized queries in the sidebar
-export async function getAllDocumentsMetadataForFiltering(
-  workspaceId?: string
-): Promise<DocumentMetadata[]> {
-  return getAllDocumentsMetadata(workspaceId, { includeDeleted: true });
-}
-
-// Filter documents by recent activity (has lastChangedAt, sorted by most recent)
-export function filterRecentDocuments(
-  documents: DocumentMetadata[],
-  limit: number = 20
-): DocumentMetadata[] {
-  return documents
-    .filter(doc => doc.lastChangedAt && !doc.isDeleted)
-    .sort((a, b) => b.lastChangedAt!.getTime() - a.lastChangedAt!.getTime())
-    .slice(0, limit);
-}
-
 // Filter documents by favorite status
 export function filterFavoriteDocuments(
   documents: DocumentMetadata[]
@@ -739,11 +716,4 @@ export function filterDeletedDocuments(
   documents: DocumentMetadata[]
 ): DocumentMetadata[] {
   return documents.filter(doc => doc.isDeleted === true);
-}
-
-// Filter documents by non-deleted status
-export function filterNonDeletedDocuments(
-  documents: DocumentMetadata[]
-): DocumentMetadata[] {
-  return documents.filter(doc => doc.isDeleted === false);
 }

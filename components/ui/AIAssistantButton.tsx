@@ -224,6 +224,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showDraftAdvanced, setShowDraftAdvanced] = useState(false);
   const [mode, setMode] = useState<AssistantMode>('chat');
   const [draftOptions, setDraftOptions] = useState<AiOptions>(() => {
     if (typeof window === 'undefined') return DEFAULT_AI_OPTIONS;
@@ -249,6 +250,16 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
   const hydratedRef = useRef(false);
 
   const storageKey = useMemo(() => `ai:assistant:doc:${documentId}`, [documentId]);
+  const draftCreativityPreset = useMemo<'predictable' | 'balanced' | 'creative'>(() => {
+    if (draftOptions.temperature <= 0.35) return 'predictable';
+    if (draftOptions.temperature >= 0.85) return 'creative';
+    return 'balanced';
+  }, [draftOptions.temperature]);
+
+  const setDraftCreativityPreset = useCallback((preset: 'predictable' | 'balanced' | 'creative') => {
+    const temperature = preset === 'predictable' ? 0.2 : preset === 'creative' ? 0.95 : 0.7;
+    setDraftOptions((prev) => ({ ...prev, temperature }));
+  }, []);
 
   const appendMessage = useCallback((message: AssistantMessage) => {
     setMessages((prev) => trimMessages([...prev, message]));
@@ -964,19 +975,7 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
 
             <div className="flex-shrink-0 border-t border-border p-3 space-y-2">
               {mode === 'draft' && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <label className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
-                    <span>Tone</span>
-                    <select
-                      className="bg-transparent text-xs outline-none"
-                      value={draftOptions.tone}
-                      onChange={(event) => setDraftOptions((prev) => ({ ...prev, tone: event.target.value as AiOptions['tone'] }))}
-                    >
-                      <option value="neutral">Neutral</option>
-                      <option value="friendly">Friendly</option>
-                      <option value="formal">Formal</option>
-                    </select>
-                  </label>
+                <div className="space-y-2 text-xs">
                   <label className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
                     <span>Length</span>
                     <select
@@ -989,29 +988,53 @@ export const AIAssistantButton: React.FC<AIAssistantButtonProps> = ({
                       <option value="long">Long</option>
                     </select>
                   </label>
-                  <label className="col-span-2 flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
-                    <span>Use surrounding context</span>
-                    <input
-                      type="checkbox"
-                      checked={draftOptions.includeContext}
-                      onChange={(event) => setDraftOptions((prev) => ({ ...prev, includeContext: event.target.checked }))}
-                    />
-                  </label>
-                  <label className="col-span-2 flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
-                    <span>Creativity ({draftOptions.temperature.toFixed(2)})</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={draftOptions.temperature}
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        setDraftOptions((prev) => ({ ...prev, temperature: Number.isFinite(value) ? value : prev.temperature }));
-                      }}
-                      className="w-28"
-                    />
-                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowDraftAdvanced((prev) => !prev)}
+                    className="w-full rounded-md border border-border px-2 py-1.5 text-left text-muted-foreground hover:text-foreground"
+                  >
+                    {showDraftAdvanced ? 'Hide advanced options' : 'Show advanced options'}
+                  </button>
+
+                  {showDraftAdvanced && (
+                    <div className="space-y-2 rounded-md border border-border bg-muted/20 p-2">
+                      <label className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
+                        <span>Tone</span>
+                        <select
+                          className="bg-transparent text-xs outline-none"
+                          value={draftOptions.tone}
+                          onChange={(event) => setDraftOptions((prev) => ({ ...prev, tone: event.target.value as AiOptions['tone'] }))}
+                        >
+                          <option value="neutral">Neutral</option>
+                          <option value="friendly">Friendly</option>
+                          <option value="formal">Formal</option>
+                        </select>
+                      </label>
+
+                      <label className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
+                        <span>Creativity</span>
+                        <select
+                          className="bg-transparent text-xs outline-none"
+                          value={draftCreativityPreset}
+                          onChange={(event) => setDraftCreativityPreset(event.target.value as 'predictable' | 'balanced' | 'creative')}
+                        >
+                          <option value="predictable">Predictable</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="creative">Creative</option>
+                        </select>
+                      </label>
+
+                      <label className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5">
+                        <span>Use surrounding context</span>
+                        <input
+                          type="checkbox"
+                          checked={draftOptions.includeContext}
+                          onChange={(event) => setDraftOptions((prev) => ({ ...prev, includeContext: event.target.checked }))}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
 

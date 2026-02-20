@@ -20,11 +20,8 @@ export {
   getAllDocumentsMetadata,
   getRecentDocumentsMetadata,
   getFavoriteDocumentsMetadata,
-  getAllDocumentsMetadataForFiltering,
-  filterRecentDocuments,
   filterFavoriteDocuments,
   filterDeletedDocuments,
-  filterNonDeletedDocuments,
 } from '../appwrite/documents';
 
 import type { Document, DocumentMetadata } from './types';
