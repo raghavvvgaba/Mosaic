@@ -6,7 +6,7 @@ export function createDefaultWorkspace(): Workspace {
   const now = new Date();
   return {
     id: DEFAULT_WORKSPACE_ID,
-    name: 'Personal Workspace',
+    name: 'Default',
     color: '#2563eb',
     icon: '📝',
     createdAt: now,

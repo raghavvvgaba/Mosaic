@@ -72,7 +72,15 @@ function workspaceToAppwriteWorkspace(workspace: Partial<Workspace>) {
   };
 }
 
-export async function createWorkspace(name: string, userId?: string): Promise<Workspace> {
+type CreateWorkspaceOptions = {
+  isDefault?: boolean;
+};
+
+export async function createWorkspace(
+  name: string,
+  userId?: string,
+  options: CreateWorkspaceOptions = {}
+): Promise<Workspace> {
   try {
     const appwrite = getAppwrite();
 
@@ -85,7 +93,7 @@ export async function createWorkspace(name: string, userId?: string): Promise<Wo
     const workspaceData = workspaceToAppwriteWorkspace({
       name,
       ownerId: userId,
-      isDefault: false,
+      isDefault: options.isDefault ?? false,
     });
 
     const response = await appwrite.tablesDB.createRow({
