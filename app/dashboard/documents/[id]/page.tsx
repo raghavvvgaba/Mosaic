@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { MoreVertical, Copy, Star, Trash2, Loader2, CircleCheck, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,15 +22,12 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { ConfirmDialog } from '@/components/AlertDialog';
 import { MoveDocumentDialog } from '@/components/MoveDocumentDialog';
-import { AIDraftDialog } from '@/components/ai/AIDraftDialog';
 import { generateTitleFromBlocks } from '@/lib/ai/title';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { AIAssistantButton } from '@/components/ui/AIAssistantButton';
 import type { AssistantMode } from '@/types/ai-assistant';
 import { completeGenerate } from '@/lib/ai/openrouter-client';
 import { extractPlainTextFromEditorBlocks } from '@/lib/editor/text-extract';
-
-const AI_ASSISTANT_V2_ENABLED = process.env.NEXT_PUBLIC_AI_ASSISTANT_V2 === 'true';
 
 // Save status icon component
 function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Date | null }) {
@@ -62,6 +59,7 @@ function SaveStatusIcon({ saving, lastSaved }: { saving: boolean; lastSaved: Dat
 
 export default function DocumentPage() {
   const params = useParams();
+  const router = useRouter();
   const documentId = params.id as string;
   const { openDocument } = useNavigation();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
@@ -84,7 +82,6 @@ export default function DocumentPage() {
   } | null>(null);
   const documentRef = useRef<Document | null>(null);
   const editorRef = useRef<BlockEditorHandle | null>(null);
-  const [aiOpen, setAiOpen] = useState(false);
   const assistantNonceRef = useRef(0);
   const [assistantOpenRequest, setAssistantOpenRequest] = useState<{ intent: AssistantMode; nonce: number } | null>(null);
   const [titleGenerating, setTitleGenerating] = useState(false);
@@ -303,14 +300,14 @@ export default function DocumentPage() {
         try {
           await deleteDocument(documentId);
           window.dispatchEvent(new CustomEvent('documentsChanged', { detail: { workspaceId: current.workspaceId } }));
-          window.location.href = '/'; // Navigate to home
+          router.push('/dashboard');
         } catch (error) {
           console.error('Failed to move document to trash:', error);
           alert('Failed to move document to trash');
         }
       },
     });
-  }, [documentId, deleteDocument]);
+  }, [documentId, deleteDocument, router]);
 
   const requestAssistantOpen = useCallback((intent: AssistantMode) => {
     assistantNonceRef.current += 1;
@@ -375,23 +372,13 @@ export default function DocumentPage() {
     }
 
     function handleAIDraftOpen() {
-      if (AI_ASSISTANT_V2_ENABLED) {
-        requestAssistantOpen('draft');
-        return;
-      }
-      setAiOpen(true);
+      requestAssistantOpen('draft');
     }
 
     function handleAIAssistantOpen(event: Event) {
       const detail = (event as CustomEvent).detail as { intent?: AssistantMode } | undefined;
       const intent = detail?.intent === 'draft' ? 'draft' : 'chat';
-      if (AI_ASSISTANT_V2_ENABLED) {
-        requestAssistantOpen(intent);
-        return;
-      }
-      if (intent === 'draft') {
-        setAiOpen(true);
-      }
+      requestAssistantOpen(intent);
     }
 
     window.addEventListener('duplicate-document', handleDuplicateDocument);
@@ -610,13 +597,7 @@ export default function DocumentPage() {
             className={FONT_CLASS_MAP[documentFont]}
             font={documentFont}
             onOpenAIAssistant={(intent) => {
-              if (AI_ASSISTANT_V2_ENABLED) {
-                requestAssistantOpen(intent);
-                return;
-              }
-              if (intent === 'draft') {
-                setAiOpen(true);
-              }
+              requestAssistantOpen(intent);
             }}
           />
         </div>
@@ -694,19 +675,6 @@ export default function DocumentPage() {
         onGenerateTitle={() => void handleGenerateTitle()}
         openRequest={assistantOpenRequest}
         onOpenRequestHandled={() => setAssistantOpenRequest(null)}
-      />
-
-      <AIDraftDialog
-        open={aiOpen}
-        onOpenChange={setAiOpen}
-        getContext={() => {
-          const title = documentRef.current?.title || 'Untitled';
-          const around = editorRef.current?.getContextWindow?.({ around: 2, maxChars: 1400 }) || '';
-          return [`Title: ${title}`, around ? `Context:\n${around}` : ''].filter(Boolean).join('\n');
-        }}
-        onInsert={(text) => {
-          editorRef.current?.insertTextAtCursor(text)
-        }}
       />
       </div>
     </TooltipProvider>

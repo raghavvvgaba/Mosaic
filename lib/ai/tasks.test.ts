@@ -21,6 +21,8 @@ describe('resolveModel', () => {
     expect(prompt).toContain('Use clean Markdown structure')
     expect(prompt).toContain('Do not use trailing backslashes for line breaks.')
     expect(prompt).toContain('Do not wrap the entire response in a single code fence.')
+    expect(prompt).toContain('Do not ask the user questions.')
+    expect(prompt).toContain('Never return only a question.')
   })
 
   it('registers chat task as non-streaming text output', () => {

@@ -68,7 +68,7 @@ function buildDraftSystemPrompt(opts: { tone?: CommonParams['tone']; length?: Co
       : length === 'long'
       ? 'Target roughly 400-600 words.'
       : 'Target roughly 200-300 words.'
-  return `${toneText} ${lengthText} Use clean Markdown structure with short section headings and bullet lists when helpful. Do not use trailing backslashes for line breaks. Do not output standalone backslash lines. Do not wrap the entire response in a single code fence. Avoid excessive preamble. Provide clean, ready-to-paste prose.`
+  return `${toneText} ${lengthText} Use clean Markdown structure with short section headings and bullet lists when helpful. Do not use trailing backslashes for line breaks. Do not output standalone backslash lines. Do not wrap the entire response in a single code fence. Do not ask the user questions. Do not ask for clarification, confirmation, or additional input. Never return only a question. If requirements are ambiguous, make reasonable assumptions and still produce a complete draft. Avoid excessive preamble. Provide clean, ready-to-paste prose only.`
 }
 
 const draftTask: TaskDefinition = {
