@@ -53,7 +53,7 @@ export function Hero() {
         <p 
           className={`text-xl text-muted-foreground mb-12 max-w-2xl leading-relaxed transition-all duration-700 delay-200 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
         >
-          Mosaic is the all-in-one workspace that blends <span className="text-foreground font-semibold">AI assistance</span> with real-time collaboration. Designed for teams who move fast.
+          Mosaic is the all-in-one workspace with <span className="text-foreground font-semibold">AI-powered writing</span> and a beautiful block editor. Capture, organize, and refine your ideas effortlessly.
         </p>
 
         {/* CTA Buttons */}

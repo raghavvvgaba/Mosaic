@@ -57,8 +57,8 @@ export function DocumentCard({
         selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-lg hover:shadow-primary/5 hover:border-primary/40 hover:-translate-y-0.5',
         isSelected && 'ring-2 ring-primary border-primary shadow-md',
         // Mobile optimization: Smaller padding, compact size
-        'p-3 sm:p-5',
-        'min-h-[120px] sm:min-h-[140px]',
+        'aspect-square max-w-[200px] justify-self-center',
+        'p-3 sm:p-4',
         FONT_CLASS_MAP[doc.font ?? 'sans']
       )}
       onClick={(e) => {
