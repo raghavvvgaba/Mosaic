@@ -1,10 +1,10 @@
 {
-  "name": "Collaborative Editor - Local-First Notes",
-  "short_name": "CollabEditor",
-  "description": "A powerful, offline-first block-based document editor inspired by Notion",
+  "name": "Mosaic - AI-Powered Notes Workspace",
+  "short_name": "Mosaic",
+  "description": "Capture, organize, and refine ideas with AI-powered writing, workspaces, and semantic search.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0a0a0a",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
@@ -15,6 +15,6 @@
       "purpose": "any"
     }
   ],
-  "categories": ["productivity", "utilities"],
+  "categories": ["productivity", "education", "utilities"],
   "screenshots": []
 }

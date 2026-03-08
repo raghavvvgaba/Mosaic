@@ -1,4 +1,4 @@
-import { getAppwrite, ID, Permission, Role, appwriteConfig } from './config';
+import { getAppwrite, ID, Permission, Query, Role, appwriteConfig } from './config';
 
 /**
  * Storage Service
@@ -36,6 +36,47 @@ export interface DocumentImageUploadResult {
 }
 
 export class StorageService {
+  /**
+   * Build a public view URL for any file in any bucket
+   */
+  static getPublicFileViewUrl(bucketId: string, fileId: string): string {
+    const endpoint = appwriteConfig.endpoint;
+    const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!;
+    return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+  }
+
+  /**
+   * Resolve a public view URL by file ID (preferred) or by file name fallback.
+   * Useful when a file was uploaded manually via console and only name is known.
+   */
+  static async resolvePublicFileViewUrl(
+    bucketId: string,
+    fileName: string,
+    fileId?: string
+  ): Promise<string | null> {
+    if (fileId) {
+      return this.getPublicFileViewUrl(bucketId, fileId);
+    }
+
+    try {
+      const { storage } = getAppwrite();
+      const fileList = await storage.listFiles({
+        bucketId,
+        queries: [Query.equal('name', fileName), Query.limit(1)],
+      });
+
+      const matchedFile = fileList.files?.[0];
+      if (!matchedFile?.$id) {
+        return null;
+      }
+
+      return this.getPublicFileViewUrl(bucketId, matchedFile.$id);
+    } catch (error) {
+      console.error(`Failed to resolve file URL for "${fileName}" in bucket "${bucketId}":`, error);
+      return null;
+    }
+  }
+
   /**
    * Upload a new avatar for the current user
    * @param file - The image file to upload
