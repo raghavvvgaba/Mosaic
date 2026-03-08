@@ -217,7 +217,7 @@ export default function TrashPage() {
           showSelectAll={false}
         />
         <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto animate-in fade-in duration-500">
-          <div className="container mx-auto max-w-6xl">
+          <div className="w-full">
             <DocumentListSkeleton count={5} />
           </div>
         </main>
@@ -237,7 +237,7 @@ export default function TrashPage() {
       />
 
       <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto">
-        <div className="container mx-auto max-w-6xl">
+        <div className="w-full">
           {/* Global Trash Actions (Visible when not selecting) */}
           {!selectionMode && documents && documents.length > 0 && (
              <div className="mb-6 flex gap-3 justify-end">
@@ -263,7 +263,7 @@ export default function TrashPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-5 justify-items-center">
               {documents.map((doc) => {
                 const isSelected = selectionMode && selectedIds.has(doc.id);
                 return (
@@ -271,12 +271,12 @@ export default function TrashPage() {
                     key={doc.id}
                     className={cn(
                       'relative flex flex-col',
-                      'bg-card border border-border shadow-sm rounded-lg',
-                      'transition-all duration-200 group',
-                      selectionMode ? 'cursor-pointer' : 'cursor-default hover:shadow-md hover:border-primary/20',
-                      isSelected && 'ring-2 ring-primary border-primary',
-                      'p-3 sm:p-5',
-                      'min-h-[120px] sm:min-h-[140px]',
+                      'bg-card border border-border/60 shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-xl',
+                      'transition-all duration-300 group',
+                      selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-lg hover:shadow-primary/5 hover:border-primary/40 hover:-translate-y-0.5',
+                      isSelected && 'ring-2 ring-primary border-primary shadow-md',
+                      'aspect-square w-full max-w-[200px] justify-self-center',
+                      'p-3 sm:p-4',
                       FONT_CLASS_MAP[doc.font ?? 'sans']
                     )}
                     onClick={(e) => {

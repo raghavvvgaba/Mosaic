@@ -161,7 +161,7 @@ export default function FavoritesPage() {
           showSelectAll={false}
         />
         <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto animate-in fade-in duration-500">
-          <div className="container mx-auto max-w-6xl">
+          <div className="w-full">
             <DocumentListSkeleton count={5} />
           </div>
         </main>
@@ -181,7 +181,7 @@ export default function FavoritesPage() {
       />
 
       <main className="flex-1 w-full p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto">
-        <div className="container mx-auto max-w-6xl">
+        <div className="w-full">
           {!documents || documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-card/50 rounded-xl border border-dashed border-border/60">
               <Star className="w-16 h-16 mb-4 text-muted-foreground opacity-50" />
@@ -191,7 +191,7 @@ export default function FavoritesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-5 justify-items-center">
               {documents.map((doc) => (
                 <DocumentCard
                   key={doc.id}
