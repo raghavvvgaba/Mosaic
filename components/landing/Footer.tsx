@@ -1,10 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Github, Twitter, Linkedin } from 'lucide-react';
+import Image from 'next/image';
+import { Github, Twitter, Linkedin, AlertTriangle } from 'lucide-react';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+
+  const handleReportBug = () => {
+    // Functionality will be defined later
+    alert('Bug report feature coming soon!');
+  };
 
   return (
     <footer className="relative z-10 border-t border-white/10 bg-black/20 backdrop-blur-md">
@@ -14,19 +20,16 @@ export function Footer() {
             {/* Brand */}
             <div className="flex flex-col items-center md:items-start">
               <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
-                <div className="w-8 h-8 bg-primary/20 border border-primary/20 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                  <FileText className="w-4 h-4 text-primary" />
+                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-primary/30 bg-black/20 group-hover:scale-105 transition-transform duration-300">
+                  <Image src="/MosaicLogo.png" alt="Mosaic logo" width={32} height={32} className="h-full w-full object-cover" />
                 </div>
                 <span className="text-lg font-bold tracking-tight text-white">Mosaic</span>
               </Link>
-              <p className="text-muted-foreground text-sm max-w-xs text-center md:text-left">
-                The modern collaborative document editor built for speed and focus.
-              </p>
             </div>
 
             {/* Socials & Copyright */}
             <div className="flex flex-col items-center md:items-end gap-6">
-              <div className="flex items-center gap-5">
+              <div className="flex flex-wrap items-center justify-center md:justify-end gap-5">
                 <a 
                   href="https://github.com/raghavvvgaba" 
                   target="_blank"
@@ -54,11 +57,16 @@ export function Footer() {
                 >
                   <Linkedin className="w-5 h-5" />
                 </a>
+                <button
+                  onClick={handleReportBug}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/15 hover:border-red-500/50 transition-all duration-300 group text-xs"
+                >
+                  <AlertTriangle className="w-4 h-4 text-red-500/60 group-hover:text-red-500 transition-colors" />
+                  <span className="text-red-500/60 group-hover:text-red-500 transition-colors">Report Bug</span>
+                </button>
               </div>
               
               <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-                <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-                <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
                 <span>© {currentYear} Mosaic Inc.</span>
               </div>
             </div>

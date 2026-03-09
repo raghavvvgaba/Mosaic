@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Pen } from 'lucide-react';
 import Link from 'next/link';
@@ -26,8 +27,32 @@ export function Hero() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 rounded-full blur-[120px] opacity-30 animate-pulse" />
       <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[100px] opacity-20" />
 
+      <Link href="/" className="absolute top-5 left-4 sm:top-6 sm:left-6 z-20 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-2.5 py-2 backdrop-blur-md">
+          <div className="w-10 h-10 rounded-lg overflow-hidden ring-1 ring-primary/30 bg-black/20">
+            <Image src="/MosaicLogo.png" alt="Mosaic logo" width={40} height={40} className="h-full w-full object-cover" priority />
+        </div>
+        <span className="hidden sm:inline text-sm font-semibold text-white tracking-tight">Mosaic</span>
+      </Link>
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center text-center">
         
+        {/* Peerlist Embed */}
+        <div className={`mb-8 transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+          <a 
+            href="https://peerlist.io/raghavvvgaba/project/mosaic--aipowered-notes-workspace" 
+            target="_blank" 
+            rel="noreferrer"
+            className="inline-block hover:scale-105 transition-transform duration-300"
+          >
+            <img
+              src="https://peerlist.io/api/v1/projects/embed/PRJHEOGONNGPE99EGIRGPEPR9GQEN8?showUpvote=true&theme=light"
+              alt="Mosaic - AI-Powered Notes Workspace"
+              style={{ width: 'auto', height: '72px' }}
+              className="rounded-lg"
+            />
+          </a>
+        </div>
+
         {/* Animated Badge */}
         <div 
           className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}

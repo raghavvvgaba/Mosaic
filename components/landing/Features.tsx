@@ -56,11 +56,11 @@ export function Features() {
         {/* Section Header */}
         <div className="max-w-2xl mx-auto text-center mb-20">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
-            Everything you need to <br />
-            <span className="text-primary">ship faster.</span>
+            Built for thinking, <br />
+            <span className="text-primary">writing, and organizing.</span>
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            We&apos;ve obsessed over every pixel so you don&apos;t have to. Powerful features wrapped in a beautiful, distraction-free interface.
+            From quick capture to polished drafts, Mosaic gives you one focused workspace to turn scattered notes into clear, actionable ideas.
           </p>
         </div>
 
@@ -106,7 +106,6 @@ export function Features() {
               Get Started Now
             </button>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">No credit card required</p>
         </div>
       </div>
     </section>
