@@ -8,6 +8,7 @@ const APP_NAME = "Mosaic";
 const APP_DEFAULT_TITLE = "Mosaic - AI-Powered Notes Workspace";
 const APP_DESCRIPTION =
   "Capture, organize, and refine ideas with an AI-powered block editor, workspace management, and semantic search.";
+const APP_LOGO_PATH = "/MosaicLogo.png";
 
 function resolveBaseUrl(): URL {
   const raw =
@@ -62,9 +63,9 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/icon.svg",
-        width: 512,
-        height: 512,
+        url: APP_LOGO_PATH,
+        width: 768,
+        height: 768,
         alt: "Mosaic logo",
       },
     ],
@@ -73,7 +74,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: APP_DEFAULT_TITLE,
     description: APP_DESCRIPTION,
-    images: ["/icon.svg"],
+    images: [APP_LOGO_PATH],
   },
   robots: {
     index: true,
@@ -88,11 +89,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico" },
+      { url: APP_LOGO_PATH, type: "image/png", sizes: "768x768" },
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    shortcut: [{ url: "/favicon.ico" }],
-    apple: [{ url: "/icon.svg" }],
+    shortcut: [{ url: APP_LOGO_PATH, type: "image/png" }],
+    apple: [{ url: APP_LOGO_PATH, sizes: "180x180", type: "image/png" }],
   },
   manifest: "/manifest.json",
   appleWebApp: {

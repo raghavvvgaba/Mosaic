@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { 
   Menu, 
   X, 
@@ -15,7 +16,6 @@ import {
   Home,
   Settings2,
   LogOut,
-  FileText,
   Loader2,
   type LucideIcon
 } from 'lucide-react';
@@ -144,10 +144,21 @@ export function Sidebar({
            </Button>
         </div>
 
+        {/* Desktop Header */}
+        <div className={cn(
+          "hidden md:flex items-center h-12",
+          isCollapsed ? "justify-center" : "justify-start px-3 gap-2"
+        )}>
+          <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-primary/30 bg-black/20">
+            <Image src="/MosaicLogo.png" alt="Mosaic logo" width={28} height={28} className="h-full w-full object-cover" priority />
+          </div>
+          {!isCollapsed && <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Mosaic</span>}
+        </div>
+
         {/* Mobile Header */}
         <div className="md:hidden flex items-center h-14 px-4 gap-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-            <FileText className="w-4 h-4 text-primary-foreground" />
+          <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-primary/30 bg-black/20">
+            <Image src="/MosaicLogo.png" alt="Mosaic logo" width={28} height={28} className="h-full w-full object-cover" priority />
           </div>
           <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Mosaic</span>
         </div>
